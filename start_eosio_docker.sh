@@ -66,6 +66,7 @@ if [ ! "$(docker ps -q -f name=^$NODEOS_CONTAINER_NAME$)" ]; then
   -p 8888:8888 \
   -p 8080:8080 \
   -v $NODEOS_VOLUME_NAME:/mnt/dev/data \
+  --network=docker_hyperion \
   $NODEOS_IMAGE_NAME \
   "$script"
 
