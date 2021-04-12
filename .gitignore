@@ -4,9 +4,6 @@
 /node_modules
 
 # testing
-**/*.abi
-**/*.wasm
-**/*.wast
 /data
 # production
 /build
