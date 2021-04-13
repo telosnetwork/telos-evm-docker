@@ -49,6 +49,10 @@ if [ "$chain" = "" ]; then
   usage 2
 fi
 
+chmod -R 777 ./elasticsearch
+chmod -R 777 ./rabbitmq
+chmod -R 777 ./hyperion
+
 cp -a ./scripts ./hyperion/scripts
 cd ./hyperion
 docker build -t telos.net/hyperion:0.1.0 .
