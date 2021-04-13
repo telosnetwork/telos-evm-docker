@@ -80,7 +80,7 @@ services:
       - redis
       - rabbitmq
       #- eosio-node
-    volumes:
+    #volumes:
       #- ./hyperion/config/connections.json:/hyperion-history-api/connections.json
       #- ./hyperion/config/ecosystem.config.js:/hyperion-history-api/ecosystem.config.js
       #- ./hyperion/config/chains/:/hyperion-history-api/chains/
@@ -97,7 +97,7 @@ services:
       - 7000:7000
     depends_on:
       - hyperion-indexer
-    volumes:
+    #volumes:
       #- ./hyperion/config/connections.json:/hyperion-history-api/connections.json
       #- ./hyperion/config/ecosystem.config.js:/hyperion-history-api/ecosystem.config.js
       #- ./hyperion/config/chains/:/hyperion-history-api/chains/

@@ -8,7 +8,7 @@ RUN apt-get install -y nodejs && npm install pm2 -g && git clone https://github.
 COPY ./config/connections.json /hyperion-history-api/connections.json
 COPY ./config/ecosystem.config.js /hyperion-history-api/ecosystem.config.js
 COPY ./config/chains/ /hyperion-history-api/chains/
-COPY ../scripts/ /home/hyperion/scripts/
+COPY ./scripts/ /home/hyperion/scripts/
 
 RUN useradd -m -s /bin/bash hyperion && chown -R hyperion:hyperion /hyperion-history-api
 USER hyperion
