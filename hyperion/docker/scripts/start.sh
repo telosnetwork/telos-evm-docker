@@ -49,6 +49,10 @@ if [ "$chain" = "" ]; then
   usage 2
 fi
 
+cd ./hyperion
+docker build -t telos.net/hyperion:0.1.0 .
+cd -
+
 created="$(docker container ls -q --all)"
 
 #if [ "$created" = "" ]

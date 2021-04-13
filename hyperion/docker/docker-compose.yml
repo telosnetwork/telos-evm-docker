@@ -73,7 +73,7 @@ services:
 
   hyperion-indexer:
     container_name: hyperion-indexer
-    image: eosrio/hyperion:hyperion-3.1.0-beta.3
+    image: telos.net/hyperion:0.1.0
     restart: on-failure
     depends_on:
       - elasticsearch
@@ -81,27 +81,27 @@ services:
       - rabbitmq
       #- eosio-node
     volumes:
-      - ./hyperion/config/connections.json:/hyperion-history-api/connections.json
-      - ./hyperion/config/ecosystem.config.js:/hyperion-history-api/ecosystem.config.js
-      - ./hyperion/config/chains/:/hyperion-history-api/chains/
-      - ./scripts/:/home/hyperion/scripts/
+      #- ./hyperion/config/connections.json:/hyperion-history-api/connections.json
+      #- ./hyperion/config/ecosystem.config.js:/hyperion-history-api/ecosystem.config.js
+      #- ./hyperion/config/chains/:/hyperion-history-api/chains/
+      #- ./scripts/:/home/hyperion/scripts/
     networks:
       - hyperion
     command: bash -c "/home/hyperion/scripts/run-hyperion.sh ${SCRIPT:-false} telos-testnet-indexer"
 
   hyperion-api:
     container_name: hyperion-api
-    image: eosrio/hyperion:hyperion-3.1.0-beta.3
+    image: telos.net/hyperion:0.1.0
     restart: on-failure
     ports:
       - 7000:7000
     depends_on:
       - hyperion-indexer
     volumes:
-      - ./hyperion/config/connections.json:/hyperion-history-api/connections.json
-      - ./hyperion/config/ecosystem.config.js:/hyperion-history-api/ecosystem.config.js
-      - ./hyperion/config/chains/:/hyperion-history-api/chains/
-      - ./scripts/:/home/hyperion/scripts/
+      #- ./hyperion/config/connections.json:/hyperion-history-api/connections.json
+      #- ./hyperion/config/ecosystem.config.js:/hyperion-history-api/ecosystem.config.js
+      #- ./hyperion/config/chains/:/hyperion-history-api/chains/
+      #- ./scripts/:/home/hyperion/scripts/
     networks:
       - hyperion
     command: bash -c "/home/hyperion/scripts/run-hyperion.sh ${SCRIPT:-false} telos-testnet-api"
