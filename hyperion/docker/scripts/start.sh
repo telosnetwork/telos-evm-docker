@@ -96,6 +96,9 @@ then
   exit 1
 fi
 
+echo "letting elasticsearch startup for 10sec..."
+sleep 10
+
 docker-compose start kibana
 
 # Starting eosio-node container
