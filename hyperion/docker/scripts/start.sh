@@ -96,8 +96,8 @@ then
   exit 1
 fi
 
-echo "letting elasticsearch startup for 10sec..."
-sleep 10
+echo "letting elasticsearch startup for 30sec..."
+sleep 30
 
 docker-compose start kibana
 

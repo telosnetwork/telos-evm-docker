@@ -3,9 +3,9 @@
     "chain_name": "Telos testnet",
     "server_addr": "hyperion-api",
     "server_port": 7000,
-    "server_name": "hyperion-api:7000",
-    "provider_name": "Example Provider",
-    "provider_url": "https://example.com",
+    "server_name": "localhost:7000",
+    "provider_name": "TelosEVM local node development",
+    "provider_url": "https://telos.net",
     "chain_api": "",
     "push_api": "",
     "chain_logo_url": "",
@@ -19,7 +19,7 @@
       "get_trx_actions": 200
     },
     "access_log": false,
-    "enable_explorer": false,
+    "enable_explorer": true,
     "chain_api_error_log": false,
     "custom_core_token": "",
     "enable_export_action": false

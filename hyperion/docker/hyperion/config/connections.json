@@ -4,7 +4,7 @@
     "api": "rabbitmq:15672",
     "user": "username",
     "pass": "password",
-    "vhost": "hyperion"
+    "vhost": "/hyperion"
   },
   "elasticsearch": {
     "protocol": "http",
