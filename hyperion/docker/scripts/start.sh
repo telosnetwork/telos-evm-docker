@@ -50,7 +50,7 @@ if [ "$chain" = "" ]; then
 fi
 
 chmod -R 777 ./elasticsearch
-chmod -R 777 ./rabbitmq
+#chmod -R 777 ./rabbitmq
 chmod -R 777 ./hyperion
 
 cp -a ./scripts ./hyperion/scripts
