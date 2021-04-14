@@ -15,5 +15,6 @@ RUN npm install eos-evm-js node-fetch @telosnetwork/telosevm-js@0.1.0
 WORKDIR /opt/eosio/bin/
 
 COPY ./scripts/config.ini /mnt/dev/config/config.ini
+COPY ./scripts/keosd_config.ini /root/eosio-wallet/config.ini
 COPY ./scripts /opt/eosio/bin/scripts
 COPY ./contracts /opt/eosio/bin/contracts

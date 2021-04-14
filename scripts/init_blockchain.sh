@@ -7,10 +7,6 @@ logInfo() {
   echo "============="
 }
 
-logInfo "sleeping to start things off so the OS can get NTP sorted and transactions don't expire..."
-
-sleep 5
-
 logInfo "creating blockchain accounts and deploying smart contract"
 
 # set PATH
@@ -79,6 +75,9 @@ logInfo "creating eosio.evm"
 cleos system newaccount eosio eosio.evm EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L  --stake-net "10.0000 TLOS" --stake-cpu "10.0000 TLOS" --buy-ram "10000.0000 TLOS"
 cleos system newaccount eosio fees.evm EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L  --stake-net "10.0000 TLOS" --stake-cpu "10.0000 TLOS" --buy-ram "10000.0000 TLOS"
 cleos push action eosio setpriv '["eosio.evm",1]' -p eosio@active
+
+logInfo "creating rpc.evm"
+cleos system newaccount eosio rpc.evm EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L --stake-net "10000.0000 TLOS" --stake-cpu "10000.0000 TLOS" --buy-ram "10000.0000 TLOS"
 
 logInfo "creating evmuser1"
 cleos system newaccount eosio evmuser1 EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L --stake-net "10.0000 TLOS" --stake-cpu "10.0000 TLOS" --buy-ram "10000.0000 TLOS"
