@@ -37,7 +37,7 @@ tail -f /mnt/dev/data/nodeos.log &
 
 # wait for blockchain to start
 sleep 1s
-until curl localhost:8888/v1/chain/get_info
+until [ $(curl localhost:8888/v1/chain/get_info | jq -e '.head_block_num') -gt 4 ]
 do
   sleep 1s
 done

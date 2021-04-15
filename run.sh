@@ -24,4 +24,6 @@ for i in $(seq 1 20); do
 done
 
 cd $INSTALL_ROOT/hyperion/docker
+./scripts/stop.sh
+./scripts/clean-up.sh
 ./scripts/start.sh

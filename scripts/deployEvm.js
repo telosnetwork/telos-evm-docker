@@ -39,6 +39,8 @@ async function main () {
   // Deploy EVM contract to EOSIO (deploys to eosContract provided in new EosEvmApi)
   console.log(`Deploying EVM contract in nodejs`)
   await api.eos.setupEvmContract(`/opt/eosio/bin/contracts/eosio.evm`)
+  // wait a couple seconds so hyperion can pick up the ABI
+  await new Promise(r => setTimeout(r, 2000));
   console.log(`Setting EVM config`)
   const setGas = await telosApi.telos.transact([{
     account: 'eosio.evm',

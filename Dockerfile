@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-RUN apt-get update && apt-get install -y wget sudo curl git
+RUN apt-get update && apt-get install -y wget sudo curl git jq
 
 RUN curl -sL https://deb.nodesource.com/setup_10.x | sudo bash - && \
 apt-get install -yq nodejs build-essential

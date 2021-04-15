@@ -29,7 +29,9 @@ ls $COMPILEDCONTRACTSPATH/$1
 
 if $5 ; then
   # set (deploy) compiled contract to blockchain
-  echo "running: cleos -v --print-response set contract $2 "$COMPILEDCONTRACTSPATH/$1/" --permission $2"
-  cleos -v --print-response set contract $2 "$COMPILEDCONTRACTSPATH/$1/" --permission $2
+  #echo "running: cleos -v --print-response set contract $2 "$COMPILEDCONTRACTSPATH/$1/" --permission $2"
+  #cleos -v --print-response set contract $2 "$COMPILEDCONTRACTSPATH/$1/" --permission $2
+  echo "running: cleos set contract $2 "$COMPILEDCONTRACTSPATH/$1/" --permission $2"
+  cleos set contract $2 "$COMPILEDCONTRACTSPATH/$1/" --permission $2
   echo "contract set"
 fi
