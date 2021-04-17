@@ -96,8 +96,16 @@ then
   exit 1
 fi
 
-echo "letting elasticsearch startup for 30sec..."
-sleep 30
+retry_count=0
+until curl -u elastic:password -s -X GET "http://localhost:9200/_cat/health" | awk '{ print $4 }' | egrep -q 'green|yellow'; do
+  if [ $retry_count -ge 60 ]; then
+    echo "Failure - exceeded wait time for elastic to become healthy"
+    exit 1
+  fi
+  echo "waiting for elastic to come online..."
+  sleep 3
+  ((retry_count++))
+done
 
 docker-compose start kibana
 
