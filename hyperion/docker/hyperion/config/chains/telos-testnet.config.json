@@ -22,7 +22,9 @@
     "enable_explorer": true,
     "chain_api_error_log": false,
     "custom_core_token": "",
-    "enable_export_action": false
+    "enable_export_action": false,
+    "rate_limit_rpm": 100000,
+    "rate_limit_allow": []
   },
   "settings": {
     "preview": false,
