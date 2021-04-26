@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import {HyperionPlugin} from "../../hyperion-plugin";
 import {FastifyInstance, FastifyReply, FastifyRequest} from "fastify";
 import {existsSync, readFileSync, unlinkSync, writeFileSync} from "fs";
