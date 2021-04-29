@@ -11,6 +11,7 @@ contract('ERC20', (accounts) => {
     token = await ERC20.new(10000, tokenName, tokenDecimals, tokenSymbol, { from: accounts[ 0 ] })
   })
 
+  /*
   it('creation: should create an initial balance of 10000 for the creator', async () => {
     const balance = await token.balanceOf.call(accounts[ 0 ])
     assert.strictEqual(balance.toNumber(), 10000)
@@ -81,21 +82,35 @@ contract('ERC20', (accounts) => {
     const allowance = await token.allowance.call(accounts[ 0 ], accounts[ 1 ])
     assert.strictEqual(allowance.toNumber(), 100)
   })
+  */
 
   // bit overkill. But is for testing a bug
   it('approvals: msg.sender approves accounts[1] of 100 & withdraws 20 once.', async () => {
     const balance0 = await token.balanceOf.call(accounts[ 0 ])
     assert.strictEqual(balance0.toNumber(), 10000)
 
-    await token.approve(accounts[ 1 ], 100, { from: accounts[ 0 ] }) // 100
-    const balance2 = await token.balanceOf.call(accounts[ 2 ])
-    assert.strictEqual(balance2.toNumber(), 0, 'balance2 not correct')
+    accounts.forEach(async (account) => {
+      console.log(`${account} ETH balance is ${await web3.eth.getBalance(account)}`)
+    })
 
-    await token.transferFrom.call(accounts[ 0 ], accounts[ 2 ], 20, { from: accounts[ 1 ] })
+    console.log('balance is equal')
+    await token.approve(accounts[ 1 ], 100, { from: accounts[ 0 ] }) // 100
+    console.log('approved')
+    const balance2 = await token.balanceOf.call(accounts[ 2 ])
+    console.log('balance 2 gotten')
+    assert.strictEqual(balance2.toNumber(), 0, 'balance2 not correct')
+    console.log('balance 2 correct')
+
+    console.log(`transferFrom: ${await token.transferFrom.call(accounts[ 0 ], accounts[ 2 ], 20, { from: accounts[ 1 ] })}`)
+    console.log('transferFrom called')
     await token.allowance.call(accounts[ 0 ], accounts[ 1 ])
+    console.log('allowance called')
     await token.transferFrom(accounts[ 0 ], accounts[ 2 ], 20, { from: accounts[ 1 ] }) // -20
+    console.log('transferFrom done')
     const allowance01 = await token.allowance.call(accounts[ 0 ], accounts[ 1 ])
+    console.log('allowance01 called')
     assert.strictEqual(allowance01.toNumber(), 80) // =80
+    console.log('allowance01 correct')
 
     const balance22 = await token.balanceOf.call(accounts[ 2 ])
     assert.strictEqual(balance22.toNumber(), 20)
@@ -104,6 +119,7 @@ contract('ERC20', (accounts) => {
     assert.strictEqual(balance02.toNumber(), 9980)
   })
 
+  /*
   // should approve 100 of msg.sender & withdraw 50, twice. (should succeed)
   it('approvals: msg.sender approves accounts[1] of 100 & withdraws 20 twice.', async () => {
     await token.approve(accounts[ 1 ], 100, { from: accounts[ 0 ] })
@@ -209,8 +225,10 @@ contract('ERC20', (accounts) => {
     const balance02 = await token.balanceOf.call(accounts[ 0 ])
     assert.strictEqual(balance02.toNumber(), 9980)
   })
+  */
 
   /* eslint-disable no-underscore-dangle */
+  /*
   it('events: should fire Transfer event properly', async () => {
     const res = await token.transfer(accounts[ 1 ], '2666', { from: accounts[ 0 ] })
     const transferLog = res.logs.find(
@@ -241,4 +259,5 @@ contract('ERC20', (accounts) => {
     assert.strictEqual(approvalLog.args._spender, accounts[ 1 ])
     assert.strictEqual(approvalLog.args._value.toString(), '2666')
   })
+  */
 })

@@ -81,7 +81,7 @@ cleos system newaccount eosio rpc.evm EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfw
 
 logInfo "creating evmuser1"
 cleos system newaccount eosio evmuser1 EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L --stake-net "10.0000 TLOS" --stake-cpu "10.0000 TLOS" --buy-ram "10000.0000 TLOS"
-cleos transfer eosio evmuser1 "10100.0000 TLOS"
+cleos transfer eosio evmuser1 "11100.0000 TLOS"
 
 logInfo "deploying eosio.evm"
 #deploy_contract.sh eosio.evm eosio.evm eosio $(cat eosio_wallet_password.txt) true

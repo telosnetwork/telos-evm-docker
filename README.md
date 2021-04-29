@@ -28,6 +28,7 @@ Hyperion is composed of the following containers:
     - Explorer link http://localhost:7000/v2/explore/evm/address/0xf79b834a37f3143f4a73fc3934edac67fd3a01cd
     - Address `0xf79b834a37f3143f4a73fc3934edac67fd3a01cd`
     - Private key `0x8dd3ec4846cecac347a830b758bf7e438c4d9b36a396b189610c90b57a70163d`
+- There are also 10 other accounts with 100 TLOS each which can be used in truffle tests, see the `test_erc20/truffle-config.js` file for an example, their full details are also in `accounts.json`
 - The chain_id of the Telos native network is `c4c5fcc7b6e5e7484eb6b609e755050ebba977c4c291a63aab42d94c0fb8c2cf`
 - The Telos native http RPC is available at http://localhost:8888
 - The Telos native state-history websocket endpoint is available at http://localhost:8080 (this is required for hyperion to stream blockchain history from)

@@ -223,6 +223,10 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
 		if (!timestamp)
 			timestamp = new Date().getTime()
+
+		if (!blockHex)
+			blockHex = '0x' + blockNumber;
+
 		return {
 			difficulty: "0x0",
 			extraData: NULL_HASH,
