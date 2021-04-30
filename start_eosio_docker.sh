@@ -12,6 +12,12 @@ if [ -f "./config.file.local" ]; then
   source ./config.file.local
 fi
 
+if [ "$1" == "debug" ]; then
+  DEBUG_EVM=true
+else
+  DEBUG_EVM=false
+fi
+
 # docker did not stop properly
 if [ "$(docker ps -q -f status=exited -f name=^$NODEOS_CONTAINER_NAME$)" ]; then
   docker rm $NODEOS_CONTAINER_NAME
@@ -67,6 +73,7 @@ if [ ! "$(docker ps -q -f name=^$NODEOS_CONTAINER_NAME$)" ]; then
   -p 8080:8080 \
   -v $NODEOS_VOLUME_NAME:/mnt/dev/data \
   --network=docker_hyperion \
+  --env DEBUG_EVM=$DEBUG_EVM \
   $NODEOS_IMAGE_NAME \
   "$script"
 

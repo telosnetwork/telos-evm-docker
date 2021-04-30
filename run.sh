@@ -7,7 +7,7 @@ INSTALL_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 docker network create -d bridge docker_hyperion 2>/dev/null || true
 $INSTALL_ROOT/remove_eosio_docker.sh
 $INSTALL_ROOT/build_eosio_docker.sh
-$INSTALL_ROOT/start_eosio_docker.sh
+$INSTALL_ROOT/start_eosio_docker.sh $1
 
 retcode=1
 contract_deployed="false"
