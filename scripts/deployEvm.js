@@ -37,7 +37,7 @@ const telosApi = new TelosEvmApi({
 
 async function main () {
   // Deploy EVM contract to EOSIO (deploys to eosContract provided in new EosEvmApi)
-  let debugContract = process.argv[0] == 'true'
+  let debugContract = process.env.DEBUG_EVM == 'true'
   console.log(`Deploying ${debugContract ? "debug " : ""}EVM contract in nodejs`)
 
   await api.eos.setupEvmContract(debugContract ? `/opt/eosio/bin/contracts/eosio.evm/debug` :`/opt/eosio/bin/contracts/eosio.evm`)
