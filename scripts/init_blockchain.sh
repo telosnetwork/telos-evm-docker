@@ -85,7 +85,7 @@ cleos transfer eosio evmuser1 "11100.0000 TLOS"
 
 logInfo "deploying eosio.evm"
 #deploy_contract.sh eosio.evm eosio.evm eosio $(cat eosio_wallet_password.txt) true
-node /opt/eosio/bin/scripts/deployEvm.js
+node /opt/eosio/bin/scripts/deployEvm.js $DEBUG_EVM
 
 # cleos set account permission eosio active EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L owner -p eosio@owner
 # cleos set account permission eosio owner EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L -p eosio@owner
