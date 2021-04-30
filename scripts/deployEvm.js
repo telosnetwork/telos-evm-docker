@@ -38,7 +38,7 @@ const telosApi = new TelosEvmApi({
 async function main () {
   // Deploy EVM contract to EOSIO (deploys to eosContract provided in new EosEvmApi)
   console.log(`Deploying EVM contract in nodejs`)
-  await api.eos.setupEvmContract(process.env.DEBUG_EVM == 'true' ? `/opt/eosio/bin/contracts/debug/eosio.evm` :`/opt/eosio/bin/contracts/eosio.evm`)
+  await api.eos.setupEvmContract(process.env.DEBUG_EVM == 'true' ? `/opt/eosio/bin/contracts/eosio.evm/debug` :`/opt/eosio/bin/contracts/eosio.evm`)
   // wait a couple seconds so hyperion can pick up the ABI
   await new Promise(r => setTimeout(r, 2000));
   console.log(`Setting EVM config`)
