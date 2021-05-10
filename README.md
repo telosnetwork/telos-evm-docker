@@ -17,7 +17,7 @@ Hyperion is composed of the following containers:
 - hyperion-api serves the TelosEVM RPC, block explorer, swagger UI and satisfies any API requests
 
 ## Execution
-`./run.sh` will destroy the containers (if they exist), build, and then run the containers.
+`./run.sh debug` will destroy the containers (if they exist), build, and then run the containers.
 
 ## Important data
 
