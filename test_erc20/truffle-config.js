@@ -15,7 +15,7 @@ module.exports = {
         '0xb79714ccfda6ec0d0553f31559e4e599a983a1f51b9334e5445dcc734128d5c8',
         '0xccb2775f20f2df9b7c756fe4323ccda06c7bcf81a6dfa2391a38eb58714a2913',
         '0xf051e068357022ee273e6924244007e09f0002ba3902d17e8eb6d2498d829d82'
-      ], 'http://38.75.136.87:7000/evm'),
+      ], 'http://127.0.0.1:7000/evm'),
       gas: 10000000,
       gasPrice: 120000000000,
       network_id: "41",
