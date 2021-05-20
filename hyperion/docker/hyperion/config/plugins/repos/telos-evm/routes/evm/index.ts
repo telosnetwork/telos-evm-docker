@@ -15,6 +15,8 @@ function numToHex(input: number | string) {
 	}
 }
 
+// TODO: include data?  Per this issue on github:
+// https://github.com/ethereum/go-ethereum/issues/20714
 function jsonRcp2Error(reply: FastifyReply, type: string, requestId: string, message: string, code?: number) {
 	let errorCode = code;
 	switch (type) {
