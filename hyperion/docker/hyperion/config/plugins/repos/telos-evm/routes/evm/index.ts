@@ -71,7 +71,7 @@ interface EthLog {
 
 export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
-	const methods: Map<string, (params?: any) => Promise<any> | any> = new Map();
+	const methods: Map<string, (params?: any, headers?: any) => Promise<any> | any> = new Map();
 	const decimalsBN = new BN('1000000000000000000');
 	const zeros = "0x0000000000000000000000000000000000000000";
 	const chainAddr = [
@@ -285,6 +285,13 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	}
 
 	// LOAD METHODS
+
+	/**
+	 * Returns the user-agent
+	 */
+	methods.set('web3_clientVersion', (params, headers) => {
+		return headers['user-agent'];
+	})
 
 	/**
 	 * Returns true if client is actively listening for network connections.
@@ -742,7 +749,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			const tRef = process.hrtime.bigint();
 			const func = methods.get(method);
 			try {
-				const result = await func(params);
+				const result = await func(params, request.headers);
 				let origin;
 				if (request.headers['origin'] === METAMASK_EXTENSION_ORIGIN) {
 					origin = 'MetaMask';
