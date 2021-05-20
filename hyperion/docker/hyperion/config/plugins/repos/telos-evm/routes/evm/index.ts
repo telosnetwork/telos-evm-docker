@@ -90,6 +90,9 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	// AUX FUNCTIONS
 
 	function toChecksumAddress(address) {
+		if (!address)
+			return address
+
 		address = address.toLowerCase().replace('0x', '')
 		let hash = createKeccakHash('keccak256').update(address).digest('hex')
 		let ret = '0x'
