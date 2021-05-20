@@ -94,6 +94,9 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			return address
 
 		address = address.toLowerCase().replace('0x', '')
+		if (address.length != 40)
+			address = address.padStart(40, "0");
+
 		let hash = createKeccakHash('keccak256').update(address).digest('hex')
 		let ret = '0x'
 	  

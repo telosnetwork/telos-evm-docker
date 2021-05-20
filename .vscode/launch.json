@@ -5,15 +5,32 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "run tests",
+            "name": "run test_erc20 truffle tests",
             "type": "node",
             "request": "launch",
             "program": "${workspaceRoot}/test_erc20/node_modules/truffle/build/cli.bundled.js",
-            "args": ["test", "--network", "private"],
+            "args": [
+                "test",
+                "--network",
+                "private"
+            ],
             "cwd": "${workspaceRoot}/test_erc20",
             "outFiles": [
                 "${workspaceRoot}/test_erc20/test/**/*"
             ],
-          }
+        },
+        {
+            "name": "run test_hardhat tests",
+            "type": "node",
+            "request": "launch",
+            "program": "node_modules/.bin/hardhat",
+            "args": [
+                "test",
+            ],
+            "cwd": "${workspaceRoot}/test_hardhat",
+            "outFiles": [
+                "${workspaceRoot}/test_hardhat/test/**/*"
+            ],
+        }
     ]
 }
