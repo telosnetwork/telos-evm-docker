@@ -32,3 +32,19 @@ cd $INSTALL_ROOT/hyperion/docker
 ./scripts/stop.sh
 ./scripts/clean-up.sh
 ./scripts/start.sh
+
+indexing_complete=false
+for i in $(seq 1 30); do
+    actions=$(curl -s http://127.0.0.1:7000/v2/history/get_actions?account=eosio.evm | jq -e '.actions | length')
+    if [ ! -z "$actions" ] && [ $actions -ge 1 ]; then
+        echo "Indexing complete!"
+        indexing_complete=true
+        break;
+    fi
+    echo "Indexing has not begun, waiting..."
+    sleep 3
+done
+
+if  [ "$indexing_complete" != "true" ]; then
+    echo "ERROR: Failed to start indexing"
+fi
