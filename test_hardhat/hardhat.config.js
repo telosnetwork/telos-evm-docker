@@ -8,7 +8,7 @@ module.exports = {
   defaultNetwork: "private",
   networks: {
     private: {
-      url: "http://192.168.0.20:7000/evm",
+      url: "http://127.0.0.1:7000/evm",
       accounts: [
         '0x87ef69a835f8cd0c44ab99b7609a20b2ca7f1c8470af4f0e5b44db927d542084',
         '0xe014b35c1921894db39c21dbb33462927ff19d9a43a6e226d2a8c8733cc72c6e',
