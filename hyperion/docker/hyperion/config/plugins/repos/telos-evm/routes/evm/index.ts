@@ -5,6 +5,7 @@ import {TelosEvmConfig} from "../../index";
 const BN = require('bn.js');
 const abiDecoder = require("abi-decoder");
 const abi = require("ethereumjs-abi");
+const createKeccakHash = require('keccak')
 
 function numToHex(input: number | string) {
 	if (typeof input === 'number') {
@@ -88,6 +89,22 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
 	// AUX FUNCTIONS
 
+	function toChecksumAddress(address) {
+		address = address.toLowerCase().replace('0x', '')
+		let hash = createKeccakHash('keccak256').update(address).digest('hex')
+		let ret = '0x'
+	  
+		for (var i = 0; i < address.length; i++) {
+		  if (parseInt(hash[i], 16) >= 8) {
+			ret += address[i].toUpperCase()
+		  } else {
+			ret += address[i]
+		  }
+		}
+	  
+		return ret
+	  }
+
 	async function searchActionByHash(trxHash: string): Promise<any> {
 		try {
 			let _hash = trxHash.toLowerCase();
@@ -142,7 +159,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			let counter = 0;
 			for (const log of logs) {
 				_logs.push({
-					address: log.address,
+					address: toChecksumAddress(log.address),
 					blockHash: blHash,
 					blockNumber: blNumber,
 					data: log.data,
@@ -206,13 +223,13 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					trxs.push({
 						blockHash: blockHash,
 						blockNumber: blockHex,
-						from: rawAction['from'],
+						from: toChecksumAddress(rawAction['from']),
 						gas: receipt['gasused'],
 						gasPrice: "0x" + Number(rawAction['gas_price']).toString(16),
 						hash: "0x" + receipt['hash'],
 						input: rawAction['input_data'],
 						nonce: "0x" + Number(rawAction['nonce']).toString(16),
-						to: rawAction['to'],
+						to: toChecksumAddress(rawAction['to']),
 						transactionIndex: "0x" + Number(receipt['trx_index']).toString(16),
 						value: "0x0"
 					});
@@ -519,13 +536,13 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			return {
 				blockHash: _blockHash,
 				blockNumber: numToHex(receipt['block']),
-				contractAddress: _contractAddr,
+				contractAddress: toChecksumAddress(_contractAddr),
 				cumulativeGasUsed: _gas,
-				from: raw['from'],
+				from: toChecksumAddress(raw['from']),
 				gasUsed: _gas,
 				logsBloom: null,
 				status: numToHex(receipt['status']),
-				to: raw['to'],
+				to: toChecksumAddress(raw['to']),
 				transactionHash: raw['hash'],
 				transactionIndex: numToHex(receipt['trx_index']),
 				logs: buildLogsObject(
@@ -562,7 +579,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		return {
 			blockHash: _blockHash,
 			blockNumber: _blockNum,
-			from: raw['from'],
+			from: toChecksumAddress(raw['from']),
 			gas: numToHex(raw.gas_limit),
 			gasPrice: numToHex(raw.gas_price),
 			hash: raw['hash'],
@@ -570,7 +587,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			nonce: numToHex(raw['nonce']),
 			// "r": "0x2a378831cf81d99a3f06a18ae1b6ca366817ab4d88a70053c41d7a8f0368e031",
 			// "s": "0x450d831a05b6e418724436c05c155e0a1b7b921015d0fbc2f667aed709ac4fb5",
-			to: raw['to'],
+			to: toChecksumAddress(raw['to']),
 			transactionIndex: numToHex(receipt['trx_index']),
 			// "v": "0x25",
 			value: numToHex(raw['value'])
