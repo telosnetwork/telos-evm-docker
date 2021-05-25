@@ -1,6 +1,6 @@
-import {FastifyInstance, FastifyReply, FastifyRequest} from "fastify";
-import {hLog} from "../../../../../helpers/common_functions";
-import {TelosEvmConfig} from "../../index";
+import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { hLog } from "../../../../../helpers/common_functions";
+import { TelosEvmConfig } from "../../index";
 
 const BN = require('bn.js');
 const abiDecoder = require("abi-decoder");
@@ -85,12 +85,12 @@ interface EthLog {
 	transactionIndex: string;
 }
 
-interface RevertError extends Error {
-	revertReason: string;
-	revertData: string;
+interface TransactionError extends Error {
+	errorMessage: string;
+	data: any;
 }
 
-class RevertError extends Error {}
+class TransactionError extends Error { }
 
 export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
@@ -121,17 +121,17 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
 		let hash = createKeccakHash('keccak256').update(address).digest('hex')
 		let ret = '0x'
-	  
+
 		for (var i = 0; i < address.length; i++) {
-		  if (parseInt(hash[i], 16) >= 8) {
-			ret += address[i].toUpperCase()
-		  } else {
-			ret += address[i]
-		  }
+			if (parseInt(hash[i], 16) >= 8) {
+				ret += address[i].toUpperCase()
+			} else {
+				ret += address[i]
+			}
 		}
-	  
+
 		return ret
-	  }
+	}
 
 	async function searchActionByHash(trxHash: string): Promise<any> {
 		try {
@@ -145,7 +145,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					size: 1,
 					query: {
 						bool: {
-							must: [{term: {"@raw.hash": "0x" + _hash}}]
+							must: [{ term: { "@raw.hash": "0x" + _hash } }]
 						}
 					}
 				}
@@ -169,7 +169,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					size: 1,
 					query: {
 						bool: {
-							must: [{term: {"@evmReceipt.hash": _hash}}]
+							must: [{ term: { "@evmReceipt.hash": _hash } }]
 						}
 					}
 				}
@@ -214,9 +214,9 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					query: {
 						bool: {
 							must: [
-								{term: {"act.account": "eosio.evm"}},
-								{term: {"act.name": "raw"}},
-								{term: {"block_num": receipts[0]._source.block_num}}
+								{ term: { "act.account": "eosio.evm" } },
+								{ term: { "act.name": "raw" } },
+								{ term: { "block_num": receipts[0]._source.block_num } }
 							]
 						}
 					}
@@ -302,7 +302,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		const results = await fastify.elastic.search({
 			index: `${fastify.manager.chain}-delta-*`,
 			size: 1000,
-			body: {query: {bool: {must: [{term: termStruct}]}}}
+			body: { query: { bool: { must: [{ term: termStruct }] } } }
 		});
 		return results?.body?.hits?.hits;
 	}
@@ -407,23 +407,23 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 */
 	methods.set('eth_estimateGas', async ([txParams, block]) => {
 		const encodedTx = await fastify.evm.createEthTx({
-		...txParams,
-		sender: txParams.from,
-		gasPrice: 10000000000000000,
-		gasLimit: 10000000000000000
+			...txParams,
+			sender: txParams.from,
+			gasPrice: 10000000000000000,
+			gasLimit: 10000000000000000
 		});
 
 		const gas = await fastify.evm.telos.estimateGas({
-		account: opts.signer_account,
-		ram_payer: fastify.evm.telos.telosContract,
-		tx: encodedTx,
-		sender: txParams.from,
+			account: opts.signer_account,
+			ram_payer: fastify.evm.telos.telosContract,
+			tx: encodedTx,
+			sender: txParams.from,
 		});
 
 		if (gas.startsWith(REVERT_FUNCTION_SELECTOR)) {
-			let err = new RevertError('Transaction reverted');
-			err.revertReason = parseRevertReason(gas);			
-			err.revertData = gas;
+			let err = new TransactionError('Transaction reverted');
+			err.errorMessage = `execution reverted: ${parseRevertReason(gas)}`;
+			err.data = gas;
 			throw err;
 		}
 
@@ -474,7 +474,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 */
 	methods.set('eth_call', async ([txParams]) => {
 		if (chainIds.includes(opts.chainId) && chainAddr.includes(txParams.to)) {
-			const {params: [users, tokens]} = abiDecoder.decodeMethod(txParams.data);
+			const { params: [users, tokens] } = abiDecoder.decodeMethod(txParams.data);
 			if (tokens.value.length === 1 && tokens.value[0] === zeros) {
 				const balances = await Promise.all(
 					users.value.map((user) => {
@@ -500,9 +500,9 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			sender: txParams.from,
 		});
 		if (output.startsWith(REVERT_FUNCTION_SELECTOR)) {
-			let err = new RevertError('Transaction reverted');
-			err.revertReason = parseRevertReason(output);			
-			err.revertData = output;
+			let err = new TransactionError('Transaction reverted');
+			err.errorMessage = `execution reverted: ${parseRevertReason(output)}`;
+			err.data = output;
 			throw err;
 		}
 		output = output.replace(/^0x/, '');
@@ -519,8 +519,38 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				account: opts.signer_account,
 				tx: signedTx
 			});
+			const receiptResponse = await fastify.eosjs.rpc.get_table_rows({
+				code: fastify.evm.telos.telosContract,
+				scope: fastify.evm.telos.telosContract,
+				table: 'receipt',
+				key_type: 'sha256',
+				index_position: 2,
+				lower_bound: rawData.eth.transactionHash,
+				upper_bound: rawData.eth.transactionHash,
+				limit: 1
+			});
+
+			if (receiptResponse.rows.length && receiptResponse.rows[0].status === 0) {
+				let receipt = receiptResponse.rows[0];
+				let err = new TransactionError('Transaction error');
+				let output = `0x${receipt.output}`
+				if (output.startsWith(REVERT_FUNCTION_SELECTOR)) {
+					err.errorMessage = `Error: VM Exception while processing transaction: revert ${parseRevertReason(output)}`;
+				} else {
+					let errors = JSON.parse(receipt.errors);
+					err.errorMessage = errors[0];
+				}
+				err.data = {
+					txHash: `0x${rawData.eth.transactionHash}`
+				};
+				throw err;
+			}
+
 			return '0x' + rawData.eth.transactionHash;
 		} catch (e) {
+			if (e instanceof TransactionError)
+				throw e;
+
 			console.log(e);
 			return null;
 		}
@@ -707,7 +737,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		const queryBody: any = {
 			bool: {
 				must: [
-					{exists: {field: "@evmReceipt.logs"}}
+					{ exists: { field: "@evmReceipt.logs" } }
 				]
 			}
 		};
@@ -716,11 +746,11 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			if (fromBlock || toBlock) {
 				throw new Error('fromBlock/toBlock are not allowed with blockHash query');
 			}
-			queryBody.bool.must.push({term: {"@evmReceipt.block_hash": blockHash}})
+			queryBody.bool.must.push({ term: { "@evmReceipt.block_hash": blockHash } })
 		}
 
 		if (fromBlock || toBlock) {
-			const rangeObj = {range: {"@evmReceipt.block": {}}};
+			const rangeObj = { range: { "@evmReceipt.block": {} } };
 			if (fromBlock) {
 				// console.log(`getLogs using fromBlock: ${fromBlock}`);
 				rangeObj.range["@evmReceipt.block"]['gte'] = fromBlock;
@@ -738,7 +768,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				address = address.slice(2);
 			}
 			// console.log(`getLogs using address: ${address}`);
-			queryBody.bool.must.push({term: {"@evmReceipt.logs.address": address}})
+			queryBody.bool.must.push({ term: { "@evmReceipt.logs.address": address } })
 		}
 
 		if (topics && topics.length > 0) {
@@ -759,7 +789,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				size: 1000,
 				body: {
 					query: queryBody,
-					sort: [{"@evmReceipt.trx_index": {order: "asc"}}]
+					sort: [{ "@evmReceipt.trx_index": { order: "asc" } }]
 				}
 			});
 
@@ -799,7 +829,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 * Main JSON RPC 2.0 Endpoint
 	 */
 	fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
-		const {jsonrpc, id, method, params} = request.body as any;
+		const { jsonrpc, id, method, params } = request.body as any;
 		if (jsonrpc !== "2.0") {
 			return jsonRcp2Error(reply, "InvalidRequest", id, "Invalid JSON RPC");
 		}
@@ -825,19 +855,20 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				const duration = ((Number(process.hrtime.bigint()) - Number(tRef)) / 1000).toFixed(3);
 				hLog(`${new Date().toISOString()} - ${duration} μs - ${_ip} (${_usage}/${_limit}) - ${origin} - ${method}`);
 				console.log(`REQ: ${JSON.stringify(params)} | RESP: ${typeof result == 'object' ? JSON.stringify(result, null, 2) : result}`);
-				reply.send({id, jsonrpc, result});
+				reply.send({ id, jsonrpc, result });
 			} catch (e) {
-				if (e instanceof RevertError) {
-					hLog(`VM execution error, reverted: ${e.revertReason}`,method, JSON.stringify(params, null, 2));
+				if (e instanceof TransactionError) {
+					hLog(`VM execution error, reverted: ${e.errorMessage}`, method, JSON.stringify(params, null, 2));
 					let code = 3;
-					let message = `execution reverted: ${e.revertReason}`;
-					let data = e.revertData;
+					let message = e.errorMessage;
+					let data = e.data;
 					let error = { code, message, data };
-					reply.send({id, jsonrpc, error});
+					reply.send({ id, jsonrpc, error });
+					console.log(`REQ: ${JSON.stringify(params)} | ERROR RESP: ${JSON.stringify(error, null, 2)}`);
 					return;
 				}
-				hLog(e.message,method,JSON.stringify(params,null,2));
-				console.log(JSON.stringify(e,null,2));
+				hLog(e.message, method, JSON.stringify(params, null, 2));
+				console.log(JSON.stringify(e, null, 2));
 				return jsonRcp2Error(reply, "InternalError", id, e.message);
 			}
 		} else {
