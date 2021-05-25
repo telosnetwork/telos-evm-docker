@@ -38,7 +38,6 @@ export default class TelosEvm extends HyperionPlugin {
 	constructor(config: TelosEvmConfig) {
 		super(config);
 		if (this.baseConfig) {
-			console.log(`JESSE: chainId is ${config.chainId}`)
 			this.pluginConfig = this.baseConfig;
 			if (config.contracts?.main) {
 				this.dynamicContracts.push(config.contracts.main);

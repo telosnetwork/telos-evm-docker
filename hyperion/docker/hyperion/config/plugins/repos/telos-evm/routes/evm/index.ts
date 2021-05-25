@@ -7,6 +7,8 @@ const abiDecoder = require("abi-decoder");
 const abi = require("ethereumjs-abi");
 const createKeccakHash = require('keccak')
 
+const REVERT_FUNCTION_SELECTOR = '0x08c379a0'
+
 function numToHex(input: number | string) {
 	if (typeof input === 'number') {
 		return '0x' + input.toString(16)
@@ -15,8 +17,19 @@ function numToHex(input: number | string) {
 	}
 }
 
-// TODO: include data?  Per this issue on github:
-// https://github.com/ethereum/go-ethereum/issues/20714
+function parseRevertReason(revertOutput) {
+	if (!revertOutput || revertOutput.length < 138) {
+		return '';
+	}
+
+	let reason = '';
+	let trimmedOutput = revertOutput.substr(138);
+	for (let i = 0; i < trimmedOutput.length; i += 2) {
+		reason += String.fromCharCode(parseInt(trimmedOutput.substr(i, 2), 16));
+	}
+	return reason;
+}
+
 function jsonRcp2Error(reply: FastifyReply, type: string, requestId: string, message: string, code?: number) {
 	let errorCode = code;
 	switch (type) {
@@ -50,7 +63,7 @@ function jsonRcp2Error(reply: FastifyReply, type: string, requestId: string, mes
 			errorCode = -32603;
 		}
 	}
-	return {
+	let errorResponse = {
 		jsonrpc: "2.0",
 		id: requestId,
 		error: {
@@ -71,6 +84,13 @@ interface EthLog {
 	transactionHash: string;
 	transactionIndex: string;
 }
+
+interface RevertError extends Error {
+	revertReason: string;
+	revertData: string;
+}
+
+class RevertError extends Error {}
 
 export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
@@ -400,6 +420,13 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		sender: txParams.from,
 		});
 
+		if (gas.startsWith(REVERT_FUNCTION_SELECTOR)) {
+			let err = new RevertError('Transaction reverted');
+			err.revertReason = parseRevertReason(gas);			
+			err.revertData = gas;
+			throw err;
+		}
+
 		return `0x${Math.ceil((parseInt(gas, 16) * GAS_OVER_ESTIMATE_MULTIPLIER)).toString(16)}`;
 	});
 
@@ -472,6 +499,12 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			tx: encodedTx,
 			sender: txParams.from,
 		});
+		if (output.startsWith(REVERT_FUNCTION_SELECTOR)) {
+			let err = new RevertError('Transaction reverted');
+			err.revertReason = parseRevertReason(output);			
+			err.revertData = output;
+			throw err;
+		}
 		output = output.replace(/^0x/, '');
 		return "0x" + output;
 	});
@@ -794,6 +827,15 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				console.log(`REQ: ${JSON.stringify(params)} | RESP: ${typeof result == 'object' ? JSON.stringify(result, null, 2) : result}`);
 				reply.send({id, jsonrpc, result});
 			} catch (e) {
+				if (e instanceof RevertError) {
+					hLog(`VM execution error, reverted: ${e.revertReason}`,method, JSON.stringify(params, null, 2));
+					let code = 3;
+					let message = `execution reverted: ${e.revertReason}`;
+					let data = e.revertData;
+					let error = { code, message, data };
+					reply.send({id, jsonrpc, error});
+					return;
+				}
 				hLog(e.message,method,JSON.stringify(params,null,2));
 				console.log(JSON.stringify(e,null,2));
 				return jsonRcp2Error(reply, "InternalError", id, e.message);
