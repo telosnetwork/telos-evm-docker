@@ -272,6 +272,9 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		if (!blockHex)
 			blockHex = '0x' + blockNumber;
 
+		if (!blockHash)
+			blockHash = blockHexToHash(blockHex);
+
 		return {
 			difficulty: "0x0",
 			extraData: NULL_HASH,
@@ -316,6 +319,10 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		});
 		const head_block_num = parseInt(global.rows[0].block_num, 10);
 		return '0x' + head_block_num.toString(16);
+	}
+
+	function blockHexToHash(blockHex: string) {
+		return `0x${createKeccakHash('keccak256').update(blockHex.replace(/^0x/, '')).digest('hex')}`;
 	}
 
 	async function toBlockNumber(blockParam: string) {
@@ -406,6 +413,9 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 * allow the transaction to complete.
 	 */
 	methods.set('eth_estimateGas', async ([txParams, block]) => {
+		if (txParams.value)
+			txParams.value = txParams.value.replace(/^0x/, '');
+
 		const encodedTx = await fastify.evm.createEthTx({
 			...txParams,
 			sender: txParams.from,
