@@ -48,7 +48,6 @@ contract ERC20 is IERC20 {
         uint256 _value
     ) public override returns (bool success) {
         uint256 allowance_ = allowed[_from][msg.sender];
-        // TODO: make this work without a message as 2nd argument
         require(balances[_from] >= _value && allowance_ >= _value, "Insufficient balance or allowance");
         balances[_to] += _value;
         balances[_from] -= _value;
