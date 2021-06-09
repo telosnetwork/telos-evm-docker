@@ -16,6 +16,9 @@ Hyperion is composed of the following containers:
 - hyperion-indexer reads historical data from the Telos node via websocket and writes events to rabbitmq
 - hyperion-api serves the TelosEVM RPC, block explorer, swagger UI and satisfies any API requests
 
+## Dependencies
+You will need `docker`, `docker-compose` and `jq` installed.
+
 ## Execution
 `./run.sh debug` will destroy the containers (if they exist), build, and then run the containers.
 
