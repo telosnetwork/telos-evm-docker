@@ -1,8 +1,8 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "/Users/jesse/caleos/repos/telos-evm-docker/test_hardhat/contracts/Token.sol": {
-      "lastModificationDate": 1621529134738,
+    "/home/fuzzy/projects/telos-evm-docker/test_hardhat/contracts/Token.sol": {
+      "lastModificationDate": 1623218783668,
       "contentHash": "d79976957cf241fcec9c77cb80daa701",
       "sourceName": "contracts/Token.sol",
       "solcConfig": {
