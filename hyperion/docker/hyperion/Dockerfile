@@ -3,7 +3,7 @@ FROM ubuntu:18.04
 RUN apt-get update && apt-get upgrade -y && apt-get autoremove && apt-get install -y build-essential git curl netcat
 
 RUN curl -sL https://deb.nodesource.com/setup_15.x | bash -
-RUN apt-get install -y nodejs && npm install pm2 -g && git clone https://github.com/eosrio/hyperion-history-api.git && cd hyperion-history-api && git checkout dev-3.3 && echo "bump2"
+RUN apt-get install -y nodejs && npm install pm2 -g && git clone https://github.com/eosrio/hyperion-history-api.git && cd hyperion-history-api && git checkout 31969f0c8b145b79ba2a14d86b2dc01f7d28026e && echo "bump2"
 
 COPY ./config/connections.json /hyperion-history-api/connections.json
 COPY ./config/ecosystem.config.js /hyperion-history-api/ecosystem.config.js
