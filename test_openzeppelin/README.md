@@ -4,6 +4,6 @@
 
 ```npm audit fix```
 
-replace the default hardhat.config.js with the hardhat.config.js in the test_openzeppelin folder
+replace the default "hardhat.config.js" with the "hardhat.config.js" in the test_openzeppelin folder
 
 ```npm run test```
