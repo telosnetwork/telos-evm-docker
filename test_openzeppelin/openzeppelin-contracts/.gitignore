@@ -57,3 +57,6 @@ allFiredEvents
 # hardhat
 cache
 artifacts
+
+tmp
+test_logs

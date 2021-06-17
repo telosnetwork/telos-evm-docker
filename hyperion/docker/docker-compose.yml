@@ -107,7 +107,7 @@ services:
     command: bash -c "/home/hyperion/scripts/run-hyperion.sh ${SCRIPT:-false} telos-testnet-api"
     logging:
       options:
-        max-size: "5m"
+        max-size: "2m"
 
 networks:
   hyperion:
