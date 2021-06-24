@@ -241,7 +241,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				blockHex = '0x' + Number(receipt['block']).toString(16);
 			}
 			if (!timestamp) {
-				timestamp = new Date(receiptDoc._source['@timestamp'] + 'Z').getTime();
+				timestamp = new Date(receiptDoc._source['@timestamp'] + 'Z').getTime() / 1000 | 0;
 			}
 			if (receipt['logsBloom']){
 				bloom.or(new Bloom(Buffer.from(receipt['logsBloom'], "hex")));
@@ -274,7 +274,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		// TODO: this better...
 
 		if (!timestamp)
-			timestamp = new Date().getTime()
+			timestamp = new Date().getTime() / 1000 | 0
 
 		if (!blockHex)
 			blockHex = '0x' + blockNumber;
