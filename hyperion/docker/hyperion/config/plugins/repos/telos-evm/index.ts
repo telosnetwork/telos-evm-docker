@@ -7,6 +7,7 @@ import {Transaction} from '@ethereumjs/tx';
 import Common, {default as ethCommon} from '@ethereumjs/common';
 import {HyperionDelta} from "../../../interfaces/hyperion-delta";
 import {HyperionAction} from "../../../interfaces/hyperion-action";
+import Bloom from "./bloom";
 
 const BN = require('bn.js');
 const createKeccakHash = require('keccak');
@@ -81,6 +82,7 @@ export default class TelosEvm extends HyperionPlugin {
 									"topics": {"type": "keyword"}
 								}
 							},
+							"logsBloom": {"type": "keyword"},
 							"output": {"enabled": false},
 							"errors": {"enabled": false},
 						}
@@ -114,7 +116,12 @@ export default class TelosEvm extends HyperionPlugin {
 						delete delta['@evmReceipt']['logs'];
 					} else {
 						console.log('------- LOGS -----------');
-						console.log(delta['@evmReceipt']['logs'])
+						console.log(delta['@evmReceipt']['logs']);
+						const bloom = new Bloom();
+						for (const topic of delta['@evmReceipt']['logs'][0]['topics'])
+							bloom.add(Buffer.from(topic, 'hex'));
+						bloom.add(Buffer.from(delta['@evmReceipt']['logs'][0]['address'], 'hex'));
+						delta['@evmReceipt']['logsBloom'] = bloom.bitvector.toString('hex');
 					}
 				}
 

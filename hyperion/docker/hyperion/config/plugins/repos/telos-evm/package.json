@@ -23,9 +23,11 @@
     "@ethereumjs/common": "2.2.0",
     "@ethereumjs/tx": "3.1.1",
     "@telosnetwork/telosevm-js": "0.1.0",
+    "@types/node": "^14.11.2",
     "abi-decoder": "^2.4.0",
     "bn.js": "^5.2.0",
     "ethereumjs-abi": "^0.6.8",
+    "ethereumjs-util": "^7.0.10",
     "keccak": "^3.0.1"
   },
   "devDependencies": {
