@@ -109,7 +109,9 @@ function shouldBehaveLikeSet (valueA, valueB, valueC) {
       await this.set.remove(valueB);
 
       // [A, C]
-
+      console.log(await this.set.contains(valueA))
+      console.log(await this.set.contains(valueB))
+      console.log(await this.set.contains(valueC))
       await expectMembersMatch(this.set, [valueA, valueC]);
 
       expect(await this.set.contains(valueB)).to.equal(false);

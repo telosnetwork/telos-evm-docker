@@ -48,7 +48,7 @@ async function main () {
     account: 'eosio.evm',
     name: 'setgas',
     data: {
-        min_price: 120000000000,
+        min_price: 100000000000,
         min_cost: '0.0002 TLOS'
     },
     authorization: [{ actor: 'eosio.evm', permission: 'active' }]

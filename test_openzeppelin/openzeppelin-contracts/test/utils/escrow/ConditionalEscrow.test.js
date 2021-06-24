@@ -12,6 +12,12 @@ contract('ConditionalEscrow', function (accounts) {
 
   context('when withdrawal is allowed', function () {
     beforeEach(async function () {
+      // await Promise.all(otherAccounts.map(payee => 
+      //   {
+      //     this.escrow.setAllowed(payee, true)
+      //     console.log(payee)
+      //   })); //original not working, async calls are messing up sometimes
+
       for await (const account of otherAccounts) {
         await this.escrow.setAllowed(account, true)
       }

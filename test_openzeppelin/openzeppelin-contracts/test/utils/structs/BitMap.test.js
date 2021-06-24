@@ -136,7 +136,9 @@ contract('BitMap', function (accounts) {
       await this.bitmap.unset(keyB);
 
       // [A, C]
-
+      console.log(await this.bitmap.get(keyA))
+      console.log(await this.bitmap.get(keyB))
+      console.log(await this.bitmap.get(keyC))
       expect(await this.bitmap.get(keyA)).to.equal(true);
       expect(await this.bitmap.get(keyB)).to.equal(false);
       expect(await this.bitmap.get(keyC)).to.equal(true);
