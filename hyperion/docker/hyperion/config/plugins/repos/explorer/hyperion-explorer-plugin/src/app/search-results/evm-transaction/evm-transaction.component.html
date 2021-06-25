@@ -76,11 +76,18 @@
           <span class="break-word monospace">{{txData.input_data}}</span>
         </div>
 
+        <div>
+          <strong>Output Data:</strong>
+          <br>
+          <span class="break-word monospace">{{txData.output}}</span>
+        </div>
+
+
         <div><strong>Status:</strong> {{txData.status}}</div>
 
-        <div><strong>Errors:</strong> {{txData.errors}}</div>
+        <div *ngIf="txData.errors"><strong>Error:</strong> {{txData.errors}}</div>
 
-        <div><strong>Logs:</strong> {{txData.logs}}</div>
+        <div><strong>Logs:</strong> {{JSON.stringify(txData.logs, null, 4)}}</div>
 
       </div>
     </mat-card>
