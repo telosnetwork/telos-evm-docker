@@ -54,7 +54,8 @@ export class EvmTransactionComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.subs.push(this.activatedRoute.params.subscribe(async (routeParams) => {
       this.txHash = routeParams.hash;
-      const txData = Object.assign(await Promise.all([this.evm.getTransactionByHash(this.txHash), this.evm.getTransactionReceipt(this.txHash)]));
+      const [hash, receipt] = await Promise.all([this.evm.getTransactionByHash(this.txHash), this.evm.getTransactionReceipt(this.txHash)]);
+      const txData = Object.assign(hash, receipt);
       this.txData.block = parseInt(txData.blockNumber, 16);
       this.txData.from = txData.from;
       this.txData.timestamp = txData.timestamp || Date.now();
