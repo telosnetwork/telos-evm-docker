@@ -87,7 +87,7 @@
 
         <div *ngIf="txData.errors"><strong>Error:</strong> {{txData.errors}}</div>
 
-        <div><strong>Logs:</strong> {{JSON.stringify(txData.logs, null, 4)}}</div>
+        <div><strong>Logs:</strong> {{txData.logs | json}}</div>
 
       </div>
     </mat-card>
