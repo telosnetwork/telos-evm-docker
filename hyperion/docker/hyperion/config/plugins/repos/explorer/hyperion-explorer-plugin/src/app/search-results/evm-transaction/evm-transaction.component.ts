@@ -36,6 +36,9 @@ export class EvmTransactionComponent implements OnInit, OnDestroy {
     gas_used: '',
     nonce: 0,
     input_data: '',
+    logs: '',
+    errors: '',
+    status: ''
   };
 
   subs: Subscription[];
@@ -61,6 +64,9 @@ export class EvmTransactionComponent implements OnInit, OnDestroy {
       this.txData.gas_price = parseInt(txData.gasPrice, 16);
       this.txData.gas_used = parseInt(txData.gas, 16);
       this.txData.input_data = txData.input;
+      this.txData.logs = txData.logs;
+      this.txData.errors = txData.errors;
+      this.txData.status = txData.status;
       await this.accountService.checkIrreversibility();
     }));
   }

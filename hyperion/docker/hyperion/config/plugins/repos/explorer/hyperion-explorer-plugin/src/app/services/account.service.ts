@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '../../environments/environment';
 import {AccountCreationData, GetAccountResponse} from '../interfaces';
-import {HyperionStreamClient, IncomingData} from '@eosrio/hyperion-stream-client';
+import {default as HyperionStreamClient, IncomingData} from '@eosrio/hyperion-stream-client';
 import {MatTableDataSource} from '@angular/material/table';
 import {PaginationService} from './pagination.service';
 
