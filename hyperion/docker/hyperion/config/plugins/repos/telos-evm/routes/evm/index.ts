@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { hLog } from "../../../../../helpers/common_functions";
 import { TelosEvmConfig } from "../../index";
+import Bloom from "../../bloom";
 
 const BN = require('bn.js');
 const abiDecoder = require("abi-decoder");
@@ -264,6 +265,8 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		let blockHash;
 		let blockHex: string;
 		let timestamp: number;
+		let logsBloom: any = null;
+		let bloom = new Bloom();
 		const trxs = [];
 		for (const receiptDoc of receipts) {
 			const receipt = receiptDoc._source['@evmReceipt'];
@@ -274,7 +277,11 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				blockHex = '0x' + Number(receipt['block']).toString(16);
 			}
 			if (!timestamp) {
-				timestamp = new Date(receiptDoc._source['@timestamp'] + 'Z').getTime();
+				timestamp = new Date(receiptDoc._source['@timestamp'] + 'Z').getTime() / 1000 | 0;
+			}
+			if (receipt['logsBloom']){
+				bloom.or(new Bloom(Buffer.from(receipt['logsBloom'], "hex")));
+				logsBloom = "0x" + bloom.bitvector.toString("hex");
 			}
 			if (!full) {
 				trxs.push('0x' + receipt['hash']);
@@ -303,7 +310,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		// TODO: this better...
 
 		if (!timestamp)
-			timestamp = new Date().getTime()
+			timestamp = new Date().getTime() / 1000 | 0
 
 		if (!blockHex)
 			blockHex = '0x' + blockNumber;
@@ -317,7 +324,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			gasLimit: "0x989680",
 			gasUsed: "0x989680",
 			hash: blockHash,
-			logsBloom: null,
+			logsBloom: logsBloom,
 			miner: ZERO_ADDR,
 			mixHash: NULL_HASH,
 			nonce: null,
@@ -665,6 +672,10 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			if (receipt['createdaddr']) {
 				_contractAddr = '0x' + receipt['createdaddr'];
 			}
+			let _logsBloom = null;
+			if (receipt['logsBloom']) {
+				_logsBloom = '0x' + receipt['logsBloom'];
+			}
 
 			return {
 				blockHash: _blockHash,
@@ -673,7 +684,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				cumulativeGasUsed: _gas,
 				from: toChecksumAddress(raw['from']),
 				gasUsed: _gas,
-				logsBloom: null,
+				logsBloom: _logsBloom,
 				status: numToHex(receipt['status']),
 				to: toChecksumAddress(raw['to']),
 				transactionHash: raw['hash'],
