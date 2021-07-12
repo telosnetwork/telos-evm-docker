@@ -457,7 +457,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 */
 	methods.set('eth_estimateGas', async ([txParams, block]) => {
 		if (txParams.value)
-			txParams.value = txParams.value.replace(/^0x0x/, '0x');
+			txParams.value = txParams.value.replace(/^0x0x/, '').replace(/^0x/, '');
 
 		const encodedTx = await fastify.evm.createEthTx({
 			...txParams,
