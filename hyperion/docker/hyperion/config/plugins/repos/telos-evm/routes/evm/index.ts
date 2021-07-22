@@ -899,27 +899,19 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	/**
 	 * Returns the internal transaction trace filter matching the given filter object.
 	 * https://openethereum.github.io/JSONRPC-trace-module#trace_filter
-	 * @param params
-	 * 		{
-	 * 			fromBlock: "0x2ed0c4", // 3068100
-	 * 			toBlock: "0x2ed128", // 3068200
-	 * 			fromAddress:  ["0x8bbB73BCB5d553B5A556358d27625323Fd781D37"]
-	 * 			toAddress: ["0x8bbB73BCB5d553B5A556358d27625323Fd781D37"],
-	 * 			after: 1000,
-	 * 			count: 100,
-	 * 		}
 	 * curl --data '{"method":"trace_filter","params":[{"fromBlock":"0x2ed0c4","toBlock":"0x2ed128","toAddress":["0x8bbB73BCB5d553B5A556358d27625323Fd781D37"],"after":1000,"count":100}],"id":1,"jsonrpc":"2.0"}' -H "Content-Type: application/json" -X POST localhost:7000/evm
 	 * 
 	 * Check the eth_getlogs function above for help
 	*/
 	methods.set('trace_filter', async (params) => {
 		// query preparation
-		let fromAddress: string = params.fromAddress;
-		let toAddress: string = params.toAddress;
-		let fromBlock: string | number = params.fromBlock;
-		let toBlock: string | number = params.toBlock;
-		let after:  number = params.after; //TODO what is this?
-		let count: number = params.count;
+		//TODO can trace filter have multiple parameter objects? 
+		let fromAddress: string = params[0].fromAddress;
+		let toAddress: string = params[0].toAddress;
+		let fromBlock: string | number = params[0].fromBlock;
+		let toBlock: string | number = params[0].toBlock;
+		let after:  number = params[0].after; //TODO what is this?
+		let count: number = params[0].count;
 
 		const queryBody: any = {
 			bool: {
@@ -929,14 +921,16 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			}
 		};
 
+		console.log(params);
+		console.log(`getLogs using fromBlock: ${fromBlock}`);
+		console.log(`getLogs using fromBlock: ${params.fromBlock}`);
+		console.log(`getLogs using toBlock: ${toBlock}`);
 		if (fromBlock || toBlock) {
 			const rangeObj = { range: { "@evmReceipt.block": {} } };
 			if (fromBlock) {
-				console.log(`getLogs using fromBlock: ${fromBlock}`);
 				rangeObj.range["@evmReceipt.block"]['gte'] = fromBlock;
 			}
 			if (toBlock) {
-				console.log(`getLogs using toBlock: ${toBlock}`);
 				rangeObj.range["@evmReceipt.block"]['lte'] = toBlock;
 			}
 			queryBody.bool.must.push(rangeObj);
