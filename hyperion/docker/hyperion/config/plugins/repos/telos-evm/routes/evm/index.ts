@@ -918,7 +918,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		let toAddress: string = params.toAddress;
 		let fromBlock: string | number = params.fromBlock;
 		let toBlock: string | number = params.toBlock;
-		let after:  number = params.after;
+		let after:  number = params.after; //TODO what is this?
 		let count: number = params.count;
 
 		const queryBody: any = {
@@ -929,38 +929,71 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			}
 		};
 
-		// TODO reconstruct first call to contract like first object in: https://etherscan.io/vmtrace?txhash=0x4fe4e0506d05e37b8e90a3ec7b520ef7303741865980cd07efc4e628b6ffe246&type=parity#raw
-		// TODO reconstruct internal transaction from receipt to correct format
+		if (fromBlock || toBlock) {
+			const rangeObj = { range: { "@evmReceipt.block": {} } };
+			if (fromBlock) {
+				console.log(`getLogs using fromBlock: ${fromBlock}`);
+				rangeObj.range["@evmReceipt.block"]['gte'] = fromBlock;
+			}
+			if (toBlock) {
+				console.log(`getLogs using toBlock: ${toBlock}`);
+				rangeObj.range["@evmReceipt.block"]['lte'] = toBlock;
+			}
+			queryBody.bool.must.push(rangeObj);
+		}
 
+		// search
+		try {
+			// TODO actually do a search according to params
+			const searchResults = await fastify.elastic.search({
+				index: `${fastify.manager.chain}-delta-*`,
+				size: 1000,
+				body: {
+					query: queryBody,
+					sort: [{ "@evmReceipt.trx_index": { order: "asc" } }]
+				}
+			});
 
+			// processing
+			// TODO reconstruct first call to contract like first object in: https://etherscan.io/vmtrace?txhash=0x4fe4e0506d05e37b8e90a3ec7b520ef7303741865980cd07efc4e628b6ffe246&type=parity#raw
+			// TODO reconstruct internal transaction from receipt to correct format
+			const results = [];
+			let logCount = 0;
+			for (const hit of searchResults.body.hits.hits) {
+				const doc = hit._source;
+				if (doc['@evmReceipt'] && doc['@evmReceipt']['itxs']) {
+					for (const itx of doc['@evmReceipt']['itxs']) {
+						results.push({
+							action: {
+								callType: itx.callType, // TODO calltype parse
+								from: '0x' + itx.from,
+								gas: '0x' + itx.gas,
+								input: '0x' + itx.input,
+								to: '0x' + itx.to,
+								value: '0x' + itx.value
+							},
+							blockHash: '0x' + doc['@evmReceipt']['block_hash'],
+							blockNumber: doc['@evmReceipt']['block'],
+							result: {
+								gasUsed: '0x' + itx.gasUsed,
+								output: '0x' + itx.output,
+							},
+							subtraces: itx.subtraces,
+							traceAddress: itx.traceAddress,
+							transactionHash: '0x' + doc['@evmReceipt']['hash'],
+							transactionPosition: doc['@evmReceipt']['trx_index'],
+							type: itx.type});
+						logCount++;
+					}
+				}
+			}
 
-
-		return 'Trace';
-
-		// "result": [
-		// 	{
-		// 	  "action": {
-		// 		"callType": "call",
-		// 		"from": "0x32be343b94f860124dc4fee278fdcbd38c102d88",
-		// 		"gas": "0x4c40d",
-		// 		"input": "0x",
-		// 		"to": "0x8bbb73bcb5d553b5a556358d27625323fd781d37",
-		// 		"value": "0x3f0650ec47fd240000"
-		// 	  },
-		// 	  "blockHash": "0x86df301bcdd8248d982dbf039f09faf792684e1aeee99d5b58b77d620008b80f",
-		// 	  "blockNumber": 3068183,
-		// 	  "result": {
-		// 		"gasUsed": "0x0",
-		// 		"output": "0x"
-		// 	  },
-		// 	  "subtraces": 0,
-		// 	  "traceAddress": [],
-		// 	  "transactionHash": "0x3321a7708b1083130bd78da0d62ead9f6683033231617c9d268e2c7e3fa6c104",
-		// 	  "transactionPosition": 3,
-		// 	  "type": "call"
-		// 	},
-		// 	...
-		//   ]
+			return results;
+			// return searchResults;
+		} catch (e) {
+			console.log(JSON.stringify(e, null, 2));
+			return [];
+		}
 
 	});
 
