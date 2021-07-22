@@ -896,6 +896,74 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		}
 	});
 
+	/**
+	 * Returns the internal transaction trace filter matching the given filter object.
+	 * https://openethereum.github.io/JSONRPC-trace-module#trace_filter
+	 * @param params
+	 * 		{
+	 * 			fromBlock: "0x2ed0c4", // 3068100
+	 * 			toBlock: "0x2ed128", // 3068200
+	 * 			fromAddress:  ["0x8bbB73BCB5d553B5A556358d27625323Fd781D37"]
+	 * 			toAddress: ["0x8bbB73BCB5d553B5A556358d27625323Fd781D37"],
+	 * 			after: 1000,
+	 * 			count: 100,
+	 * 		}
+	 * curl --data '{"method":"trace_filter","params":[{"fromBlock":"0x2ed0c4","toBlock":"0x2ed128","toAddress":["0x8bbB73BCB5d553B5A556358d27625323Fd781D37"],"after":1000,"count":100}],"id":1,"jsonrpc":"2.0"}' -H "Content-Type: application/json" -X POST localhost:7000/evm
+	 * 
+	 * Check the eth_getlogs function above for help
+	*/
+	methods.set('trace_filter', async (params) => {
+		// query preparation
+		let fromAddress: string = params.fromAddress;
+		let toAddress: string = params.toAddress;
+		let fromBlock: string | number = params.fromBlock;
+		let toBlock: string | number = params.toBlock;
+		let after:  number = params.after;
+		let count: number = params.count;
+
+		const queryBody: any = {
+			bool: {
+				must: [
+					{ exists: { field: "@evmReceipt.itxs" } }
+				]
+			}
+		};
+
+		// TODO reconstruct first call to contract like first object in: https://etherscan.io/vmtrace?txhash=0x4fe4e0506d05e37b8e90a3ec7b520ef7303741865980cd07efc4e628b6ffe246&type=parity#raw
+		// TODO reconstruct internal transaction from receipt to correct format
+
+
+
+
+		return 'Trace';
+
+		// "result": [
+		// 	{
+		// 	  "action": {
+		// 		"callType": "call",
+		// 		"from": "0x32be343b94f860124dc4fee278fdcbd38c102d88",
+		// 		"gas": "0x4c40d",
+		// 		"input": "0x",
+		// 		"to": "0x8bbb73bcb5d553b5a556358d27625323fd781d37",
+		// 		"value": "0x3f0650ec47fd240000"
+		// 	  },
+		// 	  "blockHash": "0x86df301bcdd8248d982dbf039f09faf792684e1aeee99d5b58b77d620008b80f",
+		// 	  "blockNumber": 3068183,
+		// 	  "result": {
+		// 		"gasUsed": "0x0",
+		// 		"output": "0x"
+		// 	  },
+		// 	  "subtraces": 0,
+		// 	  "traceAddress": [],
+		// 	  "transactionHash": "0x3321a7708b1083130bd78da0d62ead9f6683033231617c9d268e2c7e3fa6c104",
+		// 	  "transactionPosition": 3,
+		// 	  "type": "call"
+		// 	},
+		// 	...
+		//   ]
+
+	});
+
 	// END METHODS
 
 	/**
