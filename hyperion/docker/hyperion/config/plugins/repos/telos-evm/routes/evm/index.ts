@@ -921,27 +921,42 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			}
 		};
 
-		console.log(params);
-		console.log(`getLogs using fromBlock: ${fromBlock}`);
-		console.log(`getLogs using fromBlock: ${params.fromBlock}`);
-		console.log(`getLogs using toBlock: ${toBlock}`);
 		if (fromBlock || toBlock) {
 			const rangeObj = { range: { "@evmReceipt.block": {} } };
 			if (fromBlock) {
+				// console.log(`getLogs using toBlock: ${toBlock}`);
 				rangeObj.range["@evmReceipt.block"]['gte'] = fromBlock;
 			}
 			if (toBlock) {
+				// console.log(`getLogs using fromBlock: ${params.fromBlock}`);
 				rangeObj.range["@evmReceipt.block"]['lte'] = toBlock;
 			}
 			queryBody.bool.must.push(rangeObj);
 		}
+
+		// TODO to and from address range?	
+		if (fromAddress || toAddress) {			
+			if (fromAddress) {
+				console.log(fromAddress);
+				const matchFrom = { terms: { "@evmReceipt.itxs.from": {} } };
+				matchFrom.terms["@evmReceipt.itxs.from"] = fromAddress;
+				queryBody.bool.must.push(matchFrom);
+			}
+			if (toAddress) {
+				console.log(toAddress);
+				const matchTo = { terms: { "@evmReceipt.itxs.to": {} } };
+				matchTo.terms["@evmReceipt.itxs.to"] = toAddress;
+				queryBody.bool.must.push(matchTo);
+			}
+		}
+		console.log(queryBody.bool.must);
 
 		// search
 		try {
 			// TODO actually do a search according to params
 			const searchResults = await fastify.elastic.search({
 				index: `${fastify.manager.chain}-delta-*`,
-				size: 1000,
+				size: count,
 				body: {
 					query: queryBody,
 					sort: [{ "@evmReceipt.trx_index": { order: "asc" } }]
