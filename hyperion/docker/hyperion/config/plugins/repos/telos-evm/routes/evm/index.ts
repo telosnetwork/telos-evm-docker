@@ -934,7 +934,6 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			queryBody.bool.must.push(rangeObj);
 		}
 
-		// TODO to and from address range?	
 		if (fromAddress || toAddress) {			
 			if (fromAddress) {
 				console.log(fromAddress);
@@ -949,7 +948,6 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				queryBody.bool.must.push(matchTo);
 			}
 		}
-		console.log(queryBody.bool.must);
 
 		// search
 		try {
