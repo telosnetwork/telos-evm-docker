@@ -952,20 +952,18 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			}
 			queryBody.bool.must.push(rangeObj);
 		}
-
-		if (fromAddress || toAddress) {			
-			if (fromAddress) {
-				console.log(fromAddress);
-				const matchFrom = { terms: { "@evmReceipt.itxs.from": {} } };
-				matchFrom.terms["@evmReceipt.itxs.from"] = fromAddress;
-				queryBody.bool.must.push(matchFrom);
-			}
-			if (toAddress) {
-				console.log(toAddress);
-				const matchTo = { terms: { "@evmReceipt.itxs.to": {} } };
-				matchTo.terms["@evmReceipt.itxs.to"] = toAddress;
-				queryBody.bool.must.push(matchTo);
-			}
+		
+		if (fromAddress) {
+			// console.log(fromAddress);
+			const matchFrom = { terms: { "@evmReceipt.itxs.from": {} } };
+			matchFrom.terms["@evmReceipt.itxs.from"] = fromAddress;
+			queryBody.bool.must.push(matchFrom);
+		}
+		if (toAddress) {
+			// console.log(toAddress);
+			const matchTo = { terms: { "@evmReceipt.itxs.to": {} } };
+			matchTo.terms["@evmReceipt.itxs.to"] = toAddress;
+			queryBody.bool.must.push(matchTo);
 		}
 
 		// search
