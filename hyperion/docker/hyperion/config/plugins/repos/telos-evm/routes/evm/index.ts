@@ -67,6 +67,25 @@ function parsePanicReason(revertOutput) {
 	return reason;
 }
 
+function toOpname(opcode) {
+	switch (opcode) {
+		case "f0":
+			return "create";
+		case "f1":
+			return "call";
+		case "f4":
+			return "delegatecall";
+		case "f5":
+			return "create2";
+		case "fa":
+			return "staticcall";
+		case "ff":
+			return "selfdestruct";
+		default:
+			return "unkown";
+	}
+}
+
 function jsonRcp2Error(reply: FastifyReply, type: string, requestId: string, message: string, code?: number) {
 	let errorCode = code;
 	switch (type) {
@@ -951,7 +970,6 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
 		// search
 		try {
-			// TODO actually do a search according to params
 			const searchResults = await fastify.elastic.search({
 				index: `${fastify.manager.chain}-delta-*`,
 				size: count,
@@ -964,6 +982,10 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			// processing
 			// TODO reconstruct first call to contract like first object in: https://etherscan.io/vmtrace?txhash=0x4fe4e0506d05e37b8e90a3ec7b520ef7303741865980cd07efc4e628b6ffe246&type=parity#raw
 			// TODO reconstruct internal transaction from receipt to correct format
+
+			// Do searchActionByHash() to get the fromAddress and toAddress of user call
+
+
 			const results = [];
 			let logCount = 0;
 			for (const hit of searchResults.body.hits.hits) {
@@ -972,7 +994,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					for (const itx of doc['@evmReceipt']['itxs']) {
 						results.push({
 							action: {
-								callType: itx.callType, // TODO calltype parse
+								callType: toOpname(itx.callType),
 								from: '0x' + itx.from,
 								gas: '0x' + itx.gas,
 								input: '0x' + itx.input,
