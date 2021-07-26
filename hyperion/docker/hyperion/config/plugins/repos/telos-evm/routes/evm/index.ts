@@ -86,7 +86,7 @@ function toOpname(opcode) {
 	}
 }
 
-function jsonRcp2Error(reply: FastifyReply, type: string, requestId: string, message: string, code?: number) {
+function jsonRPC2Error(reply: FastifyReply, type: string, requestId: string, message: string, code?: number) {
 	let errorCode = code;
 	switch (type) {
 		case "InvalidRequest": {
@@ -921,7 +921,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 * curl --data '{"method":"trace_filter","params":[{"fromBlock":"0x2ed0c4","toBlock":"0x2ed128","toAddress":["0x8bbB73BCB5d553B5A556358d27625323Fd781D37"],"after":1000,"count":100}],"id":1,"jsonrpc":"2.0"}' -H "Content-Type: application/json" -X POST localhost:7000/evm
 	 * 
 	 * Check the eth_getlogs function above for help
-	*/
+	 */
 	methods.set('trace_filter', async (params) => {
 		// query preparation
 		//TODO can trace filter have multiple parameter objects? 
@@ -993,6 +993,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 						results.push({
 							action: {
 								callType: toOpname(itx.callType),
+								//why is 0x not in the receipt table?
 								from: '0x' + itx.from,
 								gas: '0x' + itx.gas,
 								input: '0x' + itx.input,
@@ -1032,7 +1033,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
 		const { jsonrpc, id, method, params } = request.body as any;
 		if (jsonrpc !== "2.0") {
-			return jsonRcp2Error(reply, "InvalidRequest", id, "Invalid JSON RPC");
+			return jsonRPC2Error(reply, "InvalidRequest", id, "Invalid JSON RPC");
 		}
 		if (methods.has(method)) {
 			const tRef = process.hrtime.bigint();
@@ -1070,10 +1071,10 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				}
 				hLog(e.message, method, JSON.stringify(params, null, 2));
 				console.log(JSON.stringify(e, null, 2));
-				return jsonRcp2Error(reply, "InternalError", id, e.message);
+				return jsonRPC2Error(reply, "InternalError", id, e.message);
 			}
 		} else {
-			return jsonRcp2Error(reply, 'MethodNotFound', id, `Invalid method: ${method}`);
+			return jsonRPC2Error(reply, 'MethodNotFound', id, `Invalid method: ${method}`);
 		}
 	});
 }
