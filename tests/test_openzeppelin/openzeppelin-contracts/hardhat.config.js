@@ -39,8 +39,11 @@ module.exports = {
   defaultNetwork: "private",
   networks: {
     hardhat: {
-      blockGasLimit: 10000000,
+      gas: 10000000,
       gasPrice: 100000000000,
+      host: "127.0.0.1",
+      port: 7545,
+      network_id: "41"
     },
     private: {
       url: 'http://127.0.0.1:7000/evm',
