@@ -925,12 +925,23 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	methods.set('trace_filter', async (params) => {
 		// query preparation
 		//TODO can trace filter have multiple parameter objects? 
-		let fromAddress: string = params[0].fromAddress;
-		let toAddress: string = params[0].toAddress;
+		let fromAddress = params[0].fromAddress;
+		let toAddress = params[0].toAddress;
 		let fromBlock: string | number = params[0].fromBlock;
 		let toBlock: string | number = params[0].toBlock;
 		let after:  number = params[0].after; //TODO what is this?
 		let count: number = params[0].count;
+
+		console.log(fromAddress)
+		console.log(toAddress)
+		if (typeof fromAddress !== 'undefined') {
+			fromAddress.forEach((addr, index) => fromAddress[index] = toChecksumAddress(addr).slice(2).replace(/^0+/, '').toLowerCase());
+		}
+		if (typeof toAddress !== 'undefined') {
+			toAddress.forEach((addr, index) => toAddress[index] = toChecksumAddress(addr).slice(2).replace(/^0+/, '').toLowerCase());
+		}
+		console.log(fromAddress)
+		console.log(toAddress)
 
 		const queryBody: any = {
 			bool: {
@@ -994,10 +1005,10 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 							action: {
 								callType: toOpname(itx.callType),
 								//why is 0x not in the receipt table?
-								from: '0x' + itx.from,
+								from: toChecksumAddress(itx.from),
 								gas: '0x' + itx.gas,
 								input: '0x' + itx.input,
-								to: '0x' + itx.to,
+								to: toChecksumAddress(itx.to),
 								value: '0x' + itx.value
 							},
 							blockHash: '0x' + doc['@evmReceipt']['block_hash'],
