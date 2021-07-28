@@ -924,105 +924,105 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 */
 	methods.set('trace_filter', async (params) => {
 		// query preparation
-		//TODO can trace filter have multiple parameter objects? 
-		let fromAddress = params[0].fromAddress;
-		let toAddress = params[0].toAddress;
-		let fromBlock: string | number = params[0].fromBlock;
-		let toBlock: string | number = params[0].toBlock;
-		let after:  number = params[0].after; //TODO what is this?
-		let count: number = params[0].count;
+		const results = [];
+		for (const param_obj of params) {
+			// console.log(param_obj);
+			let fromAddress = param_obj.fromAddress;
+			let toAddress = param_obj.toAddress;
+			let fromBlock: string | number = param_obj.fromBlock;
+			let toBlock: string | number = param_obj.toBlock;
+			let after:  number = param_obj.after; //TODO what is this?
+			let count: number = param_obj.count;
 
-		if (typeof fromAddress !== 'undefined') {
-			fromAddress.forEach((addr, index) => fromAddress[index] = toChecksumAddress(addr).slice(2).replace(/^0+/, '').toLowerCase());
-		}
-		if (typeof toAddress !== 'undefined') {
-			toAddress.forEach((addr, index) => toAddress[index] = toChecksumAddress(addr).slice(2).replace(/^0+/, '').toLowerCase());
-		}
-
-		const queryBody: any = {
-			bool: {
-				must: [
-					{ exists: { field: "@evmReceipt.itxs" } }
-				]
+			if (typeof fromAddress !== 'undefined') {
+				fromAddress.forEach((addr, index) => fromAddress[index] = toChecksumAddress(addr).slice(2).replace(/^0+/, '').toLowerCase());
 			}
-		};
-
-		if (fromBlock || toBlock) {
-			const rangeObj = { range: { "@evmReceipt.block": {} } };
-			if (fromBlock) {
-				// console.log(`getLogs using toBlock: ${toBlock}`);
-				rangeObj.range["@evmReceipt.block"]['gte'] = fromBlock;
+			if (typeof toAddress !== 'undefined') {
+				toAddress.forEach((addr, index) => toAddress[index] = toChecksumAddress(addr).slice(2).replace(/^0+/, '').toLowerCase());
 			}
-			if (toBlock) {
-				// console.log(`getLogs using fromBlock: ${params.fromBlock}`);
-				rangeObj.range["@evmReceipt.block"]['lte'] = toBlock;
-			}
-			queryBody.bool.must.push(rangeObj);
-		}
-		
-		if (fromAddress) {
-			// console.log(fromAddress);
-			const matchFrom = { terms: { "@evmReceipt.itxs.from": {} } };
-			matchFrom.terms["@evmReceipt.itxs.from"] = fromAddress;
-			queryBody.bool.must.push(matchFrom);
-		}
-		if (toAddress) {
-			// console.log(toAddress);
-			const matchTo = { terms: { "@evmReceipt.itxs.to": {} } };
-			matchTo.terms["@evmReceipt.itxs.to"] = toAddress;
-			queryBody.bool.must.push(matchTo);
-		}
 
-		// search
-		try {
-			const searchResults = await fastify.elastic.search({
-				index: `${fastify.manager.chain}-delta-*`,
-				size: count,
-				body: {
-					query: queryBody,
-					sort: [{ "@evmReceipt.trx_index": { order: "asc" } }]
+			const queryBody: any = {
+				bool: {
+					must: [
+						{ exists: { field: "@evmReceipt.itxs" } }
+					]
 				}
-			});
+			};
 
-			// processing
-			const results = [];
-			let logCount = 0;
-			for (const hit of searchResults.body.hits.hits) {
-				const doc = hit._source;
-				if (doc['@evmReceipt'] && doc['@evmReceipt']['itxs']) {
-					for (const itx of doc['@evmReceipt']['itxs']) {
-						results.push({
-							action: {
-								callType: toOpname(itx.callType),
-								//why is 0x not in the receipt table?
-								from: toChecksumAddress(itx.from),
-								gas: '0x' + itx.gas,
-								input: '0x' + itx.input,
-								to: toChecksumAddress(itx.to),
-								value: '0x' + itx.value
-							},
-							blockHash: '0x' + doc['@evmReceipt']['block_hash'],
-							blockNumber: doc['@evmReceipt']['block'],
-							result: {
-								gasUsed: '0x' + itx.gasUsed,
-								output: '0x' + itx.output,
-							},
-							subtraces: itx.subtraces,
-							traceAddress: itx.traceAddress,
-							transactionHash: '0x' + doc['@evmReceipt']['hash'],
-							transactionPosition: doc['@evmReceipt']['trx_index'],
-							type: itx.type});
-						logCount++;
+			if (fromBlock || toBlock) {
+				const rangeObj = { range: { "@evmReceipt.block": {} } };
+				if (fromBlock) {
+					// console.log(`getLogs using toBlock: ${toBlock}`);
+					rangeObj.range["@evmReceipt.block"]['gte'] = fromBlock;
+				}
+				if (toBlock) {
+					// console.log(`getLogs using fromBlock: ${params.fromBlock}`);
+					rangeObj.range["@evmReceipt.block"]['lte'] = toBlock;
+				}
+				queryBody.bool.must.push(rangeObj);
+			}
+			
+			if (fromAddress) {
+				// console.log(fromAddress);
+				const matchFrom = { terms: { "@evmReceipt.itxs.from": {} } };
+				matchFrom.terms["@evmReceipt.itxs.from"] = fromAddress;
+				queryBody.bool.must.push(matchFrom);
+			}
+			if (toAddress) {
+				// console.log(toAddress);
+				const matchTo = { terms: { "@evmReceipt.itxs.to": {} } };
+				matchTo.terms["@evmReceipt.itxs.to"] = toAddress;
+				queryBody.bool.must.push(matchTo);
+			}
+
+			// search
+			try {
+				const searchResults = await fastify.elastic.search({
+					index: `${fastify.manager.chain}-delta-*`,
+					size: count,
+					body: {
+						query: queryBody,
+						sort: [{ "@evmReceipt.trx_index": { order: "asc" } }]
+					}
+				});
+
+				// processing
+				let logCount = 0;
+				for (const hit of searchResults.body.hits.hits) {
+					const doc = hit._source;
+					if (doc['@evmReceipt'] && doc['@evmReceipt']['itxs']) {
+						for (const itx of doc['@evmReceipt']['itxs']) {
+							results.push({
+								action: {
+									callType: toOpname(itx.callType),
+									//why is 0x not in the receipt table?
+									from: toChecksumAddress(itx.from),
+									gas: '0x' + itx.gas,
+									input: '0x' + itx.input,
+									to: toChecksumAddress(itx.to),
+									value: '0x' + itx.value
+								},
+								blockHash: '0x' + doc['@evmReceipt']['block_hash'],
+								blockNumber: doc['@evmReceipt']['block'],
+								result: {
+									gasUsed: '0x' + itx.gasUsed,
+									output: '0x' + itx.output,
+								},
+								subtraces: itx.subtraces,
+								traceAddress: itx.traceAddress,
+								transactionHash: '0x' + doc['@evmReceipt']['hash'],
+								transactionPosition: doc['@evmReceipt']['trx_index'],
+								type: itx.type});
+							logCount++;
+						}
 					}
 				}
+			} catch (e) {
+				console.log(JSON.stringify(e, null, 2));
+				return [];
 			}
-
-			return results;
-		} catch (e) {
-			console.log(JSON.stringify(e, null, 2));
-			return [];
-		}
-
+		}	
+		return results;
 	});
 
 	/**
