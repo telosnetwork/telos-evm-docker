@@ -932,16 +932,12 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		let after:  number = params[0].after; //TODO what is this?
 		let count: number = params[0].count;
 
-		console.log(fromAddress)
-		console.log(toAddress)
 		if (typeof fromAddress !== 'undefined') {
 			fromAddress.forEach((addr, index) => fromAddress[index] = toChecksumAddress(addr).slice(2).replace(/^0+/, '').toLowerCase());
 		}
 		if (typeof toAddress !== 'undefined') {
 			toAddress.forEach((addr, index) => toAddress[index] = toChecksumAddress(addr).slice(2).replace(/^0+/, '').toLowerCase());
 		}
-		console.log(fromAddress)
-		console.log(toAddress)
 
 		const queryBody: any = {
 			bool: {
@@ -989,12 +985,6 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			});
 
 			// processing
-			// TODO reconstruct first call to contract like first object in: https://etherscan.io/vmtrace?txhash=0x4fe4e0506d05e37b8e90a3ec7b520ef7303741865980cd07efc4e628b6ffe246&type=parity#raw
-			// TODO reconstruct internal transaction from receipt to correct format
-
-			// Do searchActionByHash() to get the fromAddress and toAddress of user call
-
-
 			const results = [];
 			let logCount = 0;
 			for (const hit of searchResults.body.hits.hits) {
@@ -1028,11 +1018,60 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			}
 
 			return results;
-			// return searchResults;
 		} catch (e) {
 			console.log(JSON.stringify(e, null, 2));
 			return [];
 		}
+
+	});
+
+	/**
+	 * Returns the internal transaction trace filter matching the given filter object.
+	 * https://openethereum.github.io/JSONRPC-trace-module#trace_transaction
+	 * curl --data '{"method":"trace_transaction","params":["0x17104ac9d3312d8c136b7f44d4b8b47852618065ebfa534bd2d3b5ef218ca1f3"],"id":1,"jsonrpc":"2.0"}' -H "Content-Type: application/json" -X POST localhost:7000/evm
+	 */
+	 methods.set('trace_transaction', async ([trxHash]) => {
+		// query preparation
+		if (trxHash) {
+
+			// lookup receipt delta
+			const receiptDelta = await searchDeltasByHash(trxHash);
+			if (!receiptDelta) return null;
+			const receipt = receiptDelta['@evmReceipt'];
+
+			// processing
+			const results = [];
+			let logCount = 0;
+			if (receipt && receipt['itxs']) {
+				for (const itx of receipt['itxs']) {
+					results.push({
+						action: {
+							callType: toOpname(itx.callType),
+							//why is 0x not in the receipt table?
+							from: toChecksumAddress(itx.from),
+							gas: '0x' + itx.gas,
+							input: '0x' + itx.input,
+							to: toChecksumAddress(itx.to),
+							value: '0x' + itx.value
+						},
+						blockHash: '0x' + receipt['block_hash'],
+						blockNumber: receipt['block'],
+						result: {
+							gasUsed: '0x' + itx.gasUsed,
+							output: '0x' + itx.output,
+						},
+						subtraces: itx.subtraces,
+						traceAddress: itx.traceAddress,
+						transactionHash: '0x' + receipt['hash'],
+						transactionPosition: receipt['trx_index'],
+						type: itx.type});
+					logCount++;
+				}
+			}
+				return results;
+			} else {
+				return null;
+			}
 
 	});
 
