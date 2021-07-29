@@ -38,4 +38,4 @@ jobs:
         run: sudo ./run.sh debug
 
       - name: Run Truffle test
-        run: cd test_erc20/ && truffle test --network private
+        run: cd tests/test_erc20/ && truffle test --network private

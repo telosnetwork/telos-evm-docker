@@ -106,6 +106,10 @@
                 {
                     "name": "errors",
                     "type": "string"
+                },
+                {
+                    "name": "itxs",
+                    "type": "itx_data[]"
                 }
             ]
         },
@@ -170,6 +174,82 @@
                 {
                     "name": "rowcount",
                     "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "itx_data",
+            "base": "",
+            "fields": [
+                {
+                    "name": "callType",
+                    "type": "string"
+                },
+                {
+                    "name": "from",
+                    "type": "string"
+                },
+                {
+                    "name": "gas",
+                    "type": "string"
+                },
+                {
+                    "name": "input",
+                    "type": "string"
+                },
+                {
+                    "name": "to",
+                    "type": "string"
+                },
+                {
+                    "name": "value",
+                    "type": "string"
+                },
+                {
+                    "name": "gasUsed",
+                    "type": "string"
+                },
+                {
+                    "name": "output",
+                    "type": "string"
+                },
+                {
+                    "name": "subtraces",
+                    "type": "uint8"
+                },
+                {
+                    "name": "traceAddress",
+                    "type": "uint8[]"
+                },
+                {
+                    "name": "type",
+                    "type": "string"
+                },
+                {
+                    "name": "transactionHash",
+                    "type": "string"
+                },
+                {
+                    "name": "depth",
+                    "type": "string"
+                },
+                {
+                    "name": "extra",
+                    "type": "pair_string_string[]"
+                }
+            ]
+        },
+        {
+            "name": "pair_string_string",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "string"
+                },
+                {
+                    "name": "value",
+                    "type": "string"
                 }
             ]
         },

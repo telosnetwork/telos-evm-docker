@@ -67,7 +67,26 @@ function parsePanicReason(revertOutput) {
 	return reason;
 }
 
-function jsonRcp2Error(reply: FastifyReply, type: string, requestId: string, message: string, code?: number) {
+function toOpname(opcode) {
+	switch (opcode) {
+		case "f0":
+			return "create";
+		case "f1":
+			return "call";
+		case "f4":
+			return "delegatecall";
+		case "f5":
+			return "create2";
+		case "fa":
+			return "staticcall";
+		case "ff":
+			return "selfdestruct";
+		default:
+			return "unkown";
+	}
+}
+
+function jsonRPC2Error(reply: FastifyReply, type: string, requestId: string, message: string, code?: number) {
 	let errorCode = code;
 	switch (type) {
 		case "InvalidRequest": {
@@ -896,6 +915,166 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		}
 	});
 
+	/**
+	 * Returns the internal transaction trace filter matching the given filter object.
+	 * https://openethereum.github.io/JSONRPC-trace-module#trace_filter
+	 * curl --data '{"method":"trace_filter","params":[{"fromBlock":"0x2ed0c4","toBlock":"0x2ed128","toAddress":["0x8bbB73BCB5d553B5A556358d27625323Fd781D37"],"after":1000,"count":100}],"id":1,"jsonrpc":"2.0"}' -H "Content-Type: application/json" -X POST localhost:7000/evm
+	 * 
+	 * Check the eth_getlogs function above for help
+	 */
+	methods.set('trace_filter', async (params) => {
+		// query preparation
+		const results = [];
+		for (const param_obj of params) {
+			// console.log(param_obj);
+			let fromAddress = param_obj.fromAddress;
+			let toAddress = param_obj.toAddress;
+			let fromBlock: string | number = param_obj.fromBlock;
+			let toBlock: string | number = param_obj.toBlock;
+			let after:  number = param_obj.after; //TODO what is this?
+			let count: number = param_obj.count;
+
+			if (typeof fromAddress !== 'undefined') {
+				fromAddress.forEach((addr, index) => fromAddress[index] = toChecksumAddress(addr).slice(2).replace(/^0+/, '').toLowerCase());
+			}
+			if (typeof toAddress !== 'undefined') {
+				toAddress.forEach((addr, index) => toAddress[index] = toChecksumAddress(addr).slice(2).replace(/^0+/, '').toLowerCase());
+			}
+
+			const queryBody: any = {
+				bool: {
+					must: [
+						{ exists: { field: "@evmReceipt.itxs" } }
+					]
+				}
+			};
+
+			if (fromBlock || toBlock) {
+				const rangeObj = { range: { "@evmReceipt.block": {} } };
+				if (fromBlock) {
+					// console.log(`getLogs using toBlock: ${toBlock}`);
+					rangeObj.range["@evmReceipt.block"]['gte'] = fromBlock;
+				}
+				if (toBlock) {
+					// console.log(`getLogs using fromBlock: ${params.fromBlock}`);
+					rangeObj.range["@evmReceipt.block"]['lte'] = toBlock;
+				}
+				queryBody.bool.must.push(rangeObj);
+			}
+			
+			if (fromAddress) {
+				// console.log(fromAddress);
+				const matchFrom = { terms: { "@evmReceipt.itxs.from": {} } };
+				matchFrom.terms["@evmReceipt.itxs.from"] = fromAddress;
+				queryBody.bool.must.push(matchFrom);
+			}
+			if (toAddress) {
+				// console.log(toAddress);
+				const matchTo = { terms: { "@evmReceipt.itxs.to": {} } };
+				matchTo.terms["@evmReceipt.itxs.to"] = toAddress;
+				queryBody.bool.must.push(matchTo);
+			}
+
+			// search
+			try {
+				const searchResults = await fastify.elastic.search({
+					index: `${fastify.manager.chain}-delta-*`,
+					size: count,
+					body: {
+						query: queryBody,
+						sort: [{ "@evmReceipt.trx_index": { order: "asc" } }]
+					}
+				});
+
+				// processing
+				let logCount = 0;
+				for (const hit of searchResults.body.hits.hits) {
+					const doc = hit._source;
+					if (doc['@evmReceipt'] && doc['@evmReceipt']['itxs']) {
+						for (const itx of doc['@evmReceipt']['itxs']) {
+							results.push({
+								action: {
+									callType: toOpname(itx.callType),
+									//why is 0x not in the receipt table?
+									from: toChecksumAddress(itx.from),
+									gas: '0x' + itx.gas,
+									input: '0x' + itx.input,
+									to: toChecksumAddress(itx.to),
+									value: '0x' + itx.value
+								},
+								blockHash: '0x' + doc['@evmReceipt']['block_hash'],
+								blockNumber: doc['@evmReceipt']['block'],
+								result: {
+									gasUsed: '0x' + itx.gasUsed,
+									output: '0x' + itx.output,
+								},
+								subtraces: itx.subtraces,
+								traceAddress: itx.traceAddress,
+								transactionHash: '0x' + doc['@evmReceipt']['hash'],
+								transactionPosition: doc['@evmReceipt']['trx_index'],
+								type: itx.type});
+							logCount++;
+						}
+					}
+				}
+			} catch (e) {
+				console.log(JSON.stringify(e, null, 2));
+				return [];
+			}
+		}	
+		return results;
+	});
+
+	/**
+	 * Returns the internal transaction trace filter matching the given filter object.
+	 * https://openethereum.github.io/JSONRPC-trace-module#trace_transaction
+	 * curl --data '{"method":"trace_transaction","params":["0x17104ac9d3312d8c136b7f44d4b8b47852618065ebfa534bd2d3b5ef218ca1f3"],"id":1,"jsonrpc":"2.0"}' -H "Content-Type: application/json" -X POST localhost:7000/evm
+	 */
+	 methods.set('trace_transaction', async ([trxHash]) => {
+		// query preparation
+		if (trxHash) {
+
+			// lookup receipt delta
+			const receiptDelta = await searchDeltasByHash(trxHash);
+			if (!receiptDelta) return null;
+			const receipt = receiptDelta['@evmReceipt'];
+
+			// processing
+			const results = [];
+			let logCount = 0;
+			if (receipt && receipt['itxs']) {
+				for (const itx of receipt['itxs']) {
+					results.push({
+						action: {
+							callType: toOpname(itx.callType),
+							//why is 0x not in the receipt table?
+							from: toChecksumAddress(itx.from),
+							gas: '0x' + itx.gas,
+							input: '0x' + itx.input,
+							to: toChecksumAddress(itx.to),
+							value: '0x' + itx.value
+						},
+						blockHash: '0x' + receipt['block_hash'],
+						blockNumber: receipt['block'],
+						result: {
+							gasUsed: '0x' + itx.gasUsed,
+							output: '0x' + itx.output,
+						},
+						subtraces: itx.subtraces,
+						traceAddress: itx.traceAddress,
+						transactionHash: '0x' + receipt['hash'],
+						transactionPosition: receipt['trx_index'],
+						type: itx.type});
+					logCount++;
+				}
+			}
+				return results;
+			} else {
+				return null;
+			}
+
+	});
+
 	// END METHODS
 
 	/**
@@ -904,7 +1083,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
 		const { jsonrpc, id, method, params } = request.body as any;
 		if (jsonrpc !== "2.0") {
-			return jsonRcp2Error(reply, "InvalidRequest", id, "Invalid JSON RPC");
+			return jsonRPC2Error(reply, "InvalidRequest", id, "Invalid JSON RPC");
 		}
 		if (methods.has(method)) {
 			const tRef = process.hrtime.bigint();
@@ -942,10 +1121,10 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				}
 				hLog(e.message, method, JSON.stringify(params, null, 2));
 				console.log(JSON.stringify(e, null, 2));
-				return jsonRcp2Error(reply, "InternalError", id, e.message);
+				return jsonRPC2Error(reply, "InternalError", id, e.message);
 			}
 		} else {
-			return jsonRcp2Error(reply, 'MethodNotFound', id, `Invalid method: ${method}`);
+			return jsonRPC2Error(reply, 'MethodNotFound', id, `Invalid method: ${method}`);
 		}
 	});
 }

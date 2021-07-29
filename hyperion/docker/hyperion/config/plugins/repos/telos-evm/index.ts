@@ -85,6 +85,24 @@ export default class TelosEvm extends HyperionPlugin {
 							"logsBloom": {"type": "keyword"},
 							"output": {"enabled": false},
 							"errors": {"enabled": false},
+							"itxs": {
+                                "properties": {
+                                    "callType": { "type": "text" },
+                                    "from": { "type": "text" },
+                                    "gas": { "type": "text" },
+                                    "input": { "type": "text" },
+                                    "to": { "type": "text" },
+                                    "value": { "type": "text" },
+                                    "gasUsed": { "type": "text" },
+                                    "output": { "type": "text" },
+                                    "subtraces": { "type": "long" },
+									"traceAddress": {"type": "long"},
+                                    "type": { "type": "text" },
+                                    "transactionHash": { "type": "text" },
+                                    "depth": { "type": "text" },
+									"extra": {"type" : "text"}
+                                }
+                            },
 						}
 					}
 				}
@@ -107,7 +125,8 @@ export default class TelosEvm extends HyperionPlugin {
 					createdaddr: data.createdaddr.toLowerCase(),
 					gasused: parseInt('0x' + data.gasused),
 					ramused: parseInt('0x' + data.ramused),
-					output: data.output
+					output: data.output,
+					itxs: data.itxs					
 				};
 
 				if (data.logs) {

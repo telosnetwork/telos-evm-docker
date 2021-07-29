@@ -67,6 +67,10 @@ export class EvmService {
     return await this.callRpcMethod('eth_getBlockByHash', [hash.toLowerCase()]);
   }
 
+  async traceTransaction(hash: string): Promise<any> {
+    return await this.callRpcMethod('trace_transaction', [hash.toLowerCase()]);
+  }
+
   getServerUrl(): void {
     let server;
     if (environment.production) {

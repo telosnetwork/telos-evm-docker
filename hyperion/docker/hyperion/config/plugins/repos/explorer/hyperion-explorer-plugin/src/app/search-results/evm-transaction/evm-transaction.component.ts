@@ -38,7 +38,8 @@ export class EvmTransactionComponent implements OnInit, OnDestroy {
     input_data: '',
     logs: '',
     errors: '',
-    status: ''
+    status: '',
+    trace: []
   };
 
   subs: Subscription[];
@@ -54,8 +55,8 @@ export class EvmTransactionComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.subs.push(this.activatedRoute.params.subscribe(async (routeParams) => {
       this.txHash = routeParams.hash;
-      const [hash, receipt] = await Promise.all([this.evm.getTransactionByHash(this.txHash), this.evm.getTransactionReceipt(this.txHash)]);
-      const txData = Object.assign(hash, receipt);
+      const [hash, receipt, trace] = await Promise.all([this.evm.getTransactionByHash(this.txHash), this.evm.getTransactionReceipt(this.txHash), this.evm.traceTransaction(this.txHash)]);
+      const txData = Object.assign(hash, receipt, { trace });
       this.txData.block = parseInt(txData.blockNumber, 16);
       this.txData.from = txData.from;
       this.txData.timestamp = txData.timestamp || Date.now();
@@ -69,6 +70,7 @@ export class EvmTransactionComponent implements OnInit, OnDestroy {
       this.txData.error = this.evm.getErrorFromOutput(txData.output);
       this.txData.status = txData.status;
       this.txData.output = txData.output;
+      this.txData.trace = txData.trace
       await this.accountService.checkIrreversibility();
     }));
   }
