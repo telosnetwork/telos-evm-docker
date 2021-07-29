@@ -70,6 +70,7 @@ export class EvmTransactionComponent implements OnInit, OnDestroy {
       this.txData.error = this.evm.getErrorFromOutput(txData.output);
       this.txData.status = txData.status;
       this.txData.output = txData.output;
+      this.txData.trace = txData.trace
       await this.accountService.checkIrreversibility();
     }));
   }
