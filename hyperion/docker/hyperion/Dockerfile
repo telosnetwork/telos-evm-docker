@@ -18,8 +18,8 @@ WORKDIR /hyperion-history-api
 RUN npm install
 
 COPY ./config/plugins/ /hyperion-history-api/plugins/
-#RUN cd plugins/repos/explorer && npm install
-#RUN cd plugins/repos/explorer && npm run build
+RUN cd plugins/repos/explorer && npm install
+RUN cd plugins/repos/explorer && npm run build
 RUN cd plugins/repos/telos-evm && npm install && npm run build
 
 EXPOSE 7001

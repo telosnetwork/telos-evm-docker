@@ -13,7 +13,8 @@
   "dependencies": {
     "fastify": "^3.14.1",
     "fastify-compress": "^3.4.2",
-    "fastify-static": "^4.0.1"
+    "fastify-static": "^4.0.1",
+    "typescript": "^4.3.5"
   },
   "license": "MIT"
 }
