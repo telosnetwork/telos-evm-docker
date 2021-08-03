@@ -98,7 +98,6 @@ export default class TelosEvm extends HyperionPlugin {
                                     "subtraces": { "type": "long" },
 									"traceAddress": {"type": "long"},
                                     "type": { "type": "text" },
-                                    "transactionHash": { "type": "text" },
                                     "depth": { "type": "text" },
 									"extra": {"type" : "text"}
                                 }

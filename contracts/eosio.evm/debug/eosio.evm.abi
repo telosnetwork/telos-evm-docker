@@ -226,10 +226,6 @@
                     "type": "string"
                 },
                 {
-                    "name": "transactionHash",
-                    "type": "string"
-                },
-                {
                     "name": "depth",
                     "type": "string"
                 },
