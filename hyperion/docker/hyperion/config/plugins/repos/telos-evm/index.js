@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -18,12 +9,12 @@ const fastify_autoload_1 = __importDefault(require("fastify-autoload"));
 const path_1 = require("path");
 const tx_1 = require("@ethereumjs/tx");
 const common_1 = __importDefault(require("@ethereumjs/common"));
+const bloom_1 = __importDefault(require("./bloom"));
 const BN = require('bn.js');
 const createKeccakHash = require('keccak');
 const { TelosEvmApi } = require('@telosnetwork/telosevm-js');
 class TelosEvm extends hyperion_plugin_1.HyperionPlugin {
     constructor(config) {
-        var _a;
         super(config);
         this.hasApiRoutes = true;
         this.actionHandlers = [];
@@ -34,7 +25,7 @@ class TelosEvm extends hyperion_plugin_1.HyperionPlugin {
         this.counter = 0;
         if (this.baseConfig) {
             this.pluginConfig = this.baseConfig;
-            if ((_a = config.contracts) === null || _a === void 0 ? void 0 : _a.main) {
+            if (config.contracts?.main) {
                 this.dynamicContracts.push(config.contracts.main);
             }
             if (config.chainId) {
@@ -71,13 +62,32 @@ class TelosEvm extends hyperion_plugin_1.HyperionPlugin {
                                     "topics": { "type": "keyword" }
                                 }
                             },
+                            "logsBloom": { "type": "keyword" },
                             "output": { "enabled": false },
                             "errors": { "enabled": false },
+                            "itxs": {
+                                "properties": {
+                                    "callType": { "type": "text" },
+                                    "from": { "type": "text" },
+                                    "gas": { "type": "text" },
+                                    "input": { "type": "text" },
+                                    "to": { "type": "text" },
+                                    "value": { "type": "text" },
+                                    "gasUsed": { "type": "text" },
+                                    "output": { "type": "text" },
+                                    "subtraces": { "type": "long" },
+                                    "traceAddress": { "type": "long" },
+                                    "type": { "type": "text" },
+                                    "transactionHash": { "type": "text" },
+                                    "depth": { "type": "text" },
+                                    "extra": { "type": "text" }
+                                }
+                            },
                         }
                     }
                 }
             },
-            handler: (delta) => __awaiter(this, void 0, void 0, function* () {
+            handler: async (delta) => {
                 const data = delta.data;
                 const blockHex = data.block.toString(16);
                 const blockHash = createKeccakHash('keccak256').update(blockHex).digest('hex');
@@ -93,7 +103,8 @@ class TelosEvm extends hyperion_plugin_1.HyperionPlugin {
                     createdaddr: data.createdaddr.toLowerCase(),
                     gasused: parseInt('0x' + data.gasused),
                     ramused: parseInt('0x' + data.ramused),
-                    output: data.output
+                    output: data.output,
+                    itxs: data.itxs || []
                 };
                 if (data.logs) {
                     delta['@evmReceipt']['logs'] = JSON.parse(data.logs);
@@ -103,6 +114,11 @@ class TelosEvm extends hyperion_plugin_1.HyperionPlugin {
                     else {
                         console.log('------- LOGS -----------');
                         console.log(delta['@evmReceipt']['logs']);
+                        const bloom = new bloom_1.default();
+                        for (const topic of delta['@evmReceipt']['logs'][0]['topics'])
+                            bloom.add(Buffer.from(topic, 'hex'));
+                        bloom.add(Buffer.from(delta['@evmReceipt']['logs'][0]['address'], 'hex'));
+                        delta['@evmReceipt']['logsBloom'] = bloom.bitvector.toString('hex');
                     }
                 }
                 if (data.errors) {
@@ -116,7 +132,7 @@ class TelosEvm extends hyperion_plugin_1.HyperionPlugin {
                     }
                 }
                 delete delta.data;
-            })
+            }
         });
     }
     loadActionHandlers() {
@@ -143,7 +159,6 @@ class TelosEvm extends hyperion_plugin_1.HyperionPlugin {
                 }
             },
             handler: (action) => {
-                var _a, _b, _c, _d, _e, _f, _g;
                 // attach action extras here
                 const data = action['act']['data'];
                 this.counter++;
@@ -154,13 +169,13 @@ class TelosEvm extends hyperion_plugin_1.HyperionPlugin {
                             common: this.common,
                         });
                         const txBody = {
-                            hash: '0x' + ((_a = tx.hash()) === null || _a === void 0 ? void 0 : _a.toString('hex')),
-                            to: (_b = tx.to) === null || _b === void 0 ? void 0 : _b.toString(),
-                            value: (_c = tx.value) === null || _c === void 0 ? void 0 : _c.toString(),
-                            nonce: (_d = tx.nonce) === null || _d === void 0 ? void 0 : _d.toString(),
-                            gas_price: (_e = tx.gasPrice) === null || _e === void 0 ? void 0 : _e.toString(),
-                            gas_limit: (_f = tx.gasLimit) === null || _f === void 0 ? void 0 : _f.toString(),
-                            input_data: '0x' + ((_g = tx.data) === null || _g === void 0 ? void 0 : _g.toString('hex')),
+                            hash: '0x' + tx.hash()?.toString('hex'),
+                            to: tx.to?.toString(),
+                            value: tx.value?.toString(),
+                            nonce: tx.nonce?.toString(),
+                            gas_price: tx.gasPrice?.toString(),
+                            gas_limit: tx.gasLimit?.toString(),
+                            input_data: '0x' + tx.data?.toString('hex'),
                         };
                         if (tx.isSigned()) {
                             txBody["from"] = tx.getSenderAddress().toString().toLowerCase();
@@ -195,6 +210,7 @@ class TelosEvm extends hyperion_plugin_1.HyperionPlugin {
             telosContract: this.pluginConfig.contracts.main,
             telosPrivateKeys: [this.pluginConfig.signer_key]
         }));
+        server.evm.setDebug(true);
         server.register(fastify_autoload_1.default, {
             dir: path_1.join(__dirname, 'routes'),
             options: this.pluginConfig
