@@ -125,7 +125,7 @@ export default class TelosEvm extends HyperionPlugin {
 					gasused: parseInt('0x' + data.gasused),
 					ramused: parseInt('0x' + data.ramused),
 					output: data.output,
-					itxs: data.itxs					
+					itxs: data.itxs	|| []
 				};
 
 				if (data.logs) {
