@@ -1080,7 +1080,13 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	/**
 	 * Main JSON RPC 2.0 Endpoint
 	 */
-	fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
+
+	 const schema: any = {
+		summary: 'EVM JSON-RPC 2.0',
+		tags: ['evm'],
+	};
+
+	fastify.post('/evm', { schema }, async (request: FastifyRequest, reply: FastifyReply) => {
 		const { jsonrpc, id, method, params } = request.body as any;
 		if (jsonrpc !== "2.0") {
 			return jsonRPC2Error(reply, "InvalidRequest", id, "Invalid JSON RPC");
@@ -1128,4 +1134,3 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		}
 	});
 }
-export const autoPrefix = '/evm';

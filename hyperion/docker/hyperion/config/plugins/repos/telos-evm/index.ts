@@ -239,6 +239,7 @@ export default class TelosEvm extends HyperionPlugin {
 		server.evm.setDebug(true);
 		server.register(autoLoad, {
 			dir: join(__dirname, 'routes'),
+			dirNameRoutePrefix: false,
 			options: this.pluginConfig
 		});
 	}
