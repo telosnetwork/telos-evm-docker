@@ -1,6 +1,6 @@
 import {FastifyInstance, FastifySchema} from "fastify";
 import {getContractHandler} from "./get_contract";
-import {addApiRoute, getRouteName}  from "../../../../../../api/helpers/functions";
+import {addApiRoute, getRouteName} from "../../../../../../api/helpers/functions";
 
 export default function (fastify: FastifyInstance, opts: any, next) {
 	const schema: any = {
