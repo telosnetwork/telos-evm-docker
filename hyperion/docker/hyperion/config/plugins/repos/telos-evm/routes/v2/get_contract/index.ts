@@ -42,8 +42,6 @@ export default function (fastify: FastifyInstance, opts: any, next) {
 			}
 		}
 	};
-	addApiRoute(fastify, 'GET', getRouteName(__filename), getContractHandler, schema);
+	addApiRoute(fastify, 'GET', 'v2/evm/get_contract', getContractHandler, schema);
 	next();
 }
-
-export const autoPrefix = '/v2/evm';

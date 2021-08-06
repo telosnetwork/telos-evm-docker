@@ -1,8 +1,13 @@
 import {FastifyInstance, FastifyReply, FastifyRequest} from "fastify";
 import {TelosEvmConfig} from "../../index";
 
+const schema: any = {
+	summary: 'DEPRECATED: Used by explorer but to be replaced by /v2/evm/get_transactions',
+	tags: ['evm'],
+};
+
 export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
-	fastify.get('/get_transactions', async (request: FastifyRequest, reply: FastifyReply) => {
+	fastify.get('/evm_explorer/get_transactions', { schema }, async (request: FastifyRequest, reply: FastifyReply) => {
 
 		let address = request.query["address"];
 		if (address) {
@@ -112,4 +117,3 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		});
 	});
 }
-export const autoPrefix = '/evm_explorer';
