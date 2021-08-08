@@ -475,10 +475,9 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 * allow the transaction to complete.
 	 */
 	methods.set('eth_estimateGas', async ([txParams, block]) => {
-		if (txParams.value) {
-			txParams.value = parseInt(txParams.value);
-			if (isNaN(txParams.value))
-				txParams.value = 0;
+		if (txParams.hasOwnProperty('value')) {
+			const intValue = parseInt(txParams.value, 16);
+			txParams.value = isNaN(intValue) ? 0 : intValue;
 		}
 
 		const encodedTx = await fastify.evm.createEthTx({
@@ -508,7 +507,26 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			throw err;
 		}
 
-		return gas == '0x' ? '0x0' : `0x${Math.ceil((parseInt(gas, 16) * GAS_OVER_ESTIMATE_MULTIPLIER)).toString(16)}`;
+		/*  from contract:
+			if (estimate_gas) {
+				if (result.er != ExitReason::returned) {
+					eosio::print("0x" + bin2hex(result.output));
+				} else {
+					eosio::print("0x" + intx::hex(gas_used));
+				}
+				eosio::check(false, "");
+			}
+
+			if gas == '0x', the transaction reverted without any output
+		*/
+		if (gas == '0x') {
+			let err = new TransactionError('Transaction reverted');
+			err.errorMessage = `execution reverted: no output`;
+			err.data = gas;
+			throw err;
+		}
+
+		return `0x${Math.ceil((parseInt(gas, 16) * GAS_OVER_ESTIMATE_MULTIPLIER)).toString(16)}`;
 	});
 
 	/**
