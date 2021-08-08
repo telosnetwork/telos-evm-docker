@@ -5,7 +5,7 @@ async function getContract(fastify: FastifyInstance, request: FastifyRequest) {
 
 	const query: any = request.query;
 
-	let contract = query.contract.replace(/^0x/, '').replace(/^0*/, '');
+	let contract = query.contract.replace(/^0x/, '').replace(/^0*/, '').toLowerCase();
 	const response = {
 		creation_trx: '',
 		creator: '',
