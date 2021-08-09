@@ -622,7 +622,8 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		try {
 			const rawData = await fastify.evm.telos.raw({
 				account: opts.signer_account,
-				tx: signedTx
+				tx: signedTx,
+				ram_payer: fastify.evm.telos.telosContract,
 			});
 			const receiptResponse = await fastify.eosjs.rpc.get_table_rows({
 				code: fastify.evm.telos.telosContract,
