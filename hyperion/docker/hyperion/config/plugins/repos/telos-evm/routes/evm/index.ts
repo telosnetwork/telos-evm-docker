@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { hLog } from "../../../../../helpers/common_functions";
 import { TelosEvmConfig } from "../../index";
 import Bloom from "../../bloom";
+import debugLogger from "../../debugLogging";
 
 const BN = require('bn.js');
 const abiDecoder = require("abi-decoder");
@@ -164,6 +165,8 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 	const NULL_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
 	const GAS_OVER_ESTIMATE_MULTIPLIER = 1.25;
+	let Logger = new debugLogger();
+	let loggerEnabled = opts.debug;
 
 	// AUX FUNCTIONS
 
@@ -388,7 +391,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	}
 
 	async function toBlockNumber(blockParam: string) {
-		console.log("toBlockNumber caleld with " + blockParam);
+		Logger.log("toBlockNumber caleld with " + blockParam,loggerEnabled);
 		if (blockParam == "latest" || blockParam == "pending")
 			return await getCurrentBlockNumber();
 
@@ -1134,7 +1137,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
 				const duration = ((Number(process.hrtime.bigint()) - Number(tRef)) / 1000).toFixed(3);
 				hLog(`${new Date().toISOString()} - ${duration} μs - ${_ip} (${_usage}/${_limit}) - ${origin} - ${method}`);
-				console.log(`REQ: ${JSON.stringify(params)} | RESP: ${typeof result == 'object' ? JSON.stringify(result, null, 2) : result}`);
+				Logger.log(`REQ: ${JSON.stringify(params)} | RESP: ${typeof result == 'object' ? JSON.stringify(result, null, 2) : result}`,loggerEnabled);
 				reply.send({ id, jsonrpc, result });
 			} catch (e) {
 				if (e instanceof TransactionError) {
