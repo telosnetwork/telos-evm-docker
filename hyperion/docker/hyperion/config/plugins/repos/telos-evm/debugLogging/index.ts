@@ -1,11 +1,21 @@
 export default class debugLogger {
+
+    loggingEnabled : boolean;
+
+    constructor(loggingEnabled:boolean){
+        if (loggingEnabled) {
+            this.loggingEnabled = true;
+        }else{
+            this.loggingEnabled = false;
+        }
+    }
+
     /**
     * Adds an element to a bit vector of a 64 byte bloom filter.
     * @param s - The string to console log
-    * @param b - The boolean conditional to print logs
     */
-    log(s: string, b: boolean) {
-        if (b == true) {
+    log(s: string, ) {
+        if (this.loggingEnabled == true) {
             console.log(s);
         }
     }

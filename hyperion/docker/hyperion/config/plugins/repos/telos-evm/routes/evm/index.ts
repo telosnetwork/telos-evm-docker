@@ -1,5 +1,4 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { hLog } from "../../../../../helpers/common_functions";
 import { TelosEvmConfig } from "../../index";
 import Bloom from "../../bloom";
 import debugLogger from "../../debugLogging";
@@ -165,8 +164,8 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 	const NULL_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
 	const GAS_OVER_ESTIMATE_MULTIPLIER = 1.25;
-	let Logger = new debugLogger();
-	let loggerEnabled = opts.debug;
+	let Logger = new debugLogger(opts.debug);
+	
 
 	// AUX FUNCTIONS
 
@@ -391,7 +390,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	}
 
 	async function toBlockNumber(blockParam: string) {
-		Logger.log("toBlockNumber caleld with " + blockParam,loggerEnabled);
+		Logger.log("toBlockNumber caleld with " + blockParam);
 		if (blockParam == "latest" || blockParam == "pending")
 			return await getCurrentBlockNumber();
 
@@ -1136,22 +1135,24 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				const _ip = request.headers['x-real-ip'];
 
 				const duration = ((Number(process.hrtime.bigint()) - Number(tRef)) / 1000).toFixed(3);
-				hLog(`${new Date().toISOString()} - ${duration} μs - ${_ip} (${_usage}/${_limit}) - ${origin} - ${method}`);
-				Logger.log(`REQ: ${JSON.stringify(params)} | RESP: ${typeof result == 'object' ? JSON.stringify(result, null, 2) : result}`,loggerEnabled);
+				
+				Logger.log(`${new Date().toISOString()} - ${duration} μs - ${_ip} (${_usage}/${_limit}) - ${origin} - ${method}`);
+				Logger.log(`REQ: ${JSON.stringify(params)} | RESP: ${typeof result == 'object' ? JSON.stringify(result, null, 2) : result}`);
 				reply.send({ id, jsonrpc, result });
 			} catch (e) {
 				if (e instanceof TransactionError) {
-					hLog(`VM execution error, reverted: ${e.errorMessage}`, method, JSON.stringify(params, null, 2));
+					Logger.log(`VM execution error, reverted: ${e.errorMessage} | Method: ${method} | RESP: ${JSON.stringify(params, null, 2)}`);
 					let code = 3;
 					let message = e.errorMessage;
 					let data = e.data;
 					let error = { code, message, data };
 					reply.send({ id, jsonrpc, error });
-					console.log(`REQ: ${JSON.stringify(params)} | ERROR RESP: ${JSON.stringify(error, null, 2)}`);
+					Logger.log(`REQ: ${JSON.stringify(params)} | ERROR RESP: ${JSON.stringify(error, null, 2)}`);
 					return;
 				}
-				hLog(e.message, method, JSON.stringify(params, null, 2));
-				console.log(JSON.stringify(e, null, 2));
+				
+				Logger.log(`ErrorMessage: ${e.message} | Method: ${method} | RESP: ${JSON.stringify(params, null, 2)}`);
+				Logger.log(JSON.stringify(e, null, 2));
 				return jsonRPC2Error(reply, "InternalError", id, e.message);
 			}
 		} else {
