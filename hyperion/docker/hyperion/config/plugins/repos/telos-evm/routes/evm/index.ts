@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { TelosEvmConfig } from "../../index";
 import Bloom from "../../bloom";
-import debugLogger from "../../debugLogging";
+import DebugLogger from "../../debugLogging";
 
 const BN = require('bn.js');
 const abiDecoder = require("abi-decoder");
@@ -164,7 +164,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 	const NULL_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
 	const GAS_OVER_ESTIMATE_MULTIPLIER = 1.25;
-	let Logger = new debugLogger(opts.debug);
+	let Logger = new DebugLogger(opts.debug);
 	
 
 	// AUX FUNCTIONS
