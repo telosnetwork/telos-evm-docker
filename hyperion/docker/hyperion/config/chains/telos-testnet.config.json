@@ -124,7 +124,8 @@
       "signer_key": "5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL",
       "contracts": {
         "main": "eosio.evm"
-      }
+      },
+      "debug": false
     }
   }
 }

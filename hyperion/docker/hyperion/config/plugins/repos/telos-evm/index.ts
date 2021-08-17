@@ -21,6 +21,7 @@ export interface TelosEvmConfig {
 		main: string;
 	}
 	chainId: number;
+	debug : boolean;
 }
 
 export default class TelosEvm extends HyperionPlugin {
