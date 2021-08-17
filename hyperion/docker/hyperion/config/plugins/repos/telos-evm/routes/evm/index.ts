@@ -390,7 +390,6 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	}
 
 	async function toBlockNumber(blockParam: string) {
-		Logger.log("toBlockNumber caleld with " + blockParam);
 		if (blockParam == "latest" || blockParam == "pending")
 			return await getCurrentBlockNumber();
 

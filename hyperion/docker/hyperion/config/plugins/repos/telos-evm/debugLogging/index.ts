@@ -1,4 +1,4 @@
-export default class debugLogger {
+export default class DebugLogger {
 
     loggingEnabled : boolean;
 
