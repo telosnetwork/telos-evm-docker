@@ -203,7 +203,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					size: 1,
 					query: {
 						bool: {
-							must: [{ term: { "@raw.hash": "0x" + _hash } }]
+							must: [{ term: { "@receipt.hash": "0x" + _hash } }]
 						}
 					}
 				}
@@ -215,6 +215,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		}
 	}
 
+	/*
 	async function searchDeltasByHash(trxHash: string): Promise<any> {
 		try {
 			let _hash = trxHash.toLowerCase();
@@ -238,6 +239,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			return null;
 		}
 	}
+	*/
 
 	function buildLogsObject(logs: any[], blHash: string, blNumber: string, txHash: string, txIndex: string): EthLog[] {
 		const _logs: EthLog[] = [];
@@ -698,14 +700,14 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		if (trxHash) {
 
 			// lookup receipt delta
-			const receiptDelta = await searchDeltasByHash(trxHash);
-			if (!receiptDelta) return null;
-			const receipt = receiptDelta['@evmReceipt'];
+			//const receiptDelta = await searchDeltasByHash(trxHash);
+			//if (!receiptDelta) return null;
+			//const receipt = receiptDelta['@evmReceipt'];
 
-			// lookup raw action
-			const rawAction = await searchActionByHash(trxHash);
-			if (!rawAction) return null;
-			const raw = rawAction['@raw'];
+			// lookup receipt action
+			const receiptAction = await searchActionByHash(trxHash);
+			if (!receiptAction) return null;
+			const receipt = receiptAction['@receipt'];
 
 			const _blockHash = '0x' + receipt['block_hash'];
 			const _blockNum = numToHex(receipt['block']);
@@ -724,18 +726,18 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				blockNumber: numToHex(receipt['block']),
 				contractAddress: toChecksumAddress(_contractAddr),
 				cumulativeGasUsed: _gas,
-				from: toChecksumAddress(raw['from']),
+				from: toChecksumAddress(receipt['from']),
 				gasUsed: _gas,
 				logsBloom: _logsBloom,
 				status: numToHex(receipt['status']),
-				to: toChecksumAddress(raw['to']),
-				transactionHash: raw['hash'],
+				to: toChecksumAddress(receipt['to']),
+				transactionHash: receipt['hash'],
 				transactionIndex: numToHex(receipt['trx_index']),
 				logs: buildLogsObject(
 					receipt['logs'],
 					_blockHash,
 					_blockNum,
-					raw['hash'],
+					receipt['hash'],
 					numToHex(receipt['trx_index'])
 				),
 				errors: receipt['errors'],
@@ -751,32 +753,32 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 */
 	methods.set('eth_getTransactionByHash', async ([trxHash]) => {
 		// lookup raw action
-		const rawAction = await searchActionByHash(trxHash);
-		if (!rawAction) return null;
-		const raw = rawAction['@raw'];
+		const receiptAction = await searchActionByHash(trxHash);
+		if (!receiptAction) return null;
+		const receipt = receiptAction['@receipt'];
 
 		// lookup receipt delta
-		const receiptDelta = await searchDeltasByHash(trxHash);
-		if (!receiptDelta) return null;
-		const receipt = receiptDelta['@evmReceipt'];
+		//const receiptDelta = await searchDeltasByHash(trxHash);
+		//if (!receiptDelta) return null;
+		//const receipt = receiptDelta['@evmReceipt'];
 
 		const _blockHash = '0x' + receipt['block_hash'];
 		const _blockNum = numToHex(receipt['block']);
 		return {
 			blockHash: _blockHash,
 			blockNumber: _blockNum,
-			from: toChecksumAddress(raw['from']),
-			gas: numToHex(raw.gas_limit),
-			gasPrice: numToHex(raw.gas_price),
-			hash: raw['hash'],
-			input: raw['input_data'],
-			nonce: numToHex(raw['nonce']),
-			// "r": "0x2a378831cf81d99a3f06a18ae1b6ca366817ab4d88a70053c41d7a8f0368e031",
-			// "s": "0x450d831a05b6e418724436c05c155e0a1b7b921015d0fbc2f667aed709ac4fb5",
-			to: toChecksumAddress(raw['to']),
+			from: toChecksumAddress(receipt['from']),
+			gas: numToHex(receipt.gas_limit),
+			gasPrice: numToHex(receipt.gas_price),
+			hash: receipt['hash'],
+			input: receipt['input_data'],
+			nonce: numToHex(receipt['nonce']),
+			to: toChecksumAddress(receipt['to']),
 			transactionIndex: numToHex(receipt['trx_index']),
-			// "v": "0x25",
-			value: numToHex(raw['value'])
+			value: numToHex(receipt['value']),
+			v: receipt['v'],
+			r: receipt['r'],
+			s: receipt['s'],
 		};
 	});
 
@@ -1058,9 +1060,11 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		if (trxHash) {
 
 			// lookup receipt delta
-			const receiptDelta = await searchDeltasByHash(trxHash);
-			if (!receiptDelta) return null;
-			const receipt = receiptDelta['@evmReceipt'];
+			//const receiptDelta = await searchDeltasByHash(trxHash);
+			//if (!receiptDelta) return null;
+			const receiptAction = await searchActionByHash(trxHash);
+			if (!receiptAction) return null;
+			const receipt = receiptAction['@receipt'];
 
 			// processing
 			const results = [];
