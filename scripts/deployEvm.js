@@ -19,7 +19,7 @@ const min_buy = 20000
 const fee_transfer_pct = 100
 
 // gwei * wei factor
-const byteprice = 102 * 1000000000
+const byteprice = 102
 
 const api = new EosEvmApi({
   endpoint: 'http://localhost:8888',
