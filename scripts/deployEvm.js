@@ -1,9 +1,25 @@
 const { EosEvmApi } = require('eos-evm-js')
-const { TelosEvmApi } = require("@telosnetwork/telosevm-js");
+const { TelosEvmApi } = require("../node_modules/@telosnetwork/telosevm-js/lib/cjs/telosevm-js.js");
 const fetch = require('node-fetch')
 
 const evmContractAccount = 'eosio.evm'
 const SYSTEM_SYMBOL = 'TLOS'
+
+// These numbers are based on 10k TLOS worth of ram being bought as the first ram purchase on line 75 of init_blockchain
+// plus a query of userres to see the value of ram_bytes, that table query:
+//    cleos get table eosio eosio.evm get table userres
+// 
+// If either of these variables, or the order in which RAM is purchased, or anything that could impact RAM supply/price changes, need to update these variables
+
+const start_bytes = 126941703
+const start_cost = "10000.0000 TLOS"
+
+const target_free = 100000000
+const min_buy = 20000
+const fee_transfer_pct = 100
+
+// gwei * wei factor
+const byteprice = 102 * 1000000000
 
 const api = new EosEvmApi({
   endpoint: 'http://localhost:8888',
@@ -43,13 +59,17 @@ async function main () {
   await api.eos.setupEvmContract(debugContract ? `/opt/eosio/bin/contracts/eosio.evm/debug` :`/opt/eosio/bin/contracts/eosio.evm`)
   // wait a couple seconds so hyperion can pick up the ABI
   await new Promise(r => setTimeout(r, 2000));
-  console.log(`Setting EVM config`)
+  console.log(`Initializing EVM contract`)
   const setGas = await telosApi.telos.transact([{
     account: 'eosio.evm',
-    name: 'setgas',
+    name: 'init',
     data: {
-        min_price: 100000000000,
-        min_cost: '0.0002 TLOS'
+      start_bytes,
+      start_cost,
+      target_free,
+      min_buy,
+      fee_transfer_pct,
+      byteprice
     },
     authorization: [{ actor: 'eosio.evm', permission: 'active' }]
 }])
@@ -68,6 +88,20 @@ async function main () {
       },
       authorization: [{ actor: 'evmuser1', permission: 'active' }]
   }])
+  const conf = await telosApi.telos.rpc.get_table_rows({
+      code: "eosio.evm",
+      scope: "eosio.evm",
+      table: "config",
+      json: true
+  });
+  console.log(`Conf table: ${JSON.stringify(conf.rows[0], null, 4)}`)
+  const res = await telosApi.telos.rpc.get_table_rows({
+      code: "eosio.evm",
+      scope: "eosio.evm",
+      table: "resources",
+      json: true
+  });
+  console.log(`Resources table: ${JSON.stringify(res.rows[0], null, 4)}`)
   console.log(`Getting sender address`)
   const sender = await telosApi.telos.getEthAccountByTelosAccount('evmuser1')
       // Address 0xf79b834a37f3143f4a73fc3934edac67fd3a01cd
