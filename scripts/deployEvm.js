@@ -19,7 +19,7 @@ const min_buy = 20000
 const fee_transfer_pct = 100
 
 // gwei * wei factor
-const byteprice = 102
+const gas_per_byte = 102
 
 const api = new EosEvmApi({
   endpoint: 'http://localhost:8888',
@@ -69,10 +69,10 @@ async function main () {
       target_free,
       min_buy,
       fee_transfer_pct,
-      byteprice
+      gas_per_byte
     },
     authorization: [{ actor: 'eosio.evm', permission: 'active' }]
-}])
+  }])
 
   console.log(`Creating EVM account`)
   const create = await telosApi.telos.create({ account: 'evmuser1', data: "foobar"});
