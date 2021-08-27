@@ -106,10 +106,8 @@ export class EvmService {
     this.transactions = [];
     this.transactions = transactions;
     for (const trx of this.transactions) {
-      if (trx.receipt) {
-        trx.evm_block = trx.receipt.block;
-        trx.evm_hash = trx.receipt.hash;
-      }
+      trx.evm_block = trx.block;
+      trx.evm_hash = trx.hash;
     }
     this.addressTransactions.data = this.transactions;
   }
