@@ -18,7 +18,7 @@ const target_free = 100000000
 const min_buy = 20000
 const fee_transfer_pct = 100
 
-// gwei * wei factor
+// from estimations, 102 wei collected per byte
 const gas_per_byte = 102
 
 const api = new EosEvmApi({
@@ -50,6 +50,8 @@ const telosApi = new TelosEvmApi({
       '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
     ],
   });
+
+  telosApi.setDebug(true);
 
 async function main () {
   // Deploy EVM contract to EOSIO (deploys to eosContract provided in new EosEvmApi)
