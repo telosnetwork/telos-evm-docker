@@ -319,7 +319,7 @@ export default class TelosEvm extends HyperionPlugin {
 			telosContract: this.pluginConfig.contracts.main,
 			telosPrivateKeys: [this.pluginConfig.signer_key]
 		}));
-		server.evm.setDebug(true);
+		server.evm.setDebug(this.pluginConfig.debug);
 		server.register(autoLoad, {
 			dir: join(__dirname, 'routes'),
 			dirNameRoutePrefix: false,

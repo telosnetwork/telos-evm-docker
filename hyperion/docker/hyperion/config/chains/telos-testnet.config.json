@@ -125,7 +125,7 @@
       "contracts": {
         "main": "eosio.evm"
       },
-      "debug": false
+      "debug": true
     }
   }
 }
