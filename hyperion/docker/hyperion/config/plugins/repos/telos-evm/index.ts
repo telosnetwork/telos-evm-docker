@@ -264,7 +264,7 @@ export default class TelosEvm extends HyperionPlugin {
 							txBody["r"] = tx.r?.toString();
 							txBody["s"] = tx.s?.toString();
 						} else {
-							txBody["from"] = '0x' + data.sender.toLowerCase();
+							txBody["from"] = '0x' + data.from.toLowerCase();
 							//txBody["v"] = null;
 							//txBody["r"] = null;
 							//txBody["s"] = null;

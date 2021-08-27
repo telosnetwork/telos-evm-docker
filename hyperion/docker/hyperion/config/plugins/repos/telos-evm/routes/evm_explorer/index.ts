@@ -36,8 +36,8 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				query: {
 					bool: {
 						should: [
-							{term: {"@raw.from": address}},
-							{term: {"@raw.to": address}}
+							{term: {"@receipt.from": address}},
+							{term: {"@receipt.to": address}}
 						]
 					}
 				}
@@ -50,57 +50,25 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
 			for (const hit of searchResults.body?.hits?.hits) {
 				const result = hit._source;
-				if (result['@raw']) {
-					const txHash: string = result['@raw']['hash'];
+				if (result['@receipt']) {
+					const txHash: string = result['@receipt']['hash'];
 
 					txHashes.push(txHash.slice(2));
 
-					if (result['@raw'].to === address) {
+					if (result['@receipt'].to === address) {
 						toCounter++;
 					}
 
-					if (result['@raw'].from === address) {
+					if (result['@receipt'].from === address) {
 						fromCounter++;
 					}
 
 					_transactions.push({
-						...result['@raw'],
+						...result['@receipt'],
 						trx_id: result['trx_id'],
 						block_num: result['block_num'],
 						'@timestamp': result['@timestamp']
 					});
-				}
-			}
-
-			const receiptsResults = await fastify.elastic.search({
-				index: `${fastify.manager.chain}-delta-*`,
-				body: {
-					size: 1000,
-					query: {
-						bool: {
-							must: [
-								{terms: {"@evmReceipt.hash": txHashes}}
-							]
-						}
-					}
-				}
-			});
-
-			if (receiptsResults.body && receiptsResults.body?.hits?.hits.length > 0) {
-
-				const receiptMap = new Map();
-
-				for (const hit of receiptsResults.body?.hits?.hits) {
-					const result = hit._source;
-					receiptMap.set('0x' + result['@evmReceipt']['hash'], result['@evmReceipt']);
-				}
-
-				for (const transaction of _transactions) {
-					if (receiptMap.has(transaction.hash)) {
-						transaction['receipt'] = receiptMap.get(transaction.hash);
-						delete transaction['receipt']['hash'];
-						delete transaction['receipt']['trxid'];
-					}
 				}
 			}
 

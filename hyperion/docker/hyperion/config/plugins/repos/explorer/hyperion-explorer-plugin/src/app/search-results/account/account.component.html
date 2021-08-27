@@ -377,7 +377,7 @@
 
                 <ng-container *ngIf="!isArray(item.value)">
                   <ng-container
-                    *ngIf=" action['act']['account'] === 'eosio.evm' && action['act']['name'] === 'raw'; else elseBlock">
+                    *ngIf=" action['act']['account'] === 'eosio.evm' && action['act']['name'] === 'receipt'; else elseBlock">
                     <div>
                       <span class="w-500">{{item.key}}</span>:
                       <span *ngIf="item.value" class="break-word">
