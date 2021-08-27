@@ -135,7 +135,7 @@
                     "type": "uint16"
                 },
                 {
-                    "name": "byteprice",
+                    "name": "gas_per_byte",
                     "type": "uint64"
                 }
             ]
@@ -262,7 +262,7 @@
                 },
                 {
                     "name": "block",
-                    "type": "uint32"
+                    "type": "uint64"
                 },
                 {
                     "name": "status",
@@ -307,7 +307,7 @@
             "base": "",
             "fields": [
                 {
-                    "name": "byte_price",
+                    "name": "gas_per_byte",
                     "type": "checksum256"
                 },
                 {
@@ -345,7 +345,7 @@
             "base": "",
             "fields": [
                 {
-                    "name": "byteprice",
+                    "name": "gas_per_byte",
                     "type": "uint64"
                 },
                 {
