@@ -13,6 +13,9 @@ const BN = require('bn.js');
 const createKeccakHash = require('keccak');
 const {TelosEvmApi} = require('@telosnetwork/telosevm-js');
 
+const RECEIPT_LOG_START = "RCPT{{";
+const RECEIPT_LOG_END = "}}RCPT";
+
 export interface TelosEvmConfig {
 	signer_account: string;
 	signer_permission: string;
@@ -27,6 +30,7 @@ export interface TelosEvmConfig {
 export default class TelosEvm extends HyperionPlugin {
 
 	hasApiRoutes = true;
+	debug = false;
 
 	actionHandlers = [];
 	deltaHandlers = [];
@@ -39,6 +43,7 @@ export default class TelosEvm extends HyperionPlugin {
 
 	constructor(config: TelosEvmConfig) {
 		super(config);
+		this.debug = config.debug
 		if (this.baseConfig) {
 			this.pluginConfig = this.baseConfig;
 			if (config.contracts?.main) {
@@ -165,7 +170,7 @@ export default class TelosEvm extends HyperionPlugin {
 
 		// eosio.evm::receipt
 		this.actionHandlers.push({
-			action: 'receipt',
+			action: 'raw',
 			// TODO: this contract account should come from the config?
 			contract: 'eosio.evm',
 			mappings: {
@@ -183,9 +188,9 @@ export default class TelosEvm extends HyperionPlugin {
 							"value": {"type": "keyword"},
 							"value_d": {"type": "double"},
 							"nonce": {"type": "long"},
-							"v": {"type": "long"},
-							"r": {"type": "long"},
-							"s": {"type": "long"},
+							"v": {"enabled": false},
+							"r": {"enabled": false},
+							"s": {"enabled": false},
 							"gas_price": {"type": "double"},
 							"gas_limit": {"type": "double"},
 							"status": {"type": "byte"},
@@ -226,12 +231,19 @@ export default class TelosEvm extends HyperionPlugin {
 			},
 			handler: (action: HyperionAction) => {
 				// attach action extras here
+				this.logDebug(JSON.stringify(action))
+
 				const data = action['act']['data'];
 				this.counter++;
 
+				let consoleLog = action.console
+				let receiptLog = consoleLog.slice(consoleLog.indexOf(RECEIPT_LOG_START) + RECEIPT_LOG_START.length, consoleLog.indexOf(RECEIPT_LOG_END))
+				let receipt = JSON.parse(receiptLog)
+				this.logDebug(`Receipt: ${JSON.stringify(receipt)}`)
+
 				// decode internal EVM tx
 				if (data.tx) {
-					const blockHex = (data.block as number).toString(16);
+					const blockHex = (receipt.block as number).toString(16);
 					const blockHash = createKeccakHash('keccak256').update(blockHex).digest('hex');
 					try {
 						const tx = Transaction.fromSerializedTx(Buffer.from(data.tx, 'hex'), {
@@ -240,8 +252,8 @@ export default class TelosEvm extends HyperionPlugin {
 						const txBody = {
 							trxid: 0,// TODO: action.trx_id.toLowerCase(),
 							hash: '0x' + tx.hash()?.toString('hex'),
-							trx_index: data.trx_index,
-							block: data.block,
+							trx_index: receipt.trx_index,
+							block: receipt.block,
 							block_hash: blockHash,
 							to: tx.to?.toString(),
 							input_data: '0x' + tx.data?.toString('hex'),
@@ -249,29 +261,30 @@ export default class TelosEvm extends HyperionPlugin {
 							nonce: tx.nonce?.toString(),
 							gas_price: tx.gasPrice?.toString(),
 							gas_limit: tx.gasLimit?.toString(),
-							status: data.status,
-							itxs: data.itxs	|| [],
-							epoch: data.epoch,
-							createdaddr: data.createdaddr.toLowerCase(),
-							gasused: parseInt('0x' + data.gasused),
-							gasusedblock: parseInt('0x' + data.gasusedblock),
-							output: data.output,
+							status: receipt.status,
+							itxs: JSON.parse(receipt.itxs),
+							epoch: receipt.epoch,
+							createdaddr: receipt.createdaddr.toLowerCase(),
+							gasused: parseInt('0x' + receipt.gasused),
+							gasusedblock: parseInt('0x' + receipt.gasusedblock),
+							output: receipt.output,
 						};
 
+						// TODO: In some cases the from is lead padded with 0's, clean this up: 0x000000000000000000000000d80744E16d62C62C5fa2A04B92dA3FE6b9Efb523
 						if (tx.isSigned()) {
 							txBody["from"] = tx.getSenderAddress().toString().toLowerCase();
-							txBody["v"] = tx.v?.toString();
-							txBody["r"] = tx.r?.toString();
-							txBody["s"] = tx.s?.toString();
+							txBody["v"] = tx.v;
+							txBody["r"] = tx.r;
+							txBody["s"] = tx.s;
 						} else {
-							txBody["from"] = '0x' + data.from.toLowerCase();
+							txBody["from"] = '0x' + data.sender;
 							//txBody["v"] = null;
 							//txBody["r"] = null;
 							//txBody["s"] = null;
 						}
 
 						if (data.logs) {
-							txBody['logs'] = JSON.parse(data.logs);
+							txBody['logs'] = JSON.parse(receipt.logs);
 							if (txBody['logs'].length === 0) {
 								delete txBody['logs'];
 							} else {
@@ -286,7 +299,7 @@ export default class TelosEvm extends HyperionPlugin {
 						}
 
 						if (data.errors) {
-							txBody['errors'] = JSON.parse(data.errors);
+							txBody['errors'] = JSON.parse(receipt.errors);
 							if (txBody['errors'].length === 0) {
 								delete txBody['errors'];
 							} else {
@@ -300,7 +313,11 @@ export default class TelosEvm extends HyperionPlugin {
 							txBody['value_d'] = tx.value / this.decimalsBN;
 						}
 						action['@receipt'] = txBody;
+
+						this.logDebug(`txBody: ${JSON.stringify(txBody)}`)
+						// TODO: don't delete data?  Or just store it differently so it shows up under eosio.evm account still
 						delete action['act']['data'];
+						delete action['console'];
 					} catch (e) {
 						console.log(e);
 						console.log(data);
@@ -325,5 +342,10 @@ export default class TelosEvm extends HyperionPlugin {
 			dirNameRoutePrefix: false,
 			options: this.pluginConfig
 		});
+	}
+
+	logDebug(msg: String): void {
+		if (this.debug)
+			console.log(msg);
 	}
 }
