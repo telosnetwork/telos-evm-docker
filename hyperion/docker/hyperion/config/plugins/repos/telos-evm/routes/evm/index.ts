@@ -7,6 +7,7 @@ const BN = require('bn.js');
 const abiDecoder = require("abi-decoder");
 const abi = require("ethereumjs-abi");
 const createKeccakHash = require('keccak')
+const GAS_PRICE_OVERESTIMATE = 1.25
 
 const REVERT_FUNCTION_SELECTOR = '0x08c379a0'
 const REVERT_PANIC_SELECTOR = '0x4e487b71'
@@ -170,6 +171,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	// AUX FUNCTIONS
 
 	function toChecksumAddress(address) {
+		Logger.log(`Making checksum address from: ${address}`)
 		if (!address)
 			return address
 
@@ -188,10 +190,12 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			}
 		}
 
+		Logger.log(`Making checksum address returning: ${address}`)
 		return ret
 	}
 
 	async function searchActionByHash(trxHash: string): Promise<any> {
+		Logger.log(`searching action by hash: ${trxHash}`)
 		try {
 			let _hash = trxHash.toLowerCase();
 			if (_hash.startsWith("0x")) {
@@ -208,6 +212,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					}
 				}
 			});
+			Logger.log(`searching action by hash: ${trxHash} got result: \n${JSON.stringify(results?.body)}`)
 			return results?.body?.hits?.hits[0]?._source;
 		} catch (e) {
 			console.log(e);
@@ -537,7 +542,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 */
 	methods.set('eth_gasPrice', async () => {
 		let price = await fastify.evm.telos.getGasPrice();
-		let priceInt = parseInt(price, 10);
+		let priceInt = parseInt(price, 10) * GAS_PRICE_OVERESTIMATE;
 		return isNaN(priceInt) ? null : "0x" + priceInt.toString(16);
 	});
 
@@ -709,6 +714,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			if (!receiptAction) return null;
 			const receipt = receiptAction['@receipt'];
 
+			Logger.log(`get transaction receipt got ${JSON.stringify(receipt)}`)
 			const _blockHash = '0x' + receipt['block_hash'];
 			const _blockNum = numToHex(receipt['block']);
 			const _gas = '0x' + (receipt['gasused'] as number).toString(16);

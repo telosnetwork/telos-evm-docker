@@ -34,7 +34,7 @@ cd $INSTALL_ROOT/hyperion/docker
 ./scripts/start.sh
 
 indexing_complete=false
-for i in $(seq 1 30); do
+for i in $(seq 1 50); do
     actions=$(curl -s http://127.0.0.1:7000/v2/history/get_actions?account=eosio.evm | jq -e '.actions | length')
     if [ ! -z "$actions" ] && [ $actions -ge 1 ]; then
         echo "Indexing complete!"

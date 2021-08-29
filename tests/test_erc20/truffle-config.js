@@ -17,7 +17,7 @@ module.exports = {
         '0xf051e068357022ee273e6924244007e09f0002ba3902d17e8eb6d2498d829d82'
       ], 'http://127.0.0.1:7000/evm'),
       gas: 10000000,
-      gasPrice: 120000000000,
+      gasPrice: 5000000000000,
       network_id: "41",
       //from: '0xf79b834a37f3143f4a73fc3934edac67fd3a01cd'
     },
