@@ -262,7 +262,7 @@ export default class TelosEvm extends HyperionPlugin {
 							gas_price: tx.gasPrice?.toString(),
 							gas_limit: tx.gasLimit?.toString(),
 							status: receipt.status,
-							itxs: JSON.parse(receipt.itxs),
+							itxs: receipt.itxs,
 							epoch: receipt.epoch,
 							createdaddr: receipt.createdaddr.toLowerCase(),
 							gasused: parseInt('0x' + receipt.gasused),
