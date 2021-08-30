@@ -11,7 +11,7 @@
 Inside the @openzeppelin test-helper package go to the send.js file and update the gas price such that
 
 ```function ether (from, to, value) {
-  return web3.eth.sendTransaction({ from, to, value, gasPrice: 120000000000 });
+  return web3.eth.sendTransaction({ from, to, value, gasPrice: 5000000000000 });
 }```
 
 ERC1820 contracts will fails since the raw signed transaction uses 100 gwei instead of 120 gwei,

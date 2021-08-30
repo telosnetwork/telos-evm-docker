@@ -31,7 +31,7 @@ contract("ERC20", (accounts) => {
     console.log(
       `Acc1 before: ${web3.utils.fromWei(balance1_before, "Ether")}`
     );
-    let gasPrice = "120000000000";
+    let gasPrice = "1000000000000";
     let gas = "21000";
     let gasWei = web3.utils.toBN(gasPrice).mul(
       web3.utils.toBN(gas)

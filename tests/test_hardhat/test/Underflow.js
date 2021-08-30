@@ -48,7 +48,7 @@ describe("Token contract", function () {
       console.log(
         `Acc0 before: ${web3.utils.fromWei(balance0_beforesend, "Ether")}`
       );
-      let gasPrice = "120000000000";
+      let gasPrice = "5000000000000";
       let gas = "21000";
       let gasWei = ethers.BigNumber.from(gasPrice).mul(
         ethers.BigNumber.from(gas)
@@ -71,7 +71,7 @@ describe("Token contract", function () {
             to: addr2.address,
             value: `${sendAmount}`,
             gas: 21000,
-            gasPrice: "120000000000",
+            gasPrice: "5000000000000",
           })
           .on("transactionHash", function (hash) {
             console.log(hash);
