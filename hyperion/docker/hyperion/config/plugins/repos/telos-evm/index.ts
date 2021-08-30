@@ -283,8 +283,8 @@ export default class TelosEvm extends HyperionPlugin {
 							//txBody["s"] = null;
 						}
 
-						if (data.logs) {
-							txBody['logs'] = JSON.parse(receipt.logs);
+						if (receipt.logs) {
+							txBody['logs'] = receipt.logs;
 							if (txBody['logs'].length === 0) {
 								delete txBody['logs'];
 							} else {
@@ -298,8 +298,8 @@ export default class TelosEvm extends HyperionPlugin {
 							}
 						}
 
-						if (data.errors) {
-							txBody['errors'] = JSON.parse(receipt.errors);
+						if (receipt.errors) {
+							txBody['errors'] = receipt.errors;
 							if (txBody['errors'].length === 0) {
 								delete txBody['errors'];
 							} else {
