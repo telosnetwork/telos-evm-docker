@@ -295,28 +295,22 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			if (!full) {
 				trxs.push('0x' + receipt['hash']);
 			} else {
-				const txRawAction = actions.find(a => {
-					return a._source['@raw']['hash'] === "0x" + receipt['hash']
+				trxs.push({
+					blockHash: blockHash,
+					blockNumber: blockHex,
+					from: toChecksumAddress(receipt['from']),
+					gas: receipt['gasused'],
+					gasPrice: "0x" + Number(receipt['gas_price']).toString(16),
+					hash: "0x" + receipt['hash'],
+					input: receipt['input_data'],
+					nonce: "0x" + Number(receipt['nonce']).toString(16),
+					to: toChecksumAddress(receipt['to']),
+					transactionIndex: "0x" + Number(receipt['trx_index']).toString(16),
+					value: "0x0"
 				});
-				if (txRawAction) {
-					const rawAction = txRawAction._source['@raw']
-					trxs.push({
-						blockHash: blockHash,
-						blockNumber: blockHex,
-						from: toChecksumAddress(rawAction['from']),
-						gas: receipt['gasused'],
-						gasPrice: "0x" + Number(rawAction['gas_price']).toString(16),
-						hash: "0x" + receipt['hash'],
-						input: rawAction['input_data'],
-						nonce: "0x" + Number(rawAction['nonce']).toString(16),
-						to: toChecksumAddress(rawAction['to']),
-						transactionIndex: "0x" + Number(receipt['trx_index']).toString(16),
-						value: "0x0"
-					});
-				}
 			}
 		}
-		// TODO: this better, receipt.epoch is what we want
+		// TODO: this better, receipt.epoch is what we want, but if we got this far we don't have any transactions to pull from
 
 		if (!timestamp)
 			timestamp = new Date().getTime() / 1000 | 0
@@ -330,7 +324,9 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		return {
 			difficulty: "0x0",
 			extraData: NULL_HASH,
+			// TODO: Accumulate the gas limit for this
 			gasLimit: "0x989680",
+			// TODO: Use the greatest of receipts gasusedblock for this
 			gasUsed: "0x989680",
 			hash: blockHash,
 			logsBloom: logsBloom,
@@ -888,6 +884,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
 		// search
 		try {
+			Logger.log(`About to run logs query with queryBody: ${queryBody}`)
 			const searchResults = await fastify.elastic.search({
 				index: `${fastify.manager.chain}-action-*`,
 				size: 1000,
@@ -897,6 +894,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				}
 			});
 
+			Logger.log(`Logs query result: ${searchResults}`)
 			// processing
 			const results = [];
 			let logCount = 0;
