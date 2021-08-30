@@ -884,7 +884,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
 		// search
 		try {
-			Logger.log(`About to run logs query with queryBody: ${queryBody}`)
+			Logger.log(`About to run logs query with queryBody: ${JSON.stringify(queryBody)}`)
 			const searchResults = await fastify.elastic.search({
 				index: `${fastify.manager.chain}-action-*`,
 				size: 1000,
@@ -894,7 +894,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				}
 			});
 
-			Logger.log(`Logs query result: ${searchResults}`)
+			Logger.log(`Logs query result: ${JSON.stringify(searchResults)}`)
 			// processing
 			const results = [];
 			let logCount = 0;
