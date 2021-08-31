@@ -27,6 +27,28 @@ export interface TelosEvmConfig {
 	debug : boolean;
 }
 
+function toChecksumAddress(address: String) {
+	if (!address)
+		return address
+
+	address = address.toLowerCase().replace('0x', '')
+	if (address.length != 40)
+		address = address.padStart(40, "0");
+
+	let hash = createKeccakHash('keccak256').update(address).digest('hex')
+	let ret = '0x'
+
+	for (var i = 0; i < address.length; i++) {
+		if (parseInt(hash[i], 16) >= 8) {
+			ret += address[i].toUpperCase()
+		} else {
+			ret += address[i]
+		}
+	}
+
+	return ret
+}
+
 export default class TelosEvm extends HyperionPlugin {
 
 	hasApiRoutes = true;
@@ -177,7 +199,6 @@ export default class TelosEvm extends HyperionPlugin {
 				action: {
 					"@receipt": {
 						"properties": {
-							"trxid": {"type": "keyword"},
 							"hash": {"type": "keyword"},
 							"trx_index": {"type": "long"},
 							"block": {"type": "long"},
@@ -196,6 +217,8 @@ export default class TelosEvm extends HyperionPlugin {
 							"status": {"type": "byte"},
 							"epoch": {"type": "long"},
 							"createdaddr": {"type": "keyword"},
+							// TODO: Long vs Double on the gasprice/limit/used
+							"charged_gas_price": {"type": "double"},
 							"gasused": {"type": "long"},
 							"gasusedblock": {"type": "long"},
 							"logs": {
@@ -250,7 +273,6 @@ export default class TelosEvm extends HyperionPlugin {
 							common: this.common,
 						});
 						const txBody = {
-							trxid: 0,// TODO: action.trx_id.toLowerCase(),
 							hash: '0x' + tx.hash()?.toString('hex'),
 							trx_index: receipt.trx_index,
 							block: receipt.block,
@@ -267,6 +289,7 @@ export default class TelosEvm extends HyperionPlugin {
 							createdaddr: receipt.createdaddr.toLowerCase(),
 							gasused: parseInt('0x' + receipt.gasused),
 							gasusedblock: parseInt('0x' + receipt.gasusedblock),
+							charged_gas_price: parseInt('0x' + receipt.charged_gas),
 							output: receipt.output,
 						};
 
@@ -277,7 +300,7 @@ export default class TelosEvm extends HyperionPlugin {
 							txBody["r"] = tx.r;
 							txBody["s"] = tx.s;
 						} else {
-							txBody["from"] = '0x' + data.sender;
+							txBody["from"] = toChecksumAddress(data.sender).toLowerCase();
 							//txBody["v"] = null;
 							//txBody["r"] = null;
 							//txBody["s"] = null;
@@ -316,7 +339,7 @@ export default class TelosEvm extends HyperionPlugin {
 
 						this.logDebug(`txBody: ${JSON.stringify(txBody)}`)
 						// TODO: don't delete data?  Or just store it differently so it shows up under eosio.evm account still
-						delete action['act']['data'];
+						//delete action['act']['data'];
 						delete action['console'];
 					} catch (e) {
 						console.log(e);

@@ -15,25 +15,27 @@ async function getContract(fastify: FastifyInstance, request: FastifyRequest) {
 	};
 
 	const results = await fastify.elastic.search({
-		"index": fastify.manager.chain + '-delta-*',
+		"index": fastify.manager.chain + '-action-*',
 		"body": {
 			size: 1,
 			query: {
 				bool: {
-					must: [{term: {"@evmReceipt.createdaddr": contract}}]
+					must: [{term: {"@receipt.createdaddr": contract}}]
 				}
 			}
 		}
 	});
 
 	if (results['body']['hits']['hits'].length === 1) {
-		const result = results['body']['hits']['hits'][0]._source['@evmReceipt'];
+		const result = results['body']['hits']['hits'][0]._source['@receipt'];
 		response.creation_trx = `0x${result.hash}`;
+		response.creator = result.from;
 		response.block_num = result.block;
-		// TODO: pull the rest of the values and populate them here, likely after the index refactor where it will already be here
+		response.timestamp = result.epoch;
+		// TODO: figure out how to get abi in here after the fact... pulling from sourcify.dev
 		return response;
 	} else {
-		// TODO: maybe lookup if this is even a contract?
+		// TODO: maybe lookup if this is even a contract by checking the account table for code?
 		throw new Error("contract deployment not found");
 	}
 }

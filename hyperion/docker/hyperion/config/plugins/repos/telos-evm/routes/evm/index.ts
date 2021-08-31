@@ -171,7 +171,6 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	// AUX FUNCTIONS
 
 	function toChecksumAddress(address) {
-		Logger.log(`Making checksum address from: ${address}`)
 		if (!address)
 			return address
 
@@ -190,7 +189,6 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			}
 		}
 
-		Logger.log(`Making checksum address returning: ${address}`)
 		return ret
 	}
 
@@ -272,6 +270,8 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		let actions = [];
 		let blockHash;
 		let blockHex: string;
+		let gasLimit = 0;
+		let gasUsedBlock = 0;
 		let timestamp: number;
 		let logsBloom: any = null;
 		let bloom = new Bloom();
@@ -279,6 +279,13 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		Logger.log(`Reconstructing block from receipts: ${JSON.stringify(receipts)}`)	
 		for (const receiptDoc of receipts) {
 			const receipt = receiptDoc._source['@receipt'];
+
+			gasLimit += receipt["gas_limit"];
+
+			let trxGasUsedBlock = receipt["gasusedblock"];
+			if (trxGasUsedBlock > gasUsedBlock) {
+				gasUsedBlock = trxGasUsedBlock;
+			}
 			if (!blockHash) {
 				blockHash = '0x' + receipt['block_hash'];
 			}
@@ -324,10 +331,8 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		return {
 			difficulty: "0x0",
 			extraData: NULL_HASH,
-			// TODO: Accumulate the gas limit for this
-			gasLimit: "0x989680",
-			// TODO: Use the greatest of receipts gasusedblock for this
-			gasUsed: "0x989680",
+			gasLimit: numToHex(gasLimit),
+			gasUsed: gasUsedBlock,
 			hash: blockHash,
 			logsBloom: logsBloom,
 			miner: ZERO_ADDR,
