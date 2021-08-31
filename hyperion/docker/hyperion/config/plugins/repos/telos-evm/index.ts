@@ -293,7 +293,6 @@ export default class TelosEvm extends HyperionPlugin {
 							output: receipt.output,
 						};
 
-						// TODO: In some cases the from is lead padded with 0's, clean this up: 0x000000000000000000000000d80744E16d62C62C5fa2A04B92dA3FE6b9Efb523
 						if (tx.isSigned()) {
 							txBody["from"] = tx.getSenderAddress().toString().toLowerCase();
 							txBody["v"] = tx.v;
