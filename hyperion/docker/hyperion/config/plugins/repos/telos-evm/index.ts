@@ -245,7 +245,7 @@ export default class TelosEvm extends HyperionPlugin {
 									"traceAddress": {"type": "long"},
 									"type": { "type": "text" },
 									"depth": { "type": "text" },
-									"extra": {"type" : "text"}
+									"extra": {"type" : "object", "enabled": false}
 								}
 							},
 						}
