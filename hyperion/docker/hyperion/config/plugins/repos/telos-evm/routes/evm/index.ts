@@ -300,7 +300,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				logsBloom = "0x" + bloom.bitvector.toString("hex");
 			}
 			if (!full) {
-				trxs.push('0x' + receipt['hash']);
+				trxs.push(receipt['hash']);
 			} else {
 				trxs.push({
 					blockHash: blockHash,
@@ -308,7 +308,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					from: toChecksumAddress(receipt['from']),
 					gas: receipt['gasused'],
 					gasPrice: "0x" + Number(receipt['gas_price']).toString(16),
-					hash: "0x" + receipt['hash'],
+					hash: receipt['hash'],
 					input: receipt['input_data'],
 					nonce: "0x" + Number(receipt['nonce']).toString(16),
 					to: toChecksumAddress(receipt['to']),
@@ -1079,7 +1079,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 						},
 						subtraces: itx.subtraces,
 						traceAddress: itx.traceAddress,
-						transactionHash: '0x' + receipt['hash'],
+						transactionHash: receipt['hash'],
 						transactionPosition: receipt['trx_index'],
 						type: itx.type});
 					logCount++;
