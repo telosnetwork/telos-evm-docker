@@ -87,10 +87,10 @@
 
         <div *ngIf="txData.error"><strong>Error:</strong> {{txData.error}}</div>
 
-        <div><strong>Logs:</strong> {{txData.logs | json}}</div>
-
-        <div><strong>Trace:</strong> {{txData.trace | json}}</div>
-
+        <div><strong>Logs:</strong></div>
+        <ngx-json-viewer [json]="txData.logs" [expanded]="false"></ngx-json-viewer>
+        <div><strong>Trace:</strong></div>
+        <ngx-json-viewer [json]="txData.trace" [expanded]="false"></ngx-json-viewer>
       </div>
     </mat-card>
   </div>

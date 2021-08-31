@@ -36,7 +36,7 @@ export class EvmTransactionComponent implements OnInit, OnDestroy {
     gas_used: '',
     nonce: 0,
     input_data: '',
-    logs: '',
+    logs: [],
     errors: '',
     status: '',
     trace: []
@@ -57,6 +57,7 @@ export class EvmTransactionComponent implements OnInit, OnDestroy {
       this.txHash = routeParams.hash;
       const [hash, receipt, trace] = await Promise.all([this.evm.getTransactionByHash(this.txHash), this.evm.getTransactionReceipt(this.txHash), this.evm.traceTransaction(this.txHash)]);
       const txData = Object.assign(hash, receipt, { trace });
+      console.log({txData});
       this.txData.block = parseInt(txData.blockNumber, 16);
       this.txData.from = txData.from;
       this.txData.timestamp = txData.timestamp || Date.now();
@@ -70,7 +71,7 @@ export class EvmTransactionComponent implements OnInit, OnDestroy {
       this.txData.error = this.evm.getErrorFromOutput(txData.output);
       this.txData.status = txData.status;
       this.txData.output = txData.output;
-      this.txData.trace = txData.trace
+      this.txData.trace = txData.trace;
       await this.accountService.checkIrreversibility();
     }));
   }
