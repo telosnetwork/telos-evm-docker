@@ -313,7 +313,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					nonce: "0x" + Number(receipt['nonce']).toString(16),
 					to: toChecksumAddress(receipt['to']),
 					transactionIndex: "0x" + Number(receipt['trx_index']).toString(16),
-					value: "0x0"
+					value: "0x" + Number(receipt['value']).toString(16)
 				});
 			}
 		}
