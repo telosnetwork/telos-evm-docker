@@ -59,12 +59,12 @@ export class EvmService {
     return await this.callRpcMethod('eth_getTransactionByHash', [hash.toLowerCase()]);
   }
 
-  async getBlockByNumber(blockNumber: string): Promise<any> {
-    return await this.callRpcMethod('eth_getBlockByNumber', [blockNumber.toLowerCase()]);
+  async getBlockByNumber(blockNumber: string, full: boolean): Promise<any> {
+    return await this.callRpcMethod('eth_getBlockByNumber', [blockNumber.toLowerCase(), full]);
   }
 
-  async getBlockByHash(hash: string): Promise<any> {
-    return await this.callRpcMethod('eth_getBlockByHash', [hash.toLowerCase()]);
+  async getBlockByHash(hash: string, full: boolean): Promise<any> {
+    return await this.callRpcMethod('eth_getBlockByHash', [hash.toLowerCase(), full]);
   }
 
   async traceTransaction(hash: string): Promise<any> {
@@ -94,8 +94,8 @@ export class EvmService {
   }
 
   async loadBlock(blockNumber: any): Promise<any> {
-    const blockData = await this.getBlockByNumber('0x' + Number(blockNumber).toString(16));
-    this.blockTransactions.data = await this.getTransactions(blockData.transactions);
+    const blockData = await this.getBlockByNumber('0x' + Number(blockNumber).toString(16), true);
+    this.blockTransactions.data = blockData.transactions;
   }
 
   async loadMoreTransactions(address: string): Promise<void> {
@@ -110,17 +110,6 @@ export class EvmService {
       trx.evm_hash = trx.hash;
     }
     this.addressTransactions.data = this.transactions;
-  }
-
-  async getTransactions(hashes: string[]): Promise<any> {
-    try {
-      return await this.http.post(this.server + '/evm_explorer/get_transactions', {
-        tx_hashes: hashes
-      }).toPromise() as any;
-    } catch (e) {
-      console.log(e);
-      return [];
-    }
   }
 
   getErrorFromOutput(output: string): string {
