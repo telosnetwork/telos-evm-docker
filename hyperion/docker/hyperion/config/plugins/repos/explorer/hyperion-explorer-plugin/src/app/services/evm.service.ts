@@ -95,6 +95,9 @@ export class EvmService {
 
   async loadBlock(blockNumber: any): Promise<any> {
     const blockData = await this.getBlockByNumber('0x' + Number(blockNumber).toString(16), true);
+    blockData.transactions.forEach((trx) => {
+      trx.val_formatted = `${(parseInt(trx.value, 16) / 1000000000000000000 ).toFixed(4)} TLOS`
+    })
     this.blockTransactions.data = blockData.transactions;
   }
 
@@ -108,6 +111,7 @@ export class EvmService {
     for (const trx of this.transactions) {
       trx.evm_block = trx.block;
       trx.evm_hash = trx.hash;
+      trx.val_formatted = `${parseInt(trx.value_d).toFixed(4)} TLOS`
     }
     this.addressTransactions.data = this.transactions;
   }
