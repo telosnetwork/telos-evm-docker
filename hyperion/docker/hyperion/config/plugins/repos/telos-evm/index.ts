@@ -197,7 +197,7 @@ export default class TelosEvm extends HyperionPlugin {
 			contract: 'eosio.evm',
 			mappings: {
 				action: {
-					"@receipt": {
+					"@raw": {
 						"properties": {
 							"hash": {"type": "keyword"},
 							"trx_index": {"type": "long"},
@@ -334,7 +334,7 @@ export default class TelosEvm extends HyperionPlugin {
 							// @ts-ignore
 							txBody['value_d'] = tx.value / this.decimalsBN;
 						}
-						action['@receipt'] = txBody;
+						action['@raw'] = txBody;
 
 						this.logDebug(`txBody: ${JSON.stringify(txBody)}`)
 						// TODO: don't delete data?  Or just store it differently so it shows up under eosio.evm account still

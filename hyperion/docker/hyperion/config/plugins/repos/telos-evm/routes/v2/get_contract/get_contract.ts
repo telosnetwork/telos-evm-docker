@@ -20,14 +20,14 @@ async function getContract(fastify: FastifyInstance, request: FastifyRequest) {
 			size: 1,
 			query: {
 				bool: {
-					must: [{term: {"@receipt.createdaddr": contract}}]
+					must: [{term: {"@raw.createdaddr": contract}}]
 				}
 			}
 		}
 	});
 
 	if (results['body']['hits']['hits'].length === 1) {
-		const result = results['body']['hits']['hits'][0]._source['@receipt'];
+		const result = results['body']['hits']['hits'][0]._source['@raw'];
 		response.creation_trx = `0x${result.hash}`;
 		response.creator = result.from;
 		response.block_num = result.block;

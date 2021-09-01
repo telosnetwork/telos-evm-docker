@@ -335,7 +335,7 @@ export class AccountComponent implements OnInit, OnDestroy {
   }
 
   isArray(value: any): boolean {
-    return typeof value === 'object' && value.length > 0;
+    return value !== null && typeof value === 'object' && value.length > 0;
   }
 
   getType(subitem: any): string {
