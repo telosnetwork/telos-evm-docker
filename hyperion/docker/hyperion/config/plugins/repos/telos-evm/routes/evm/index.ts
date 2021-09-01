@@ -525,7 +525,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	methods.set('eth_gasPrice', async () => {
 		let price = await fastify.evm.telos.getGasPrice();
 		let priceInt = parseInt(price, 16) * GAS_PRICE_OVERESTIMATE;
-		return isNaN(priceInt) ? null : "0x" + priceInt.toString(16);
+		return isNaN(priceInt) ? null : "0x" + Math.floor(priceInt).toString(16);
 	});
 
 	/**
