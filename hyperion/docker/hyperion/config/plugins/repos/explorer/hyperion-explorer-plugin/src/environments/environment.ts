@@ -4,8 +4,8 @@
 
 export const environment = {
   production: false,
-  eosioNodeUrl: 'https://telos-evm-test.hyperion.eosrio.io:8443',
-  hyperionApiUrl: 'https://telos-evm-test.hyperion.eosrio.io:8443',
+  eosioNodeUrl: 'http://192.168.0.20:8888',
+  hyperionApiUrl: 'http://192.168.0.20:7000',
   systemContract: 'eosio',
   userResourcesTable: 'userres'
 };

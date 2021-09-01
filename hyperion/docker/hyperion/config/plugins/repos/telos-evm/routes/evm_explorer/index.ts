@@ -36,8 +36,8 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				query: {
 					bool: {
 						should: [
-							{term: {"@receipt.from": address}},
-							{term: {"@receipt.to": address}}
+							{term: {"@raw.from": address}},
+							{term: {"@raw.to": address}}
 						]
 					}
 				}
@@ -50,21 +50,21 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
 			for (const hit of searchResults.body?.hits?.hits) {
 				const result = hit._source;
-				if (result['@receipt']) {
-					const txHash: string = result['@receipt']['hash'];
+				if (result['@raw']) {
+					const txHash: string = result['@raw']['hash'];
 
 					txHashes.push(txHash.slice(2));
 
-					if (result['@receipt'].to === address) {
+					if (result['@raw'].to === address) {
 						toCounter++;
 					}
 
-					if (result['@receipt'].from === address) {
+					if (result['@raw'].from === address) {
 						fromCounter++;
 					}
 
 					_transactions.push({
-						...result['@receipt'],
+						...result['@raw'],
 						trx_id: result['trx_id'],
 						block_num: result['block_num'],
 						'@timestamp': result['@timestamp']

@@ -205,7 +205,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					size: 1,
 					query: {
 						bool: {
-							must: [{ term: { "@receipt.hash": "0x" + _hash } }]
+							must: [{ term: { "@raw.hash": "0x" + _hash } }]
 						}
 					}
 				}
@@ -278,7 +278,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		const trxs = [];
 		Logger.log(`Reconstructing block from receipts: ${JSON.stringify(receipts)}`)	
 		for (const receiptDoc of receipts) {
-			const receipt = receiptDoc._source['@receipt'];
+			const receipt = receiptDoc._source['@raw'];
 
 			gasLimit += receipt["gas_limit"];
 
@@ -694,7 +694,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			// lookup receipt action
 			const receiptAction = await searchActionByHash(trxHash);
 			if (!receiptAction) return null;
-			const receipt = receiptAction['@receipt'];
+			const receipt = receiptAction['@raw'];
 
 			Logger.log(`get transaction receipt got ${JSON.stringify(receipt)}`)
 			const _blockHash = '0x' + receipt['block_hash'];
@@ -743,7 +743,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		// lookup raw action
 		const receiptAction = await searchActionByHash(trxHash);
 		if (!receiptAction) return null;
-		const receipt = receiptAction['@receipt'];
+		const receipt = receiptAction['@raw'];
 
 		// lookup receipt delta
 		//const receiptDelta = await searchDeltasByHash(trxHash);
@@ -775,7 +775,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 */
 	methods.set('eth_getBlockByNumber', async ([block, full]) => {
 		const blockNumber = parseInt(await toBlockNumber(block), 16);
-		const receipts = await getReceiptsByTerm("@receipt.block", blockNumber);
+		const receipts = await getReceiptsByTerm("@raw.block", blockNumber);
 		return await reconstructBlockFromReceipts(blockNumber.toString(16), receipts, full);
 	});
 
@@ -787,7 +787,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		if (_hash.startsWith("0x")) {
 			_hash = _hash.slice(2);
 		}
-		const receipts = await getReceiptsByTerm("@receipt.block_hash", _hash);
+		const receipts = await getReceiptsByTerm("@raw.block_hash", _hash);
 		return await reconstructBlockFromReceipts(_hash, receipts, full);
 	});
 
@@ -800,7 +800,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		if (_hash.startsWith("0x")) {
 			_hash = _hash.slice(2);
 		}
-		const receipts = await getReceiptsByTerm("@receipt.block_hash", _hash);
+		const receipts = await getReceiptsByTerm("@raw.block_hash", _hash);
 		const txCount: number = receipts.length;
 		return '0x' + txCount.toString(16);
 	});
@@ -811,7 +811,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 */
 	methods.set('eth_getBlockTransactionCountByNumber', async ([block]) => {
 		const blockNumber = parseInt(block, 16);
-		const receipts = await getReceiptsByTerm("@receipt.block", blockNumber);
+		const receipts = await getReceiptsByTerm("@raw.block", blockNumber);
 		const txCount: number = receipts.length;
 		return '0x' + txCount.toString(16);
 	});
@@ -842,7 +842,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		const queryBody: any = {
 			bool: {
 				must: [
-					{ exists: { field: "@receipt.logs" } }
+					{ exists: { field: "@raw.logs" } }
 				]
 			}
 		};
@@ -851,18 +851,18 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			if (fromBlock || toBlock) {
 				throw new Error('fromBlock/toBlock are not allowed with blockHash query');
 			}
-			queryBody.bool.must.push({ term: { "@receipt.block_hash": blockHash } })
+			queryBody.bool.must.push({ term: { "@raw.block_hash": blockHash } })
 		}
 
 		if (fromBlock || toBlock) {
-			const rangeObj = { range: { "@receipt.block": {} } };
+			const rangeObj = { range: { "@raw.block": {} } };
 			if (fromBlock) {
 				// console.log(`getLogs using fromBlock: ${fromBlock}`);
-				rangeObj.range["@receipt.block"]['gte'] = fromBlock;
+				rangeObj.range["@raw.block"]['gte'] = fromBlock;
 			}
 			if (toBlock) {
 				// console.log(`getLogs using toBlock: ${toBlock}`);
-				rangeObj.range["@receipt.block"]['lte'] = toBlock;
+				rangeObj.range["@raw.block"]['lte'] = toBlock;
 			}
 			queryBody.bool.must.push(rangeObj);
 		}
@@ -873,14 +873,14 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				address = address.slice(2);
 			}
 			// console.log(`getLogs using address: ${address}`);
-			queryBody.bool.must.push({ term: { "@receipt.logs.address": address } })
+			queryBody.bool.must.push({ term: { "@raw.logs.address": address } })
 		}
 
 		if (topics && topics.length > 0) {
 			// console.log(`getLogs using topics:\n${topics}`);
 			queryBody.bool.must.push({
 				terms: {
-					"@receipt.logs.topics": topics.map(topic => {
+					"@raw.logs.topics": topics.map(topic => {
 						return topic.startsWith('0x') ? topic.slice(2).toLowerCase() : topic.toLowerCase();
 					})
 				}
@@ -895,7 +895,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				size: 1000,
 				body: {
 					query: queryBody,
-					sort: [{ "@receipt.trx_index": { order: "asc" } }]
+					sort: [{ "@raw.trx_index": { order: "asc" } }]
 				}
 			});
 
@@ -905,18 +905,18 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			let logCount = 0;
 			for (const hit of searchResults.body.hits.hits) {
 				const doc = hit._source;
-				if (doc['@receipt'] && doc['@receipt']['logs']) {
-					for (const log of doc['@receipt']['logs']) {
+				if (doc['@raw'] && doc['@raw']['logs']) {
+					for (const log of doc['@raw']['logs']) {
 						results.push({
 							address: '0x' + log.address,
-							blockHash: '0x' + doc['@receipt']['block_hash'],
-							blockNumber: numToHex(doc['@receipt']['block']),
+							blockHash: '0x' + doc['@raw']['block_hash'],
+							blockNumber: numToHex(doc['@raw']['block']),
 							data: '0x' + log.data,
 							logIndex: numToHex(logCount),
 							removed: false,
 							topics: log.topics.map(t => '0x' + t),
-							transactionHash: doc['@receipt']['hash'],
-							transactionIndex: numToHex(doc['@receipt']['trx_index'])
+							transactionHash: doc['@raw']['hash'],
+							transactionIndex: numToHex(doc['@raw']['trx_index'])
 						});
 						logCount++;
 					}
@@ -959,34 +959,34 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			const queryBody: any = {
 				bool: {
 					must: [
-						{ exists: { field: "@receipt.itxs" } }
+						{ exists: { field: "@raw.itxs" } }
 					]
 				}
 			};
 
 			if (fromBlock || toBlock) {
-				const rangeObj = { range: { "@receipt.block": {} } };
+				const rangeObj = { range: { "@raw.block": {} } };
 				if (fromBlock) {
 					// console.log(`getLogs using toBlock: ${toBlock}`);
-					rangeObj.range["@receipt.block"]['gte'] = fromBlock;
+					rangeObj.range["@raw.block"]['gte'] = fromBlock;
 				}
 				if (toBlock) {
 					// console.log(`getLogs using fromBlock: ${params.fromBlock}`);
-					rangeObj.range["@receipt.block"]['lte'] = toBlock;
+					rangeObj.range["@raw.block"]['lte'] = toBlock;
 				}
 				queryBody.bool.must.push(rangeObj);
 			}
 			
 			if (fromAddress) {
 				// console.log(fromAddress);
-				const matchFrom = { terms: { "@receipt.itxs.from": {} } };
-				matchFrom.terms["@receipt.itxs.from"] = fromAddress;
+				const matchFrom = { terms: { "@raw.itxs.from": {} } };
+				matchFrom.terms["@raw.itxs.from"] = fromAddress;
 				queryBody.bool.must.push(matchFrom);
 			}
 			if (toAddress) {
 				// console.log(toAddress);
-				const matchTo = { terms: { "@receipt.itxs.to": {} } };
-				matchTo.terms["@receipt.itxs.to"] = toAddress;
+				const matchTo = { terms: { "@raw.itxs.to": {} } };
+				matchTo.terms["@raw.itxs.to"] = toAddress;
 				queryBody.bool.must.push(matchTo);
 			}
 
@@ -997,7 +997,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					size: count,
 					body: {
 						query: queryBody,
-						sort: [{ "@receipt.trx_index": { order: "asc" } }]
+						sort: [{ "@raw.trx_index": { order: "asc" } }]
 					}
 				});
 
@@ -1005,8 +1005,8 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				let logCount = 0;
 				for (const hit of searchResults.body.hits.hits) {
 					const doc = hit._source;
-					if (doc['@receipt'] && doc['@receipt']['itxs']) {
-						for (const itx of doc['@receipt']['itxs']) {
+					if (doc['@raw'] && doc['@raw']['itxs']) {
+						for (const itx of doc['@raw']['itxs']) {
 							results.push({
 								action: {
 									callType: toOpname(itx.callType),
@@ -1017,16 +1017,16 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 									to: toChecksumAddress(itx.to),
 									value: '0x' + itx.value
 								},
-								blockHash: '0x' + doc['@receipt']['block_hash'],
-								blockNumber: doc['@receipt']['block'],
+								blockHash: '0x' + doc['@raw']['block_hash'],
+								blockNumber: doc['@raw']['block'],
 								result: {
 									gasUsed: '0x' + itx.gasUsed,
 									output: '0x' + itx.output,
 								},
 								subtraces: itx.subtraces,
 								traceAddress: itx.traceAddress,
-								transactionHash: '0x' + doc['@receipt']['hash'],
-								transactionPosition: doc['@receipt']['trx_index'],
+								transactionHash: '0x' + doc['@raw']['hash'],
+								transactionPosition: doc['@raw']['trx_index'],
 								type: itx.type});
 							logCount++;
 						}
@@ -1054,7 +1054,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			//if (!receiptDelta) return null;
 			const receiptAction = await searchActionByHash(trxHash);
 			if (!receiptAction) return null;
-			const receipt = receiptAction['@receipt'];
+			const receipt = receiptAction['@raw'];
 
 			// processing
 			const results = [];
