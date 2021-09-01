@@ -82,7 +82,7 @@
         <ng-container matColumnDef="nativeValue">
           <th mat-header-cell *matHeaderCellDef [ngStyle.gt-xs]="{'min-width': '100px'}">Value</th>
           <td mat-cell *matCellDef="let trx" data-label="Value">
-            {{trx['value_d']}}
+            {{(parseInt(trx['value'], 16) / 1000000000000000000).toFixed(4)}} TLOS
           </td>
         </ng-container>
 

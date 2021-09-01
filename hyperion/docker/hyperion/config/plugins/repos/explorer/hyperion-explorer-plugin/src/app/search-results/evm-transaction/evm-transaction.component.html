@@ -62,7 +62,7 @@
           <a class="link-blue break-word monospace" [routerLink]="['/evm/address', txData.from]">{{txData.from}}</a>
         </div>
 
-        <div><strong>Value:</strong> {{txData.value}}</div>
+        <div><strong>Value:</strong> {{(parseInt(txData.value, 16)).toFixed(4)}} TLOS</div>
 
         <div><strong>Gas Price:</strong> {{txData.gas_price}}</div>
 
