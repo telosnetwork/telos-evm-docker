@@ -9,6 +9,9 @@ const abi = require("ethereumjs-abi");
 const createKeccakHash = require('keccak')
 const GAS_PRICE_OVERESTIMATE = 1.25
 
+const RECEIPT_LOG_START = "RCPT{{";
+const RECEIPT_LOG_END = "}}RCPT";
+
 const REVERT_FUNCTION_SELECTOR = '0x08c379a0'
 const REVERT_PANIC_SELECTOR = '0x4e487b71'
 
@@ -613,24 +616,18 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 */
 	methods.set('eth_sendRawTransaction', async ([signedTx]) => {
 		try {
-			const rawData = await fastify.evm.telos.raw({
+			const rawResponse = await fastify.evm.telos.raw({
 				account: opts.signer_account,
 				tx: signedTx,
 				ram_payer: fastify.evm.telos.telosContract,
 			});
-			const receiptResponse = await fastify.eosjs.rpc.get_table_rows({
-				code: fastify.evm.telos.telosContract,
-				scope: fastify.evm.telos.telosContract,
-				table: 'receipt',
-				key_type: 'sha256',
-				index_position: 2,
-				lower_bound: rawData.eth.transactionHash,
-				upper_bound: rawData.eth.transactionHash,
-				limit: 1
-			});
 
-			if (receiptResponse.rows.length && receiptResponse.rows[0].status === 0) {
-				let receipt = receiptResponse.rows[0];
+			let consoleOutput = rawResponse.telos.processed.action_traces[0].console;
+
+			let receiptLog = consoleOutput.slice(consoleOutput.indexOf(RECEIPT_LOG_START) + RECEIPT_LOG_START.length, consoleOutput.indexOf(RECEIPT_LOG_END));
+			let receipt = JSON.parse(receiptLog);
+
+			if (receipt.status === 0) {
 				let err = new TransactionError('Transaction error');
 				let output = `0x${receipt.output}`
 				if (output.startsWith(REVERT_FUNCTION_SELECTOR)) {
@@ -644,13 +641,14 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				}
 
 				err.data = {
-					txHash: `0x${rawData.eth.transactionHash}`
+					txHash: `0x${rawResponse.eth.transactionHash}`
 				};
 				throw err;
 			}
 
-			return '0x' + rawData.eth.transactionHash;
+			return '0x' + rawResponse.eth.transactionHash;
 		} catch (e) {
+			// TODO: here we probably should not just return null, that causes tests to hang
 			if (e instanceof TransactionError)
 				throw e;
 
