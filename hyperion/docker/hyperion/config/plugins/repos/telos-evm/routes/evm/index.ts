@@ -210,7 +210,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					}
 				}
 			});
-			Logger.log(`searching action by hash: ${trxHash} got result: \n${JSON.stringify(results?.body)}`)
+			//Logger.log(`searching action by hash: ${trxHash} got result: \n${JSON.stringify(results?.body)}`)
 			return results?.body?.hits?.hits[0]?._source;
 		} catch (e) {
 			console.log(e);
@@ -276,7 +276,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		let logsBloom: any = null;
 		let bloom = new Bloom();
 		const trxs = [];
-		Logger.log(`Reconstructing block from receipts: ${JSON.stringify(receipts)}`)	
+		//Logger.log(`Reconstructing block from receipts: ${JSON.stringify(receipts)}`)	
 		for (const receiptDoc of receipts) {
 			const receipt = receiptDoc._source['@raw'];
 
@@ -516,7 +516,10 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			throw err;
 		}
 
-		return `0x${Math.ceil((parseInt(gas, 16) * GAS_OVER_ESTIMATE_MULTIPLIER)).toString(16)}`;
+		let toReturn = `0x${Math.ceil((parseInt(gas, 16) * GAS_OVER_ESTIMATE_MULTIPLIER)).toString(16)}`;
+		Logger.log(`From contract, gas estimate is ${gas}, with multiplier returning ${toReturn}`)
+		//let toReturn = `0x${Math.ceil((parseInt(gas, 16) * GAS_OVER_ESTIMATE_MULTIPLIER)).toString(16)}`;
+		return toReturn;
 	});
 
 	/**
@@ -696,7 +699,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			if (!receiptAction) return null;
 			const receipt = receiptAction['@raw'];
 
-			Logger.log(`get transaction receipt got ${JSON.stringify(receipt)}`)
+			//Logger.log(`get transaction receipt got ${JSON.stringify(receipt)}`)
 			const _blockHash = '0x' + receipt['block_hash'];
 			const _blockNum = numToHex(receipt['block']);
 			const _gas = '0x' + (receipt['gasused'] as number).toString(16);
@@ -889,7 +892,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
 		// search
 		try {
-			Logger.log(`About to run logs query with queryBody: ${JSON.stringify(queryBody)}`)
+			//Logger.log(`About to run logs query with queryBody: ${JSON.stringify(queryBody)}`)
 			const searchResults = await fastify.elastic.search({
 				index: `${fastify.manager.chain}-action-*`,
 				size: 1000,
@@ -899,7 +902,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				}
 			});
 
-			Logger.log(`Logs query result: ${JSON.stringify(searchResults)}`)
+			//Logger.log(`Logs query result: ${JSON.stringify(searchResults)}`)
 			// processing
 			const results = [];
 			let logCount = 0;
