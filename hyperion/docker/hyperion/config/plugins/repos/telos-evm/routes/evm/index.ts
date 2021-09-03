@@ -148,6 +148,7 @@ interface EthLog {
 interface TransactionError extends Error {
 	errorMessage: string;
 	data: any;
+	code: number;
 }
 
 class TransactionError extends Error { }
@@ -636,8 +637,12 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					err.errorMessage = `Error: VM Exception while processing transaction: revert ${parsePanicReason(output)}`;
 				}				
 				else {
-					let errors = receipt.errors;
-					err.errorMessage = errors[0];
+					// TODO: improve errors in the contract and then use them here... 
+					//   hardhat tests fail because our message from the contract is "One of the actions in this transaction was REVERTed."
+					//   and hardhat is looking for the string `revert` (lower case) when it's doing "expectRevert.unspecified()"
+					//let errors = receipt.errors;
+					// Borrowed message from hardhat node
+					err.errorMessage = `Transaction reverted: function selector was not recognized.`;
 				}
 
 				err.data = {
@@ -1136,7 +1141,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			} catch (e) {
 				if (e instanceof TransactionError) {
 					Logger.log(`VM execution error, reverted: ${e.errorMessage} | Method: ${method} | RESP: ${JSON.stringify(params, null, 2)}`);
-					let code = 3;
+					let code = e.code || 3;
 					let message = e.errorMessage;
 					let data = e.data;
 					let error = { code, message, data };
