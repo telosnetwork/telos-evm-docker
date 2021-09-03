@@ -636,7 +636,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					err.errorMessage = `Error: VM Exception while processing transaction: revert ${parsePanicReason(output)}`;
 				}				
 				else {
-					let errors = JSON.parse(receipt.errors);
+					let errors = receipt.errors;
 					err.errorMessage = errors[0];
 				}
 
