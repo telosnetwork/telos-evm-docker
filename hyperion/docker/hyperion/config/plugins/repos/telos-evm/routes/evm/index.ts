@@ -590,25 +590,33 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			sender: txParams.from,
 		};
 		const encodedTx = await fastify.evm.createEthTx(obj);
-		let output = await fastify.evm.telos.call({
-			account: opts.signer_account,
-			tx: encodedTx,
-			sender: txParams.from,
-		});
-		if (output.startsWith(REVERT_FUNCTION_SELECTOR)) {
-			let err = new TransactionError('Transaction reverted');
-			err.errorMessage = `execution reverted: ${parseRevertReason(output)}`;
-			err.data = output;
-			throw err;
+		try {
+			let output = await fastify.evm.telos.call({
+				account: opts.signer_account,
+				tx: encodedTx,
+				sender: txParams.from,
+			});
+			output = output.replace(/^0x/, '');
+			return "0x" + output;
+		} catch (e) {
+			if (e.evmCallOutput) {
+				let output = "0x" + (e.evmCallOutput.replace(/^0x/, ''));
+				let err = new TransactionError('Transaction reverted');
+				err.data = output;
+
+				if (output.startsWith(REVERT_FUNCTION_SELECTOR)) {
+					err.errorMessage = `execution reverted: ${parseRevertReason(output)}`;
+				} else if (output.startsWith(REVERT_PANIC_SELECTOR)) {
+					err.errorMessage = `execution reverted: ${parsePanicReason(output)}`;
+				} else {
+					err.errorMessage = 'Error: Transaction reverted without a reason string';
+				}
+
+				throw err;
+			}
+
+			throw e;
 		}
-		if (output.startsWith(REVERT_PANIC_SELECTOR)) {
-			let err = new TransactionError('Transaction reverted');
-			err.errorMessage = `execution reverted: ${parsePanicReason(output)}`;
-			err.data = output;
-			throw err;
-		}
-		output = output.replace(/^0x/, '');
-		return "0x" + output;
 	});
 
 	/**
