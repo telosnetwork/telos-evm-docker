@@ -40,7 +40,7 @@ module.exports = {
   networks: {
     hardhat: {
       gas: 10000000,
-      gasPrice: 100000000000,
+      // gasPrice: 100000000000,
       host: "127.0.0.1",
       port: 7545,
       network_id: "41"
@@ -48,7 +48,7 @@ module.exports = {
     private: {
       url: 'http://127.0.0.1:7000/evm',
       gas: 10000000,
-      gasPrice: 100000000000,
+      // gasPrice: 100000000000,
       accounts: [
         '0x87ef69a835f8cd0c44ab99b7609a20b2ca7f1c8470af4f0e5b44db927d542084',
         '0xe014b35c1921894db39c21dbb33462927ff19d9a43a6e226d2a8c8733cc72c6e',
