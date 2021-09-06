@@ -19,7 +19,7 @@ const min_buy = 20000
 const fee_transfer_pct = 100
 
 // from estimations, 102 wei collected per byte
-const gas_per_byte = 102
+const gas_per_byte = 52
 
 const api = new EosEvmApi({
   endpoint: 'http://localhost:8888',
