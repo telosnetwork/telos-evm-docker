@@ -450,10 +450,10 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			if (account.code && account.code.length > 0) {
 				return "0x" + Buffer.from(account.code).toString("hex");
 			} else {
-				return "0x0000";
+				return "0x0";
 			}
 		} catch (e) {
-			return "0x0000";
+			return "0x0";
 		}
 	});
 
