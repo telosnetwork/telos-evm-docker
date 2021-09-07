@@ -640,9 +640,9 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				let err = new TransactionError('Transaction error');
 				let output = `0x${receipt.output}`
 				if (output.startsWith(REVERT_FUNCTION_SELECTOR)) {
-					err.errorMessage = `Error: VM Exception while processing transaction: revert ${parseRevertReason(output)}`;
+					err.errorMessage = `Error: VM Exception while processing transaction: reverted with reason string '${parseRevertReason(output)}'`;
 				} else if (output.startsWith(REVERT_PANIC_SELECTOR)) {
-					err.errorMessage = `Error: VM Exception while processing transaction: revert ${parsePanicReason(output)}`;
+					err.errorMessage = `Error: VM Exception while processing transaction: reverted with reason string '${parsePanicReason(output)}'`;
 				}				
 				else {
 					// TODO: improve errors in the contract and then use them here... 
@@ -650,7 +650,10 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 					//   and hardhat is looking for the string `revert` (lower case) when it's doing "expectRevert.unspecified()"
 					//let errors = receipt.errors;
 					// Borrowed message from hardhat node
-					err.errorMessage = `Transaction reverted: function selector was not recognized.`;
+					if (receipt.errors.length > 0 && receipt.errors[0].toLowerCase().indexOf('revert') !== -1)
+						err.errorMessage = `Transaction reverted: function selector was not recognized.`;
+					else
+						err.errorMessage = `Error: VM Exception while processing transaction: ${receipt.errors[0]}`;
 				}
 
 				err.data = {

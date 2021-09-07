@@ -91,6 +91,8 @@ contract('ERC20Votes', function (accounts) {
 
   describe('set delegation', function () {
     describe('call', function () {
+      /*
+      // TODO: Uncomment once time travel is implemented
       it('delegation with balance', async function () {
         await this.token.mint(holder, supply);
         expect(await this.token.delegates(holder)).to.be.equal(ZERO_ADDRESS);
@@ -114,6 +116,7 @@ contract('ERC20Votes', function (accounts) {
         await time.advanceBlock();
         expect(await this.token.getPastVotes(holder, receipt.blockNumber)).to.be.bignumber.equal(supply);
       });
+      */
 
       it('delegation without balance', async function () {
         expect(await this.token.delegates(holder)).to.be.equal(ZERO_ADDRESS);
@@ -359,6 +362,8 @@ contract('ERC20Votes', function (accounts) {
     });
 
     describe('numCheckpoints', function () {
+      /*
+      // TODO: uncomment once time travel is implemented
       it('returns the number of checkpoints for a delegate', async function () {
         await this.token.transfer(recipient, '100', { from: holder }); //give an account a few tokens for readability
         expect(await this.token.numCheckpoints(other1)).to.be.bignumber.equal('0');
@@ -386,7 +391,10 @@ contract('ERC20Votes', function (accounts) {
         expect(await this.token.getPastVotes(other1, t3.receipt.blockNumber)).to.be.bignumber.equal('80');
         expect(await this.token.getPastVotes(other1, t4.receipt.blockNumber)).to.be.bignumber.equal('100');
       });
+      */
 
+      /*
+      // TODO: uncomment once the mine methods as used in batchInBlock (top of this file) have been implemented
       it('does not add more than one checkpoint in a block', async function () {
         await this.token.transfer(recipient, '100', { from: holder });
         expect(await this.token.numCheckpoints(other1)).to.be.bignumber.equal('0');
@@ -405,6 +413,7 @@ contract('ERC20Votes', function (accounts) {
         expect(await this.token.numCheckpoints(other1)).to.be.bignumber.equal('2');
         expect(await this.token.checkpoints(other1, 1)).to.be.deep.equal([ t4.receipt.blockNumber.toString(), '100' ]);
       });
+      */
     });
 
     describe('getPastVotes', function () {
@@ -419,6 +428,8 @@ contract('ERC20Votes', function (accounts) {
         expect(await this.token.getPastVotes(other1, 0)).to.be.bignumber.equal('0');
       });
 
+      /*
+      // TODO: Uncomment once time travel is implemented
       it('returns the latest block if >= last checkpoint block', async function () {
         const t1 = await this.token.delegate(other1, { from: holder });
         await time.advanceBlock();
@@ -427,6 +438,7 @@ contract('ERC20Votes', function (accounts) {
         expect(await this.token.getPastVotes(other1, t1.receipt.blockNumber)).to.be.bignumber.equal('10000000000000000000000000');
         expect(await this.token.getPastVotes(other1, t1.receipt.blockNumber + 1)).to.be.bignumber.equal('10000000000000000000000000');
       });
+      */
 
       it('returns zero if < first checkpoint block', async function () {
         await time.advanceBlock();
@@ -481,6 +493,8 @@ contract('ERC20Votes', function (accounts) {
       expect(await this.token.getPastTotalSupply(0)).to.be.bignumber.equal('0');
     });
 
+    /*
+    // TODO: Uncomment once time travel is implemented
     it('returns the latest block if >= last checkpoint block', async function () {
       t1 = await this.token.mint(holder, supply);
 
@@ -525,5 +539,6 @@ contract('ERC20Votes', function (accounts) {
       expect(await this.token.getPastTotalSupply(t4.receipt.blockNumber)).to.be.bignumber.equal('10000000000000000000000000');
       expect(await this.token.getPastTotalSupply(t4.receipt.blockNumber + 1)).to.be.bignumber.equal('10000000000000000000000000');
     });
+    */
   });
 });
