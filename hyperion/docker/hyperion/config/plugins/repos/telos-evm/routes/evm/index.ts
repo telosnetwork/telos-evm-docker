@@ -781,9 +781,9 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			to: toChecksumAddress(receipt['to']),
 			transactionIndex: numToHex(receipt['trx_index']),
 			value: numToHex(receipt['value']),
-			v: receipt['v'],
-			r: receipt['r'],
-			s: receipt['s'],
+			v: '0x' + receipt['v'],
+			r: '0x' + receipt['r'],
+			s: '0x' + receipt['s'],
 		};
 	});
 

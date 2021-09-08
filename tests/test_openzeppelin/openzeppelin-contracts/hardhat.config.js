@@ -39,7 +39,7 @@ module.exports = {
       },
     },
   },
-  defaultNetwork: "localhost",
+  defaultNetwork: "private",
   networks: {
     localhost: {
       gas: 10000000,
