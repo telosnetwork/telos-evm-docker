@@ -78,6 +78,18 @@ docker-compose start rabbitmq
 # on mac you cannot access the container IP, use the one exposed on the host
 ./scripts/wait-for.sh "localhost:15672"
 
+retry_count=0
+until [ $(curl --silent -u username:password -X GET http://127.0.0.1:15672/api/definitions | jq -e '.vhosts | length') -ge 1 ]; do
+  if [ $retry_count -ge 60 ]; then
+    echo "Failure - exceeded wait time for rabbit to become healthy"
+    exit 1
+  fi
+  echo "waiting for rabbit to come online..."
+  sleep 3
+  ((retry_count++))
+done
+
+
 if [ $? -ne 0 ]
 then
   echo "failed to wait for rabbitmq"
