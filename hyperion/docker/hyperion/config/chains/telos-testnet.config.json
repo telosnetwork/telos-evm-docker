@@ -30,10 +30,10 @@
     "preview": false,
     "chain": "telos-testnet",
     "eosio_alias": "eosio",
-    "parser": "1.8",
+    "parser": "2.1",
     "auto_stop": 300,
     "index_version": "v1",
-    "debug": false,
+    "debug": true,
     "bp_logs": false,
     "bp_monitoring": false,
     "ipc_debug_rate": 60000,
@@ -44,7 +44,9 @@
     "auto_mode_switch": false,
     "hot_warm_policy": false,
     "custom_policy": "",
-    "bypass_index_map": false
+    "bypass_index_map": false,
+    "ship_request_rev": "v1",
+    "index_partition_size": 10000000
   },
   "blacklists": {
     "actions": [],
@@ -69,7 +71,7 @@
     "auto_scale_trigger": 20000,
     "block_queue_limit":  10000,
     "max_queue_limit":    100000,
-    "routing_mode":       "heatmap",
+    "routing_mode":       "round_robin",
     "polling_interval":   10000
   },
   "indexer": {
