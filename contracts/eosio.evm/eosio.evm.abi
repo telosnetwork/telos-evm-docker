@@ -52,64 +52,6 @@
             ]
         },
         {
-            "name": "Receipt",
-            "base": "",
-            "fields": [
-                {
-                    "name": "index",
-                    "type": "uint64"
-                },
-                {
-                    "name": "hash",
-                    "type": "checksum256"
-                },
-                {
-                    "name": "trx_index",
-                    "type": "uint32"
-                },
-                {
-                    "name": "block",
-                    "type": "uint32"
-                },
-                {
-                    "name": "trxid",
-                    "type": "string"
-                },
-                {
-                    "name": "status",
-                    "type": "uint8"
-                },
-                {
-                    "name": "epoch",
-                    "type": "uint32"
-                },
-                {
-                    "name": "createdaddr",
-                    "type": "string"
-                },
-                {
-                    "name": "gasused",
-                    "type": "string"
-                },
-                {
-                    "name": "ramused",
-                    "type": "string"
-                },
-                {
-                    "name": "logs",
-                    "type": "string"
-                },
-                {
-                    "name": "output",
-                    "type": "string"
-                },
-                {
-                    "name": "errors",
-                    "type": "string"
-                }
-            ]
-        },
-        {
             "name": "call",
             "base": "",
             "fields": [
@@ -140,12 +82,12 @@
                     "type": "uint32"
                 },
                 {
-                    "name": "min_gas_price",
-                    "type": "uint64"
+                    "name": "gas_used_block",
+                    "type": "checksum256"
                 },
                 {
-                    "name": "min_trx_cost",
-                    "type": "asset"
+                    "name": "gas_price",
+                    "type": "checksum256"
                 }
             ]
         },
@@ -164,12 +106,123 @@
             ]
         },
         {
-            "name": "delreciepts",
+            "name": "doresources",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "init",
             "base": "",
             "fields": [
                 {
-                    "name": "rowcount",
+                    "name": "start_bytes",
+                    "type": "uint64"
+                },
+                {
+                    "name": "start_cost",
+                    "type": "asset"
+                },
+                {
+                    "name": "target_free",
+                    "type": "uint64"
+                },
+                {
+                    "name": "min_buy",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fee_transfer_pct",
                     "type": "uint16"
+                },
+                {
+                    "name": "gas_per_byte",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "itx_data",
+            "base": "",
+            "fields": [
+                {
+                    "name": "callType",
+                    "type": "string"
+                },
+                {
+                    "name": "from",
+                    "type": "string"
+                },
+                {
+                    "name": "gas",
+                    "type": "string"
+                },
+                {
+                    "name": "input",
+                    "type": "string"
+                },
+                {
+                    "name": "to",
+                    "type": "string"
+                },
+                {
+                    "name": "value",
+                    "type": "string"
+                },
+                {
+                    "name": "gasUsed",
+                    "type": "string"
+                },
+                {
+                    "name": "output",
+                    "type": "string"
+                },
+                {
+                    "name": "subtraces",
+                    "type": "uint8"
+                },
+                {
+                    "name": "traceAddress",
+                    "type": "uint8[]"
+                },
+                {
+                    "name": "type",
+                    "type": "string"
+                },
+                {
+                    "name": "depth",
+                    "type": "string"
+                },
+                {
+                    "name": "extra",
+                    "type": "pair_string_string[]"
+                }
+            ]
+        },
+        {
+            "name": "openwallet",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "address",
+                    "type": "checksum160"
+                }
+            ]
+        },
+        {
+            "name": "pair_string_string",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "string"
+                },
+                {
+                    "name": "value",
+                    "type": "string"
                 }
             ]
         },
@@ -196,16 +249,120 @@
             ]
         },
         {
-            "name": "setgas",
+            "name": "receipt",
             "base": "",
             "fields": [
                 {
-                    "name": "min_price",
+                    "name": "tx",
+                    "type": "bytes"
+                },
+                {
+                    "name": "trx_index",
+                    "type": "uint32"
+                },
+                {
+                    "name": "block",
                     "type": "uint64"
                 },
                 {
-                    "name": "min_cost",
-                    "type": "asset"
+                    "name": "from",
+                    "type": "string"
+                },
+                {
+                    "name": "status",
+                    "type": "uint8"
+                },
+                {
+                    "name": "epoch",
+                    "type": "uint32"
+                },
+                {
+                    "name": "createdaddr",
+                    "type": "string"
+                },
+                {
+                    "name": "gasused",
+                    "type": "string"
+                },
+                {
+                    "name": "gasusedblock",
+                    "type": "string"
+                },
+                {
+                    "name": "logs",
+                    "type": "string"
+                },
+                {
+                    "name": "output",
+                    "type": "string"
+                },
+                {
+                    "name": "errors",
+                    "type": "string"
+                },
+                {
+                    "name": "itxs",
+                    "type": "itx_data[]"
+                }
+            ]
+        },
+        {
+            "name": "resources",
+            "base": "",
+            "fields": [
+                {
+                    "name": "gas_per_byte",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "byte_cost",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "bytes_used",
+                    "type": "uint64"
+                },
+                {
+                    "name": "bytes_bought",
+                    "type": "uint64"
+                },
+                {
+                    "name": "target_bytes_free",
+                    "type": "uint64"
+                },
+                {
+                    "name": "min_byte_buy",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fee_balance",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "fee_transfer_pct",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "setresources",
+            "base": "",
+            "fields": [
+                {
+                    "name": "gas_per_byte",
+                    "type": "uint64"
+                },
+                {
+                    "name": "target_free",
+                    "type": "uint64"
+                },
+                {
+                    "name": "min_buy",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fee_transfer_pct",
+                    "type": "uint64"
                 }
             ]
         },
@@ -236,8 +393,18 @@
             "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: CREATE\nsummary: 'Create'\nicon:\n---"
         },
         {
-            "name": "delreciepts",
-            "type": "delreciepts",
+            "name": "doresources",
+            "type": "doresources",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "init",
+            "type": "init",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "openwallet",
+            "type": "openwallet",
             "ricardian_contract": ""
         },
         {
@@ -246,8 +413,13 @@
             "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: RAW\nsummary: 'Raw'\nicon:\n---"
         },
         {
-            "name": "setgas",
-            "type": "setgas",
+            "name": "receipt",
+            "type": "receipt",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setresources",
+            "type": "setresources",
             "ricardian_contract": ""
         },
         {
@@ -279,8 +451,8 @@
             "key_types": []
         },
         {
-            "name": "receipt",
-            "type": "Receipt",
+            "name": "resources",
+            "type": "resources",
             "index_type": "i64",
             "key_names": [],
             "key_types": []
