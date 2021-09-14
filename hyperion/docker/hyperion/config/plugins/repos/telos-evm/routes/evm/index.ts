@@ -848,12 +848,15 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	/**
 	 * Returns an array of all logs matching a given filter object.
 	 */
-	methods.set('eth_getLogs', async (params) => {
+	methods.set('eth_getLogs', async ([parameters]) => {
+		// console.log(parameters);
+		let params = await parameters; // Since we are using async/await, the parameters are actually a Promise
+		
 		// query preparation
 		let address: string = params.address;
 		let topics: string[] = params.topics;
-		let fromBlock: string | number = params.fromBlock;
-		let toBlock: string | number = params.toBlock;
+		let fromBlock: string | number = Number(params.fromBlock);
+		let toBlock: string | number = Number(params.toBlock);
 		let blockHash: string = params.blockHash;
 
 		const queryBody: any = {
@@ -895,18 +898,19 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 
 		if (topics && topics.length > 0) {
 			// console.log(`getLogs using topics:\n${topics}`);
+			topics = topics.map(topic => {
+				return topic.startsWith('0x') ? topic.slice(2).toLowerCase() : topic.toLowerCase();
+			})
 			queryBody.bool.must.push({
 				terms: {
-					"@raw.logs.topics": topics.map(topic => {
-						return topic.startsWith('0x') ? topic.slice(2).toLowerCase() : topic.toLowerCase();
-					})
+					"@raw.logs.topics": topics
 				}
 			})
 		}
 
 		// search
 		try {
-			//Logger.log(`About to run logs query with queryBody: ${JSON.stringify(queryBody)}`)
+			// Logger.log(`About to run logs query with queryBody: ${JSON.stringify(queryBody)}`)
 			const searchResults = await fastify.elastic.search({
 				index: `${fastify.manager.chain}-action-*`,
 				size: 1000,
@@ -916,7 +920,7 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				}
 			});
 
-			//Logger.log(`Logs query result: ${JSON.stringify(searchResults)}`)
+			// Logger.log(`Logs query result: ${JSON.stringify(searchResults)}`)
 			// processing
 			const results = [];
 			let logCount = 0;
@@ -924,17 +928,26 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 				const doc = hit._source;
 				if (doc['@raw'] && doc['@raw']['logs']) {
 					for (const log of doc['@raw']['logs']) {
-						results.push({
-							address: '0x' + log.address,
-							blockHash: '0x' + doc['@raw']['block_hash'],
-							blockNumber: numToHex(doc['@raw']['block']),
-							data: '0x' + log.data,
-							logIndex: numToHex(logCount),
-							removed: false,
-							topics: log.topics.map(t => '0x' + t),
-							transactionHash: doc['@raw']['hash'],
-							transactionIndex: numToHex(doc['@raw']['trx_index'])
-						});
+						if (
+							doc['@raw']["block"] >= fromBlock &&
+							doc['@raw']["block"] <= toBlock &&
+							log.address.toLowerCase() === address.toLowerCase() &&
+							log.topics.some(t => topics.includes(t))
+							|| blockHash === doc['@raw']['block_hash']
+							) 
+						{
+							results.push({
+								address: '0x' + log.address,
+								blockHash: '0x' + doc['@raw']['block_hash'],
+								blockNumber: numToHex(doc['@raw']['block']),
+								data: '0x' + log.data,
+								logIndex: numToHex(logCount),
+								removed: false,
+								topics: log.topics.map(t => '0x' + t),
+								transactionHash: doc['@raw']['hash'],
+								transactionIndex: numToHex(doc['@raw']['trx_index'])
+							});
+						}
 						logCount++;
 					}
 				}
@@ -954,15 +967,16 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 	 * 
 	 * Check the eth_getlogs function above for help
 	 */
-	methods.set('trace_filter', async (params) => {
+	methods.set('trace_filter', async ([parameters]) => {
+		let params = await parameters;
 		// query preparation
 		const results = [];
 		for (const param_obj of params) {
 			// console.log(param_obj);
 			let fromAddress = param_obj.fromAddress;
 			let toAddress = param_obj.toAddress;
-			let fromBlock: string | number = param_obj.fromBlock;
-			let toBlock: string | number = param_obj.toBlock;
+			let fromBlock: string | number = Number(param_obj.fromBlock);
+			let toBlock: string | number = Number(param_obj.toBlock);
 			let after:  number = param_obj.after; //TODO what is this?
 			let count: number = param_obj.count;
 
