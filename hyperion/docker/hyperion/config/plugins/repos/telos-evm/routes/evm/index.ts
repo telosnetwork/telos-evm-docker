@@ -994,8 +994,8 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 			// console.log(param_obj);
 			let fromAddress = param_obj.fromAddress;
 			let toAddress = param_obj.toAddress;
-			let fromBlock: string | number = Number(param_obj.fromBlock);
-			let toBlock: string | number = Number(param_obj.toBlock);
+			let fromBlock: string | number = parseInt(await toBlockNumber(param_obj.fromBlock), 16);
+			let toBlock: string | number = parseInt(await toBlockNumber(param_obj.toBlock), 16);
 			let after:  number = param_obj.after; //TODO what is this?
 			let count: number = param_obj.count;
 
