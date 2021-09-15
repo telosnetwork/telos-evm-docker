@@ -392,6 +392,23 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		return blockParam;
 	}
 
+	async function hasTopics(topics: string[], topicsFilter: string[]) {
+		const topicsFiltered = [];
+		
+		for (const [index,topic] of topicsFilter.entries()) {
+			if (topic === null) {
+				topicsFiltered.push(true);
+			} else if (topic.includes(topics[index])) {
+				topicsFiltered.push(true);
+			} else if (topics[index] === topic) {
+				topicsFiltered.push(true);
+			} else {
+				topicsFiltered.push(false);
+			}
+		}
+		return topicsFiltered.every(t => t === true);
+	}
+
 	// LOAD METHODS
 
 	/**
@@ -855,8 +872,8 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 		// query preparation
 		let address: string = params.address;
 		let topics: string[] = params.topics;
-		let fromBlock: string | number = Number(params.fromBlock);
-		let toBlock: string | number = Number(params.toBlock);
+		let fromBlock: string | number = parseInt(await toBlockNumber(params.fromBlock), 16);
+		let toBlock: string | number = parseInt(await toBlockNumber(params.toBlock), 16);
 		let blockHash: string = params.blockHash;
 
 		const queryBody: any = {
@@ -932,8 +949,10 @@ export default async function (fastify: FastifyInstance, opts: TelosEvmConfig) {
 							doc['@raw']["block"] >= fromBlock &&
 							doc['@raw']["block"] <= toBlock &&
 							log.address.toLowerCase() === address.toLowerCase() &&
-							log.topics.some(t => topics.includes(t))
-							|| blockHash === doc['@raw']['block_hash']
+							await hasTopics(log.topics, topics)
+							|| blockHash === doc['@raw']['block_hash'] &&
+							log.address.toLowerCase() === address.toLowerCase() &&
+							await hasTopics(log.topics, topics)
 							) 
 						{
 							results.push({
