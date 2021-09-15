@@ -66,7 +66,8 @@ export class EvmTransactionComponent implements OnInit, OnDestroy {
       this.txData.val_formatted = `${(this.txData.value / 1000000000000000000).toFixed(4)} TLOS`
       this.txData.nonce = parseInt(txData.nonce, 16);
       this.txData.gas_price = parseInt(txData.gasPrice, 16);
-      this.txData.gas_used = parseInt(txData.gas, 16);
+      this.txData.gas_used = parseInt(txData.gasUsed, 16);
+      this.txData.gas = parseInt(txData.gas, 16);
       this.txData.input_data = txData.input;
       this.txData.logs = txData.logs;
       this.txData.error = this.evm.getErrorFromOutput(txData.output);
