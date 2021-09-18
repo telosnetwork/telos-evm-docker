@@ -8,21 +8,17 @@ RUN apt-get install -y nodejs && npm install pm2 -g && git clone https://github.
 COPY ./config/connections.json /hyperion-history-api/connections.json
 COPY ./config/ecosystem.config.js /hyperion-history-api/ecosystem.config.js
 COPY ./config/chains/ /hyperion-history-api/chains/
-COPY ./hyperion-home /home/hyperion
+COPY ./hyperion-home /home/hyperion/
 COPY ./scripts/ /home/hyperion/scripts/
 
-RUN useradd -m -s /bin/bash hyperion && chown -R hyperion:hyperion /hyperion-history-api
-RUN chown -R hyperion:hyperion "/home/hyperion"
-RUN chmod -R 600 "/home/hyperion/.ssh"
-RUN ls -la "/home/hyperion"
-RUN ls -la "/home/hyperion/.ssh"
-RUN cat "/home/hyperion/.ssh/config"
+RUN useradd -m -s /bin/bash hyperion && chown -R hyperion:hyperion /hyperion-history-api && chown -R hyperion:hyperion /home/hyperion
+RUN chmod -R 600 "/home/hyperion/.ssh/evm_plugin"
 USER hyperion
 WORKDIR /hyperion-history-api
 
 RUN npm install
 
-RUN ./hpm install -b gas_refactor -r git@github.com:telosnetwork/hyperion-telos-evm-plugin.git telos-evm
+RUN ./hpm install -b main -r git@github.com:telosnetwork/hyperion-telos-evm-plugin.git telos-evm
 RUN ./hpm enable telos-evm
 
 RUN ./hpm install -r https://github.com/eosrio/hyperion-explorer-plugin explorer
