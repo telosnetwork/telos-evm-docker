@@ -54,10 +54,12 @@ chmod -R 777 ./elasticsearch
 chmod -R 777 ./hyperion
 
 cp -a ./scripts ./hyperion/scripts
+cp -a ./hyperion-home ./hyperion/hyperion-home
 cd ./hyperion
 docker build -t telos.net/hyperion:0.1.0 .
 cd -
 rm -rf ./hyperion/scripts
+rm -rf ./hyperion/hyperion-home
 
 created="$(docker container ls -q --all)"
 
