@@ -11,15 +11,15 @@ const SYSTEM_SYMBOL = 'TLOS'
 // 
 // If either of these variables, or the order in which RAM is purchased, or anything that could impact RAM supply/price changes, need to update these variables
 
-const start_bytes = 126941703
-const start_cost = "10000.0000 TLOS"
+const start_bytes = 1073741824
+const start_cost = "18493.7833 TLOS"
 
-const target_free = 100000000
+const target_free = start_bytes
 const min_buy = 20000
 const fee_transfer_pct = 100
 
 // from estimations, 102 wei collected per byte
-const gas_per_byte = 52
+const gas_per_byte = 69
 
 const api = new EosEvmApi({
   endpoint: 'http://localhost:8888',
@@ -111,7 +111,7 @@ async function main () {
   const receiver = '0xf79b834a37f3143f4a73fc3934edac67fd3a01cd';
   console.log(`Transferring to standalone address`)
   const tlosTransfer = await telosApi.transfer({ account: 'evmuser1', sender: sender.address, to: receiver, quantity: `100000000.0000 TLOS` })
-  const tlosTransfer1 = await telosApi.transfer({ account: 'evmuser1', sender: sender.address, to: '0xc51fE232a0153F1F44572369Cefe7b90f2BA08a5', quantity: `10000.0000 TLOS` })
+  const tlosTransfer1 = await telosApi.transfer({ account: 'evmuser1', sender: sender.address, to: '0xc51fE232a0153F1F44572369Cefe7b90f2BA08a5', quantity: `100000.0000 TLOS` })
   const tlosTransfer2 = await telosApi.transfer({ account: 'evmuser1', sender: sender.address, to: '0xf922CC0c6CA8Cdbf5330A295a11A40911FDD3B6e', quantity: `10000.0000 TLOS` })
   const tlosTransfer3 = await telosApi.transfer({ account: 'evmuser1', sender: sender.address, to: '0xCfCf671eBE5880d2D7798d06Ff7fFBa9bdA1bE64', quantity: `10000.0000 TLOS` })
   const tlosTransfer4 = await telosApi.transfer({ account: 'evmuser1', sender: sender.address, to: '0xf6E6c4A9Ca3422C2e4F21859790226DC6179364d', quantity: `10000.0000 TLOS` })

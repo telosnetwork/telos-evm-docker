@@ -73,7 +73,9 @@ if [ ! "$(docker ps -q -f name=^$NODEOS_CONTAINER_NAME$)" ]; then
   -p 8080:8080 \
   -v $NODEOS_VOLUME_NAME:/mnt/dev/data \
   --network=docker_hyperion \
-  --env DEBUG_EVM=$DEBUG_EVM \
+  --env CHAIN_RAM=$CHAIN_RAM \
+  --env EVM_RAM=$EVM_RAM \
+  --env DEBUG_EVM=$DEBUG_EVM  \
   $NODEOS_IMAGE_NAME \
   "$script"
 
