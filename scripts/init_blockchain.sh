@@ -55,8 +55,8 @@ for i in eosio.token eosio.rex eosio.ram eosio.ramfee eosio.stake eosio.bpay eos
 done
 logInfo "deploying eosio.token"
 deploy_contract.sh eosio.token eosio.token eosio $(cat eosio_wallet_password.txt) true
-cleos push action eosio.token create '["eosio", "100000000000.0000 TLOS"]' -p eosio.token@active
-cleos push action eosio.token issue '[ "eosio", "350000000.0000 TLOS", "memo" ]' -p eosio@active # the actual amount of telos
+cleos push action eosio.token create '["eosio", "10000000000.0000 TLOS"]' -p eosio.token@active
+cleos push action eosio.token issue '[ "eosio", "355208370.6674 TLOS", "memo" ]' -p eosio@active # the actual amount of telos 355208370.6674
 
 logInfo "activating"
 curl -X POST http://127.0.0.1:8888/v1/producer/schedule_protocol_feature_activations -d '{"protocol_features_to_activate": ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]}'
@@ -70,22 +70,28 @@ cleos push action eosio init '[0, "4,TLOS"]' -p eosio@active
 
 #'{"threshold":1,"keys":[],"accounts":[{"permission":{"actor":"eosio","permission":"active"},"weight":1}]}'
 
-cleos push action eosio setram '[15285317824]' -p eosio@active # current mainnet amount of ram
+cleos push action eosio setram "[$CHAIN_RAM]" -p eosio@active # current mainnet amount of ram
 cleos push action eosio buyrambytes '{"payer":"eosio","receiver":"thisisatesta","bytes":4000000000}' -p eosio@active 
-cleos push action eosio buyrambytes '{"payer":"eosio","receiver":"thisisatestb","bytes":2500000000}' -p eosio@active
+cleos push action eosio buyrambytes '{"payer":"eosio","receiver":"thisisatestb","bytes":3000000000}' -p eosio@active
+
+TLOSperKBb=$(cleos get table eosio eosio rammarket | jq -e '(.rows[0].quote.balance | split(" ") | .[0] | tonumber) / (.rows[0].base.balance | split(" ") | .[0] | tonumber) * 1024 / 0.995')
 
 logInfo "creating eosio.evm"
-cleos system newaccount eosio eosio.evm EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L  --stake-net "10.0000 TLOS" --stake-cpu "10.0000 TLOS" --buy-ram "10000.0000 TLOS"
-cleos system newaccount eosio fees.evm EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L  --stake-net "10.0000 TLOS" --stake-cpu "10.0000 TLOS" --buy-ram "10000.0000 TLOS"
+cleos system newaccount eosio eosio.evm EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L  --stake-net "10.0000 TLOS" --stake-cpu "10.0000 TLOS" --buy-ram-bytes "${EVM_RAM}"
+# RAM_COST=$(cleos system newaccount eosio eosio.evm EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L  --stake-net "10.0000 TLOS" --stake-cpu "10.0000 TLOS" --buy-ram-bytes "${EVM_RAM}" -j | jq -e '.processed.action_traces[3].act.data.quantity | split(" ") | .[0] | tonumber')
+cleos system newaccount eosio fees.evm EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L  --stake-net "10.0000 TLOS" --stake-cpu "10.0000 TLOS" --buy-ram-kbytes "100000"
 cleos push action eosio setpriv '["eosio.evm",1]' -p eosio@active
 
+TLOSperKBa=$(cleos get table eosio eosio rammarket | jq -e '(.rows[0].quote.balance | split(" ") | .[0] | tonumber) / (.rows[0].base.balance | split(" ") | .[0] | tonumber) * 1024 / 0.995')
+
 logInfo "creating rpc.evm"
-cleos system newaccount eosio rpc.evm EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L --stake-net "10000.0000 TLOS" --stake-cpu "10000.0000 TLOS" --buy-ram "10000.0000 TLOS"
+cleos system newaccount eosio rpc.evm EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L --stake-net "10000.0000 TLOS" --stake-cpu "10000.0000 TLOS" --buy-ram-kbytes "100000"
 
 logInfo "creating evmuser1"
-cleos system newaccount eosio evmuser1 EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L --stake-net "10.0000 TLOS" --stake-cpu "10.0000 TLOS" --buy-ram "10000.0000 TLOS"
+cleos system newaccount eosio evmuser1 EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L --stake-net "10.0000 TLOS" --stake-cpu "10.0000 TLOS" --buy-ram-kbytes "100000"
 cleos transfer eosio evmuser1 "111000000.0000 TLOS"
-# cleos transfer eosio evmuser1 "11100000.0000 TLOS"
+
+# echo "XYZ, ${CHAIN_RAM}, ${EVM_RAM}, ${TLOSperKBb}, ${TLOSperKBa}, ${RAM_COST}"
 
 logInfo "deploying eosio.evm"
 #deploy_contract.sh eosio.evm eosio.evm eosio $(cat eosio_wallet_password.txt) true

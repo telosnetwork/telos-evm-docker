@@ -1,4 +1,6 @@
 #!/bin/bash
+export CHAIN_RAM=36760154304
+export EVM_RAM=$((1*1024*1024*1024))
 
 set -e
 
