@@ -20,7 +20,7 @@ Hyperion is composed of the following containers:
 You will need `docker`, `docker-compose` and `jq` installed.
 
 ## Execution
-`./run.sh debug` will destroy the containers (if they exist), build, and then run the containers.
+`./run.sh debug` will recreate changed containers (if they exist), build, and then run the containers.
 
 ## Important data
 
@@ -41,3 +41,12 @@ You will need `docker`, `docker-compose` and `jq` installed.
 - The Swagger UI will be accessible at http://localhost:7000/v2/docs/static/index.html
 - You can access kibana at http://localhost:5601/ with username `elastic` and password `password`
 - You can access rabbitmq at http://localhost:15672/ with username `username` and password `password`
+
+## Running Tests
+
+With all containers up, tests can be run using [truffle](https://www.trufflesuite.com/docs/truffle/testing/writing-tests-in-solidity):
+
+```
+cd telos-evm-docker/tests/test_erc20/
+truffle test --network private --verbose-rpc
+```
