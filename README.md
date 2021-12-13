@@ -1,6 +1,10 @@
 # telos-evm-docker
 ## Docker containers for local EVM development and building automated tests
 
+## Snake in your boot edition (WIP)
+
+Not all features of standard build system yet implemented!
+
 ## Overview
 ### eosio_nodeos container
 The Telos node container, this is a local Telos native network on which the TelosEVM contract is deployed
@@ -17,10 +21,12 @@ Hyperion is composed of the following containers:
 - hyperion-api serves the TelosEVM RPC, block explorer, swagger UI and satisfies any API requests
 
 ## Dependencies
-You will need `docker`, `docker-compose` and `jq` installed.
+You will need `docker` & `python3`.
+To install python dependencies:
+    python3 pip install -r requirements.txt
 
 ## Execution
-`./run.sh debug` will recreate changed containers (if they exist), build, and then run the containers.
+    python3 scripts/telos_evm.py
 
 ## Important data
 
