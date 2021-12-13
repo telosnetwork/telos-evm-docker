@@ -1,0 +1,6 @@
+[submodule "docker/eosio/telos.evm"]
+	path = docker/eosio/telos.evm
+	url = git@github.com:telosnetwork/telos.evm.git
+[submodule "docker/eosio/telos.contracts"]
+	path = docker/eosio/telos.contracts
+	url = https://github.com/telosnetwork/telos.contracts.git

@@ -4,6 +4,9 @@ name: CI
 
 # Controls when the action will run. 
 on:
+  push:
+    branches:
+      - python_toolchain
   pull_request:
     branches:
       - master
@@ -13,29 +16,46 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  truffle_test:
-    name: Truffle Test
+  indexing_test:
+    name: Indexing Test
     runs-on: ubuntu-latest
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-      
-      - name: Setup Node
-        uses: actions/setup-node@v2
         with:
-          node-version: '14'
-          
-      - name: Setup Docker
-        uses: docker-practice/actions-setup-docker@master
-        
-      - name: Setup Truffle
-        run: npm install -g truffle
-          
-      - name: Setup Truffle HD Wallet
-        run: npm install @truffle/hdwallet-provider
-        
-      - name: Run run.sh
-        run: sudo ./run.sh debug
+          submodules: recursive
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run test
+        run: python scripts/telos_evm.py --loglevel=INFO
 
-      - name: Run Truffle test
-        run: cd tests/test_erc20/ && truffle test --network private
+
+        # runs-on: ubuntu-latest
+        # steps:
+        #   # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+        #   - uses: actions/checkout@v2
+        #   
+        #   - name: Setup Node
+        #     uses: actions/setup-node@v2
+        #     with:
+        #       node-version: '14'
+        #       
+        #   - name: Setup Docker
+        #     uses: docker-practice/actions-setup-docker@master
+        #     
+        #   - name: Setup Truffle
+        #     run: npm install -g truffle
+        #       
+        #   - name: Setup Truffle HD Wallet
+        #     run: npm install @truffle/hdwallet-provider
+        #     
+        #   - name: Run run.sh
+        #     run: sudo ./run.sh debug
+
+        #   - name: Run Truffle test
+        #     run: cd tests/test_erc20/ && truffle test --network private
