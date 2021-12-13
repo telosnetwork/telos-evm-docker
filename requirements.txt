@@ -1,4 +1,4 @@
 docker
 natsort
 requests
-git+git://github.com/guilledk/py-eosio.git@docker_only#egg=py_eosio
+git+git://github.com/guilledk/py-eosio.git@docker_only

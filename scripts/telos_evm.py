@@ -61,7 +61,7 @@ class TEVMController:
         """
 
         shutil.rmtree(dir, ignore_errors=True)
-        dir.mkdir()
+        dir.mkdir(parents=True)
         logging.info(f'created temp dir: {dir}')
         dir.chmod(0o777)
 
