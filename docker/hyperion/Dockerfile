@@ -18,6 +18,7 @@ COPY ./scripts/ /home/hyperion/scripts/
 RUN useradd -m -s /bin/bash hyperion && chown -R hyperion:hyperion /hyperion-history-api && chown -R hyperion:hyperion /home/hyperion
 RUN chmod -R 600 "/home/hyperion/.ssh/config"
 RUN chmod -R 600 "/home/hyperion/.ssh/evm_plugin"
+
 USER hyperion
 WORKDIR /hyperion-history-api
 
