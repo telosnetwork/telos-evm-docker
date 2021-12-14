@@ -4,12 +4,13 @@
 .vscode
 
 # dependencies
-/node_modules
+**/node_modules
 
 # testing
-/data
+**/elasticsearch
+**/rabbitmq
 # production
-/build
+**/build
 
 # misc
 .DS_Store
@@ -23,3 +24,5 @@ yarn-debug.log*
 yarn-error.log*
 
 .python-version
+**/__pycache__
+*.egg-info

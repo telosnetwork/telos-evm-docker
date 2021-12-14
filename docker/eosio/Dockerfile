@@ -7,20 +7,17 @@ RUN apt-get update && \
         -y \
         --no-install-recommends \
         wget \
-        make \
-        cmake \
         libtinfo5 \
-        build-essential \
         ca-certificates
-
-# ubuntu 18.04 dependency 
-RUN wget http://security.ubuntu.com/ubuntu/pool/main/i/icu/libicu60_60.2-3ubuntu3.2_amd64.deb && \
-    apt-get install -y ./libicu60_60.2-3ubuntu3.2_amd64.deb
 
 # install system contracts
 COPY contracts /usr/opt/telos.contracts/contracts
 
 WORKDIR /root
+
+# ubuntu 18.04 dependency 
+RUN wget http://security.ubuntu.com/ubuntu/pool/main/i/icu/libicu60_60.2-3ubuntu3.2_amd64.deb && \
+    apt-get install -y ./libicu60_60.2-3ubuntu3.2_amd64.deb
 
 # install eosio tools
 RUN wget https://github.com/EOSIO/eos/releases/download/v2.0.13/eosio_2.0.13-1-ubuntu-18.04_amd64.deb && \

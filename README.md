@@ -23,16 +23,17 @@ Hyperion is composed of the following containers:
 ## Dependencies
 You will need `docker` & `python3`.
 To install python dependencies:
-    python3 pip install -r requirements.txt
+    python3 pip install .
 
 Build docker:
+
     docker build --tag eosio:2.0.13-evm docker/eosio
     docker build --tag telos.net/hyperion:0.1.0 docker/hyperion
 
 (MORE AUTOMATION COMING)
 
 ## Execution
-    python3 scripts/telos_evm.py
+    tevmc indexer-test --loglevel=info
 
 ## Important data
 

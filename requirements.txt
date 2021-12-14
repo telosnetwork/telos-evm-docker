@@ -1,4 +1,0 @@
-docker
-natsort
-requests
-git+git://github.com/guilledk/py-eosio.git@docker_only

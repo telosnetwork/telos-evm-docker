@@ -19,6 +19,7 @@ jobs:
   indexing_test:
     name: Indexing Test
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v2
         with:
@@ -30,14 +31,13 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e .
       - name: Build docker containers
         run: |
           docker build --tag eosio:2.0.13-evm docker/eosio
           docker build --tag telos.net/hyperion:0.1.0 docker/hyperion
       - name: Run test
-        run: python scripts/telos_evm.py --loglevel=INFO
-
+        run: tevmc indexer-test --loglevel=info 
 
         # runs-on: ubuntu-latest
         # steps:

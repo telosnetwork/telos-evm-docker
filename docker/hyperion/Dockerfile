@@ -14,6 +14,7 @@ COPY ./config/ecosystem.config.js /hyperion-history-api/ecosystem.config.js
 COPY ./config/chains/ /hyperion-history-api/chains/
 COPY ./hyperion-home /home/hyperion/
 COPY ./scripts/ /home/hyperion/scripts/
+COPY ./config/plugins/ /hyperion-history-api/plugins/
 
 RUN useradd -m -s /bin/bash hyperion && chown -R hyperion:hyperion /hyperion-history-api && chown -R hyperion:hyperion /home/hyperion
 RUN chmod -R 600 "/home/hyperion/.ssh/config"

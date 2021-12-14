@@ -9,6 +9,8 @@ from typing import List, Dict
 from pathlib import Path
 from contextlib import contextmanager, ExitStack
 
+import click
+import psutil
 import docker
 import requests
 
@@ -117,6 +119,15 @@ class TEVMController:
 
             except docker.errors.APIError:
                 pass
+    
+    def stream_logs(self, container):
+        if container is None:
+            logging.critical("container is None")
+            raise StopIteration
+
+        for chunk in container.logs(stream=True):
+            msg = chunk.decode('utf-8')
+            yield msg
 
     def start_redis(self, port: str = '6379/tcp'):
         """Start redis container and await port init.
@@ -133,6 +144,10 @@ class TEVMController:
             self._redis_container,
             ('NetworkSettings', 'Ports', port)
         )
+
+        # for msg in self.stream_logs(self._redis_container):
+        #     if 'Ready to accept connections' in msg:
+        #         break
 
     def start_rabbitmq(
         self,
@@ -177,6 +192,10 @@ class TEVMController:
             ('NetworkSettings', 'Ports', ports['15672/tcp'])
         )
 
+        for msg in self.stream_logs(self._rabbitmq_container):
+            if 'Server startup complete' in msg:
+                break
+
     def start_elasticsearch(self, port: str = '9200/tcp'):
         """Create temporary elasticsearch data dir, start container and wait
         for ports init.
@@ -219,8 +238,7 @@ class TEVMController:
             ('NetworkSettings', 'Ports', port)
         )
 
-        for chunk in self._elasticsearch_container.logs(stream=True):
-            msg = chunk.decode('utf-8')
+        for msg in self.stream_logs(self._elasticsearch_container):
             if 'recovered [0] indices into cluster' in msg:
                 break
 
@@ -244,6 +262,10 @@ class TEVMController:
             self._kibana_container,
             ('NetworkSettings', 'Ports', port)
         )
+
+        #for msg in self.stream_logs(self._kibana_container):
+        #    if 'http server running at' in msg:
+        #        break
 
     def start_eosio_node(
         self,
@@ -343,6 +365,10 @@ class TEVMController:
             )
         )
 
+        #for msg in self.stream_logs(self._hyperion_indexer_container):
+        #    if '02_continuous_reader] Websocket connected!' in msg:
+        #        break
+
     def start_hyperion_api(self, port: str = '7000/tcp'):
         """Start hyperion_api container and await port init.
         """
@@ -364,9 +390,7 @@ class TEVMController:
             ('NetworkSettings', 'Ports', port)
         )
 
-        for chunk in self._hyperion_api_container.logs(stream=True):
-            msg = chunk.decode('utf-8')
-            logging.info(msg.rstrip())
+        for msg in self.stream_logs(self._hyperion_api_container):
             if 'api ready' in msg:
                 break
 
@@ -390,29 +414,63 @@ class TEVMController:
         self.network.remove()
 
 
+@click.group()
+def cli():
+    pass
 
-if __name__ == '__main__':
+@cli.command()
+def docker_build():
+    pass
 
-    import argparse
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument( '-l',
-                        '--loglevel',
-                        default='warning',
-                        help='Provide logging level. Example --loglevel debug, default=warning' )
+import signal
+class SignalTrap:
 
-    args = parser.parse_args()
+    def _handle_interrupt(self):
+       sys.exit()  # will trigger a exception, causing __exit__ to be called
+
+    def __enter__(self):
+        signal.signal(signal.SIGINT, self._handle_interrupt)
+        signal.signal(signal.SIGTERM, self._handle_interrupt)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        ...
+
+@cli.command()
+@click.option(
+    '--loglevel',
+    default='warning',
+    help='Provide logging level. Example --loglevel debug, default=warning'
+)
+def indexer_test(loglevel):
 
     logging.basicConfig(
-        level=args.loglevel.upper(),
+        level=loglevel.upper(),
         format='%(asctime)s:%(levelname)s:%(message)s',
-        datefmt='%H:%M'
+        datefmt='%H:%M:%S'
     )
+    logging.info(f'mem stats: {psutil.virtual_memory()}')
 
-    with TEVMController() as tevm:
-        logging.info('control point reached')
-        try:
-            for i in range(120):
+    # due to CI flakyness pre-pull images
+    client = docker.from_env()
+    for repo, tag in [
+        ('redis', '5.0.9-buster'),
+        ('rabbitmq', '3.8.3-management'),
+        ('docker.elastic.co/elasticsearch/elasticsearch', '7.7.1'),
+        ('docker.elastic.co/kibana/kibana', '7.7.1')
+    ]:
+        logging.info(f'pulling {repo}:{tag}...')
+        client.images.pull(repo, tag)
+        logging.info(f'done.')
+
+    with SignalTrap():
+        with TEVMController() as tevm:
+            logging.info('control point reached')
+
+            stop = False
+
+            while not stop:
                 try:
                     resp = requests.get(
                         'http://127.0.0.1:7000/v2/history/get_actions',
@@ -420,15 +478,36 @@ if __name__ == '__main__':
                             'account': 'eosio.evm'
                         }
                     ).json()
-                except requests.exceptions.ConnectionError:
-                    pass
+                    logging.info(resp)
 
-                if len(resp['actions']) > 0:
+                except requests.exceptions.ConnectionError as e:
+                    logging.critical(e)
+
+                if 'actions' in resp and len(resp['actions']) > 0:
                     logging.info(resp)
                     logging.critical("\n\n\nINDEXED\n\n\n")
+                    stop = True
                     break
+
+                logging.info(f'retry')
+                logging.info(f'mem stats: {psutil.virtual_memory()}')
+                try:
+                    resp = requests.get(
+                        'http://127.0.0.1:7000/v2/health').json()
+
+                    for service in resp['health']:
+                        if service['status'] == 'OK':
+                            pass
+                        elif service['status'] == 'Warning':
+                            logging.warning(service)
+                        else:
+                            logging.critical(service)
+                            stop = True
+
+                except requests.exceptions.ConnectionError as e:
+                    logging.critical(e)
 
                 time.sleep(1)
 
-        except KeyboardInterrupt:
-            ...
+if __name__ == '__main__':
+    cli()
