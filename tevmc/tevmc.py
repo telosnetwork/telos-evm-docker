@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
+import os
+import sys
 import json
 import time
 import shutil
+import socket
+import signal
 import logging
 
 from typing import List, Dict
@@ -20,6 +24,7 @@ from py_eosio.sugar import (
     wait_for_attr, get_container,
     docker_open_process, docker_wait_process
 )
+from daemonize import Daemonize
 
 
 DEFAULT_NETWORK_NAME = 'docker_hyperion'
@@ -30,11 +35,20 @@ class TEVMController:
 
     def __init__(
         self,
+        logger = None,
+        log_level: str = 'warning',
         producer_key: str = '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL'
     ):
         self.client = docker.from_env()
         self.root_pwd = Path(__file__).parent.parent.resolve()
         self.exit_stack = ExitStack()
+
+        self.logger = logger
+
+        if logger is None:
+            self.logger = logging.getLogger('tevmc')
+            self.logger.setLevel(log_level.upper())
+
         self.producer_key = producer_key
 
         self.network = None
@@ -64,12 +78,12 @@ class TEVMController:
 
         shutil.rmtree(dir, ignore_errors=True)
         dir.mkdir(parents=True)
-        logging.info(f'created temp dir: {dir}')
+        self.logger.info(f'created temp dir: {dir}')
         dir.chmod(0o777)
 
         yield dir
         shutil.rmtree(dir, ignore_errors=True)
-        logging.info(f'deleted temp dir: {dir}')
+        self.logger.info(f'deleted temp dir: {dir}')
 
     @contextmanager
     def open_container(
@@ -83,8 +97,9 @@ class TEVMController:
         
         Also waits for container to get ip address.
         """
+        container = None
         try:
-            logging.info(f'opening container {name}')
+            self.logger.info(f'opening container {name}')
             container = get_container(
                 self.client,
                 image,
@@ -99,30 +114,32 @@ class TEVMController:
                 restart_policy={
                     "Name": "on-failure", "MaximumRetryCount": 3})
 
-            logging.info(f'waiting on networking check')
+            self.logger.info(f'waiting on networking check')
             ip = wait_for_attr(container, (
                 'NetworkSettings', 'Networks', self.network.name, 'IPAddress'))
-            logging.info(f'container at {ip} started')
+            self.logger.info(f'container at {ip} started')
 
             yield container
 
         finally:
-            logging.info(f'stopping container \"{name}\"')
+            self.logger.info(f'stopping container \"{name}\"')
             try:
-                container.stop()
-            except docker.errors.APIError:
-                pass
+                if container:
+                    container.stop()
+            except docker.errors.APIError as e:
+                self.logger.critical(e) 
 
-            logging.info(f'remove image for \"{name}\"')
+            self.logger.info(f'remove image for \"{name}\"')
             try:
-                container.remove()
+                if container:
+                    container.remove()
 
-            except docker.errors.APIError:
-                pass
+            except docker.errors.APIError as e:
+                self.logger.critical(e)
     
     def stream_logs(self, container):
         if container is None:
-            logging.critical("container is None")
+            self.logger.critical("container is None")
             raise StopIteration
 
         for chunk in container.logs(stream=True):
@@ -320,7 +337,8 @@ class TEVMController:
         # setup cleos wrapper
         cleos = CLEOS(
             self.client,
-            self._eosio_node_container)
+            self._eosio_node_container,
+            logger=self.logger)
 
         # init wallet
         cleos.start_keosd() 
@@ -337,16 +355,16 @@ class TEVMController:
         cleos.boot_sequence()
 
         # create evm accounts and deploy contract
-        cleos.create_account_staked('eosio', 'eosio.evm', ram=1024000)
-        cleos.create_account_staked('eosio', 'fees.evm', ram=1024000)
-        cleos.create_account_staked('eosio', 'rpc.evm', ram=1024000)
+        # cleos.create_account_staked('eosio', 'eosio.evm', ram=1024000)
+        # cleos.create_account_staked('eosio', 'fees.evm', ram=1024000)
+        # cleos.create_account_staked('eosio', 'rpc.evm', ram=1024000)
 
-        cleos.deploy_contract(
-            'eosio.evm',
-            '/usr/opt/telos.contracts/contracts/eosio.evm',
-            privileged=True,
-            create_account=False
-        )
+        # cleos.deploy_contract(
+        #     'eosio.evm',
+        #     '/usr/opt/telos.contracts/contracts/eosio.evm',
+        #     privileged=True,
+        #     create_account=False
+        # )
 
         self.cleos = cleos
 
@@ -419,95 +437,224 @@ def cli():
     pass
 
 @cli.command()
-def docker_build():
-    pass
+@click.option(
+    '--eosio-path', default='docker/eosio',
+    help='Path to eosio docker directory')
+@click.option(
+    '--eosio-tag', default='eosio:2.0.13-evm',
+    help='Eosio container tag')
+@click.option(
+    '--hyperion-path', default='docker/hyperion',
+    help='Path to hyperion docker directory')
+@click.option(
+    '--hyperion-tag', default='telos.net/hyperion:0.1.0',
+    help='Eosio container tag')
+def build(
+    eosio_path,
+    eosio_tag,
+    hyperion_path,
+    hyperion_tag
+):
+    client = docker.from_env()
 
+    builds = [
+        {'path': eosio_path, 'tag': eosio_tag},
+        {'path': hyperion_path, 'tag': hyperion_tag},
+    ]
 
-import signal
-class SignalTrap:
+    for build_args in builds:
+        for chunk in client.api.build(**build_args):
+            msg = json.loads(chunk.decode('utf-8'))
+            update = msg.get('status', None)
+            update = msg.get('stream', None)
+            if update:
+                print(update, end='', flush=True)
 
-    def _handle_interrupt(self):
-       sys.exit()  # will trigger a exception, causing __exit__ to be called
+    print('built containers.')
 
-    def __enter__(self):
-        signal.signal(signal.SIGINT, self._handle_interrupt)
-        signal.signal(signal.SIGTERM, self._handle_interrupt)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        ...
 
 @cli.command()
-@click.option(
-    '--loglevel',
-    default='warning',
-    help='Provide logging level. Example --loglevel debug, default=warning'
-)
-def indexer_test(loglevel):
-
-    logging.basicConfig(
-        level=loglevel.upper(),
-        format='%(asctime)s:%(levelname)s:%(message)s',
-        datefmt='%H:%M:%S'
-    )
-    logging.info(f'mem stats: {psutil.virtual_memory()}')
-
-    # due to CI flakyness pre-pull images
+def pull():
     client = docker.from_env()
-    for repo, tag in [
+
+    manifest = [
         ('redis', '5.0.9-buster'),
         ('rabbitmq', '3.8.3-management'),
         ('docker.elastic.co/elasticsearch/elasticsearch', '7.7.1'),
         ('docker.elastic.co/kibana/kibana', '7.7.1')
-    ]:
-        logging.info(f'pulling {repo}:{tag}...')
+    ]
+    for repo, tag in manifest:
+        print(f'pulling {repo}:{tag}... ', end='', flush=True)
         client.images.pull(repo, tag)
-        logging.info(f'done.')
+        print(f'done.')
 
-    with SignalTrap():
-        with TEVMController() as tevm:
-            logging.info('control point reached')
 
-            stop = False
+@cli.command()
+@click.option(
+    '--pid', default='/tmp/tevmc.pid',
+    help='Path to lock file for daemon')
+@click.option(
+    '--port', default=6666,
+    help='Port to listen for termination.')
+@click.option(
+    '--logpath', default='/tmp/tevmc.log',
+    help='Log file path.')
+@click.option(
+    '--loglevel', default='warning',
+    help='Provide logging level. Example --loglevel debug, default=warning')
+def up(
+    pid,
+    port,
+    logpath,
+    loglevel
+):
+    logging.info(f'mem stats: {psutil.virtual_memory()}')
+    if Path(pid).resolve().exists():
+        print('daemon pid file exists. abort.')
+        sys.exit(1)
 
-            while not stop:
-                try:
-                    resp = requests.get(
-                        'http://127.0.0.1:7000/v2/history/get_actions',
-                        params={
-                            'account': 'eosio.evm'
-                        }
-                    ).json()
-                    logging.info(resp)
+    loglevel = loglevel.upper()
 
-                except requests.exceptions.ConnectionError as e:
-                    logging.critical(e)
+    fmt = logging.Formatter(
+        fmt='%(asctime)s:%(levelname)s:%(message)s',
+        datefmt='%H:%M:%S'
+    )
 
-                if 'actions' in resp and len(resp['actions']) > 0:
-                    logging.info(resp)
-                    logging.critical("\n\n\nINDEXED\n\n\n")
+    logger = logging.getLogger('tevmc')
+    logger.setLevel(loglevel)
+    logger.propagate = False
+    fh = logging.FileHandler(logpath, 'w')
+    fh.setLevel(loglevel)
+    fh.setFormatter(fmt)
+    logger.addHandler(fh)
+    keep_fds = [fh.stream.fileno()]
+
+    def wait_exit_forever():
+        with TEVMController(logger=logger) as tevm:
+            logger.critical('control point reached')
+            try:
+                while True:
+                    time.sleep(60)
+
+            except KeyboardInterrupt:
+                logger.warning('interrupt catched.')
+            
+    daemon = Daemonize(
+        app='tevmc',
+        pid=pid,
+        action=wait_exit_forever,
+        keep_fds=keep_fds)
+
+    daemon.start()
+
+
+@cli.command()
+@click.option(
+    '--pid', default='/tmp/tevmc.pid',
+    help='Path to lock file for daemon')
+def down(pid):
+    try:
+        with open(pid, 'r') as pidfile:
+            pid = pidfile.read()
+
+        os.kill(int(pid), signal.SIGINT)
+
+    except FileNotFoundError:
+        print('Couldn\'t open pid file at {pid}')
+
+
+@cli.command()
+@click.option(
+    '--logpath', default='/tmp/tevmc.log',
+    help='Log file path.')
+@click.argument('source')
+def stream(logpath, source):
+    """Stream logs from either the tevmc daemon or a container.
+    """
+
+    try:
+        if source == 'daemon':
+            with open(logpath, 'r') as logfile:
+                line = ''
+                while 'Stopping daemon.' not in line:
+                    line = logfile.readline()
+                    print(line, end='', flush=True)
+
+        else:
+            client = docker.from_env()
+
+            try:
+                container = client.containers.get(source)
+                for chunk in container.logs(stream=True):
+                    msg = chunk.decode('utf-8')
+                    print(msg, end='', flush=True)
+
+            except docker.errors.NotFound:
+                print(f'Container \"{source}\" not found!')
+
+    except KeyboardInterrupt:
+        print('Interrupted.')
+
+
+@cli.command()
+@click.option(
+    '--show/--no-show', default=False,
+    help='Show output while waiting for bootstrap.')
+@click.option(
+    '--logpath', default='/tmp/tevmc.log',
+    help='Log file path.')
+def wait_init(show, logpath):
+    with open(logpath, 'r') as logfile:
+        line = ''
+        while 'control point reached' not in line:
+            line = logfile.readline()
+            if show:
+                print(line, end='', flush=True)
+
+
+@cli.command()
+@click.argument('contract')
+def is_indexed(contract):
+    stop = False
+
+    while not stop:
+        try:
+            resp = requests.get(
+                'http://127.0.0.1:7000/v2/history/get_actions',
+                params={
+                    'account': contract
+                }
+            ).json()
+            logging.info(resp)
+
+        except requests.exceptions.ConnectionError as e:
+            logging.critical(e)
+
+        if 'actions' in resp and len(resp['actions']) > 0:
+            logging.info(resp)
+            logging.critical("\n\n\nINDEXED\n\n\n")
+            stop = True
+            break
+
+        logging.info(f'retry')
+        logging.info(f'mem stats: {psutil.virtual_memory()}')
+        try:
+            resp = requests.get(
+                'http://127.0.0.1:7000/v2/health').json()
+
+            for service in resp['health']:
+                if service['status'] == 'OK':
+                    pass
+                elif service['status'] == 'Warning':
+                    logging.warning(service)
+                else:
+                    logging.critical(service)
                     stop = True
-                    break
 
-                logging.info(f'retry')
-                logging.info(f'mem stats: {psutil.virtual_memory()}')
-                try:
-                    resp = requests.get(
-                        'http://127.0.0.1:7000/v2/health').json()
+        except requests.exceptions.ConnectionError as e:
+            logging.critical(e)
 
-                    for service in resp['health']:
-                        if service['status'] == 'OK':
-                            pass
-                        elif service['status'] == 'Warning':
-                            logging.warning(service)
-                        else:
-                            logging.critical(service)
-                            stop = True
-
-                except requests.exceptions.ConnectionError as e:
-                    logging.critical(e)
-
-                time.sleep(1)
+        time.sleep(1)
 
 if __name__ == '__main__':
     cli()

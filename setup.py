@@ -13,6 +13,7 @@ setup(
         'docker',
         'natsort',
         'requests',
+        'daemonize',
         'py_eosio@git+git://github.com/guilledk/py-eosio.git@docker_only'
     ],
     entry_points={

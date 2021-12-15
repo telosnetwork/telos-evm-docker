@@ -19,7 +19,7 @@ jobs:
   indexing_test:
     name: Indexing Test
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v2
         with:
@@ -32,12 +32,20 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -e .
+      - name: Pull docker containers
+        run: tevmc pull
       - name: Build docker containers
-        run: |
-          docker build --tag eosio:2.0.13-evm docker/eosio
-          docker build --tag telos.net/hyperion:0.1.0 docker/hyperion
-      - name: Run test
-        run: tevmc indexer-test --loglevel=info 
+        run: tevmc build
+      - name: Bring tevmc daemon up
+        run: tevmc up --loglevel=info
+      - name: Await services init 
+        run: tevmc wait-init --show
+      - name: Test eosio.token indexing
+        run: tevmc is-indexed eosio.token
+      - name: Test eosio.evm indexing
+        run: tevmc is-indexed eosio.evm
+      - name: Bring tevmc daemon down
+        run : tevmc down
 
         # runs-on: ubuntu-latest
         # steps:
