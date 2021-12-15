@@ -11,7 +11,7 @@ RUN apt-get update && \
         ca-certificates
 
 # install system contracts
-COPY contracts /usr/opt/telos.contracts/contracts
+COPY contracts /opt/eosio/bin/contracts
 
 WORKDIR /root
 

@@ -352,21 +352,46 @@ class TEVMController:
 
         # await for nodeos to produce a block
         cleos.wait_produced()
-        cleos.boot_sequence()
-
-        # create evm accounts and deploy contract
-        # cleos.create_account_staked('eosio', 'eosio.evm', ram=1024000)
-        # cleos.create_account_staked('eosio', 'fees.evm', ram=1024000)
-        # cleos.create_account_staked('eosio', 'rpc.evm', ram=1024000)
-
-        # cleos.deploy_contract(
-        #     'eosio.evm',
-        #     '/usr/opt/telos.contracts/contracts/eosio.evm',
-        #     privileged=True,
-        #     create_account=False
-        # )
+        cleos.boot_sequence(
+            sys_contracts_mount='/opt/eosio/bin/contracts')
 
         self.cleos = cleos
+
+    def deploy_evm(self):
+        # create evm accounts
+        self.cleos.create_account_staked(
+            'eosio', 'eosio.evm', ram=1024000)
+        self.cleos.create_account_staked(
+            'eosio', 'fees.evm', ram=1024000)
+        self.cleos.create_account_staked(
+            'eosio', 'rpc.evm', ram=1024000)
+
+        # self.cleos.create_account_staked(
+        #     'eosio', 'evmuser1', ram=1024000)
+        # self.cleos.transfer_token('eosio', 'evmuser1', '111000000.0000 TLOS')
+
+        # exec_id, exec_stream = docker_open_process(
+        #     self.client, self._eosio_node_container,
+        #     ['node', 'deployEvm.js', 'false'])
+        # 
+        # ec, out = docker_wait_process(
+        #     self.client, exec_id, exec_stream, logger=self.logger)
+
+        # if ec != 0:
+        #     self.logger.critical('Couldn\'t deploy EVM contract, abort...')
+        #     sys.exit(1)
+
+        self.cleos.deploy_contract(
+            'eosio.evm',
+            '/opt/eosio/bin/contracts/eosio.evm', create_account=False)
+
+        self.cleos.wait_blocks(4)
+        self.cleos.push_action(
+            'eosio.evm',
+            'setgas',
+            [100000000000, '0.0002 TLOS'],
+            'eosio.evm@active'
+        )
 
     def start_hyperion_indexer(self):
         """Start hyperion_indexer container and await port init.
@@ -417,6 +442,9 @@ class TEVMController:
         self.init_network()
 
         self.start_eosio_node()
+
+        self.deploy_evm()
+
         self.start_redis()
         self.start_rabbitmq()
         self.start_elasticsearch()
@@ -455,6 +483,8 @@ def build(
     hyperion_path,
     hyperion_tag
 ):
+    """Build in-repo docker containers.
+    """
     client = docker.from_env()
 
     builds = [
@@ -475,6 +505,8 @@ def build(
 
 @cli.command()
 def pull():
+    """Pull required service container images.
+    """
     client = docker.from_env()
 
     manifest = [
@@ -508,6 +540,8 @@ def up(
     logpath,
     loglevel
 ):
+    """Bring tevmc daemon up.
+    """
     logging.info(f'mem stats: {psutil.virtual_memory()}')
     if Path(pid).resolve().exists():
         print('daemon pid file exists. abort.')
@@ -553,6 +587,8 @@ def up(
     '--pid', default='/tmp/tevmc.pid',
     help='Path to lock file for daemon')
 def down(pid):
+    """Bring tevmc daemon down.
+    """
     try:
         with open(pid, 'r') as pidfile:
             pid = pidfile.read()
@@ -604,17 +640,26 @@ def stream(logpath, source):
     '--logpath', default='/tmp/tevmc.log',
     help='Log file path.')
 def wait_init(show, logpath):
+    """Await for full daemon initialization.
+    """
+
     with open(logpath, 'r') as logfile:
         line = ''
-        while 'control point reached' not in line:
-            line = logfile.readline()
-            if show:
-                print(line, end='', flush=True)
+        try:
+            while 'control point reached' not in line:
+                line = logfile.readline()
+                if show:
+                    print(line, end='', flush=True)
+
+        except KeyboardInterrupt:
+            print('Interrupted.')
 
 
 @cli.command()
 @click.argument('contract')
 def is_indexed(contract):
+    """Check if a contract has been indexed by hyperion.
+    """
     stop = False
 
     while not stop:
