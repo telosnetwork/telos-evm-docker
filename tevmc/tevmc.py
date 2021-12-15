@@ -366,21 +366,6 @@ class TEVMController:
         self.cleos.create_account_staked(
             'eosio', 'rpc.evm', ram=1024000)
 
-        # self.cleos.create_account_staked(
-        #     'eosio', 'evmuser1', ram=1024000)
-        # self.cleos.transfer_token('eosio', 'evmuser1', '111000000.0000 TLOS')
-
-        # exec_id, exec_stream = docker_open_process(
-        #     self.client, self._eosio_node_container,
-        #     ['node', 'deployEvm.js', 'false'])
-        # 
-        # ec, out = docker_wait_process(
-        #     self.client, exec_id, exec_stream, logger=self.logger)
-
-        # if ec != 0:
-        #     self.logger.critical('Couldn\'t deploy EVM contract, abort...')
-        #     sys.exit(1)
-
         self.cleos.deploy_contract(
             'eosio.evm',
             '/opt/eosio/bin/contracts/eosio.evm', create_account=False)
