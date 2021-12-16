@@ -17,57 +17,51 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   indexing_test:
-    name: Indexing Test
+    name: Hardhat Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
+
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+        
+      - name: Setup hardhat 
+        run: cd tests/test_hardhat/ && npm install --save-dev hardhat
+
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
+
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -e .
+
       - name: Pull docker containers
         run: tevmc pull
+
       - name: Build docker containers
         run: tevmc build
+
       - name: Bring tevmc daemon up
         run: tevmc up --loglevel=info
+
       - name: Await services init 
         run: tevmc wait-init --show
-      - name: Test eosio.token indexing
-        run: tevmc is-indexed eosio.token
-      - name: Test eosio.evm indexing
-        run: tevmc is-indexed eosio.evm
+
+      - name: Await contracts indexing
+        run: |
+          tevmc is-indexed eosio.token
+          tevmc is-indexed eosio.evm
+
+      - name: Run hardhat tests
+        run: cd tests/test_hardhat/ && npx hardhat test
+
       - name: Bring tevmc daemon down
         run : tevmc down
-
-        # runs-on: ubuntu-latest
-        # steps:
-        #   # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-        #   - uses: actions/checkout@v2
-        #   
-        #   - name: Setup Node
-        #     uses: actions/setup-node@v2
-        #     with:
-        #       node-version: '14'
-        #       
-        #   - name: Setup Docker
-        #     uses: docker-practice/actions-setup-docker@master
-        #     
-        #   - name: Setup Truffle
-        #     run: npm install -g truffle
-        #       
-        #   - name: Setup Truffle HD Wallet
-        #     run: npm install @truffle/hdwallet-provider
-        #     
-        #   - name: Run run.sh
-        #     run: sudo ./run.sh debug
-
-        #   - name: Run Truffle test
-        #     run: cd tests/test_erc20/ && truffle test --network private
