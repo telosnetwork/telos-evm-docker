@@ -23,9 +23,28 @@ Hyperion is composed of the following containers:
 ## Dependencies
 You will need `docker` & `python3`.
 
+#### small python heads up
+
+It's good practice to not modify the python envoirment that comes with the system, as it is sometimes used for system scripts.
+A way to deal with that is to use [pyenv](https://github.com/pyenv/pyenv), `node` developers might know of `nvm` a similar
+tool to manage different `node` versions on the same system.
+
+`pyenv` installs different `python` versions inside `~/.pyenv` by default so it's user level.
+
+
 To install python dependencies:
 
     pip install .
+
+If in your system you have both a `python` and `python3` binary, corresponding to `python2.7` and `python3.x`
+respectively. You'll need to specify which version of `pip` to use:
+
+    pip3 install .
+
+Or if not found:
+
+    python3 -m pip install .
+
 
 Build docker (must be inside repo):
 
