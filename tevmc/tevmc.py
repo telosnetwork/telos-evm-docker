@@ -305,11 +305,13 @@ class TEVMController:
             vol = self.client.volumes.get(DEFAULT_VOLUME_NAME)
             vol.remove()
 
-        except docker.errors.NotFound:
+        finally:
             vol = self.client.volumes.create(
                 name=DEFAULT_VOLUME_NAME)
 
-        self._eosio_node_volume = vol
+        self._eosio_volume = vol
+        self._eosio_volume_path = Path(self.client.api.inspect_volume(
+            self._eosio_volume.name)['Mountpoint'])
 
         # open container
         self._eosio_node_container = self.exit_stack.enter_context(
@@ -319,7 +321,7 @@ class TEVMController:
                 command=['/bin/bash', '-c', 'trap : TERM INT; sleep infinity & wait'],
                 ports=ports,
                 volumes=[
-                    f'{self._eosio_node_volume.name}:/mnt/dev/data'
+                    f'{self._eosio_volume.name}:/mnt/dev/data'
                 ]
             )
         )
@@ -352,8 +354,15 @@ class TEVMController:
 
         # await for nodeos to produce a block
         cleos.wait_produced()
-        cleos.boot_sequence(
-            sys_contracts_mount='/opt/eosio/bin/contracts')
+        try:
+            cleos.boot_sequence(
+                sys_contracts_mount='/opt/eosio/bin/contracts')
+
+        except AssertionError:
+            ec, out = cleos.gather_nodeos_output()
+            self.logger.critical(f'nodeos exit code: {ec}')
+            self.logger.critical(f'nodeos output:\n{out}\n')
+            sys.exit(1)
 
         self.cleos = cleos
 
@@ -480,22 +489,18 @@ def build(
     for build_args in builds:
         for chunk in client.api.build(**build_args):
             update = None
-            _str = None
-            try:
-                _str = chunk.decode('utf-8')
-                msg = json.loads(_str)
+            _str = chunk.decode('utf-8').rstrip()
+
+            # sometimes several json packets are sent per chunk
+            splt_str = _str.split('\n')
+            
+            for packet in splt_str:
+                msg = json.loads(packet)
                 update = msg.get('status', None)
                 update = msg.get('stream', None)
 
-            except json.decoder.JSONDecodeError as e:
-                if _str:
-                    update = f'json decode error parsing: \"{_str}\"'
-
-                else:
-                    update = f'utf-8 decode error parsing: \"{chunk}\"'
-
-            if update:
-                print(update, end='', flush=True)
+                if update:
+                    print(update, end='', flush=True)
 
     print('built containers.')
 
@@ -588,11 +593,15 @@ def config(
 @click.option(
     '--loglevel', default='warning',
     help='Provide logging level. Example --loglevel debug, default=warning')
+@click.option(
+    '--state-plugin-log-cleanup', default=False, is_flag=True,
+    help='Enable state history plugin log cleanup/rotation.')
 def up(
     pid,
     port,
     logpath,
-    loglevel
+    loglevel,
+    state_plugin_log_cleanup
 ):
     """Bring tevmc daemon up.
     """
@@ -618,11 +627,17 @@ def up(
     keep_fds = [fh.stream.fileno()]
 
     def wait_exit_forever():
+
         with TEVMController(logger=logger) as tevm:
             logger.critical('control point reached')
             try:
                 while True:
-                    time.sleep(60)
+                    if state_plugin_log_cleanup:
+                        for file in Path(
+                            tevm._eosio_volume_path / 'state-history'
+                        ).glob('*'):
+                            logger.info(file)
+                    time.sleep(10)
 
             except KeyboardInterrupt:
                 logger.warning('interrupt catched.')
