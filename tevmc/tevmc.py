@@ -479,9 +479,21 @@ def build(
 
     for build_args in builds:
         for chunk in client.api.build(**build_args):
-            msg = json.loads(chunk.decode('utf-8'))
-            update = msg.get('status', None)
-            update = msg.get('stream', None)
+            update = None
+            _str = None
+            try:
+                _str = chunk.decode('utf-8')
+                msg = json.loads(_str)
+                update = msg.get('status', None)
+                update = msg.get('stream', None)
+
+            except json.decoder.JSONDecodeError as e:
+                if _str:
+                    update = f'json decode error parsing: \"{_str}\"'
+
+                else:
+                    update = f'utf-8 decode error parsing: \"{chunk}\"'
+
             if update:
                 print(update, end='', flush=True)
 
