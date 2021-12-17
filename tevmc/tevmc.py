@@ -35,9 +35,16 @@ class TEVMController:
 
     def __init__(
         self,
+        client = None,
         logger = None,
         log_level: str = 'warning',
-        producer_key: str = '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL'
+        producer_key: str = '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
+        redis_tag: str = 'redis:5.0.9-buster',
+        rabbitmq_tag: str = 'rabbitmq:3.8.3-management',
+        elasticsearch_tag: str = 'docker.elastic.co/elasticsearch/elasticsearch:7.7.1',
+        kibana_tag: str = 'docker.elastic.co/kibana/kibana:7.7.1',
+        eosio_tag: str = 'eosio:2.0.13-evm',
+        hyperion_tag: str = 'telos.net/hyperion:0.1.0'
     ):
         self.client = docker.from_env()
         self.root_pwd = Path(__file__).parent.parent.resolve()
@@ -54,12 +61,24 @@ class TEVMController:
         self.network = None
 
         self._redis_container = None
+        self._redis_container_tag = redis_tag
+
         self._rabbitmq_container = None
+        self._rabbitmq_container_tag = rabbitmq_tag
+
         self._elasticsearch_container = None
+        self._elasticsearch_container_tag = elasticsearch_tag
+
         self._kibana_container = None
+        self._kibana_container_tag = kibana_tag
+
         self._eosio_node_container = None
+        self._eosio_node_container_tag = eosio_tag
+
         self._hyperion_indexer_container = None
+        self._hyperion_indexer_container_tag = hyperion_tag
         self._hyperion_api_container = None
+        self._hyperion_api_container_tag = hyperion_tag
 
     def init_network(self):
         """Try to attach to already created default network or create.
@@ -152,7 +171,7 @@ class TEVMController:
         self._redis_container = self.exit_stack.enter_context(
             self.open_container(
                 'redis',
-                'redis:5.0.9-buster',
+                self._redis_container_tag,
                 ports={port: port}
             )
         )
@@ -188,7 +207,7 @@ class TEVMController:
         self._rabbitmq_container = self.exit_stack.enter_context(
             self.open_container(
                 'rabbitmq',
-                'rabbitmq:3.8.3-management',
+                self._rabbitmq_container_tag,
                 environment={
                     'RABBITMQ_DEFAULT_USER': 'username',
                     'RABBITMQ_DEFAULT_PASS': 'password',
@@ -233,7 +252,7 @@ class TEVMController:
         self._elasticsearch_container = self.exit_stack.enter_context(
             self.open_container(
                 'elasticsearch',
-                'docker.elastic.co/elasticsearch/elasticsearch:7.7.1',
+                self._elasticsearch_container_tag,
                 environment={
                     'discovery.type': 'single-node',
                     'cluster.name': 'es-cluster',
@@ -265,7 +284,7 @@ class TEVMController:
         self._kibana_container = self.exit_stack.enter_context(
             self.open_container(
                 'kibana',
-                'docker.elastic.co/kibana/kibana:7.7.1',
+                self._kibana_container_tag,
                 environment={
                     'ELASTICSEARCH_HOSTS': 'http://elasticsearch:9200',
                     'ELASTICSEARCH_USERNAME': 'elastic',
@@ -300,16 +319,24 @@ class TEVMController:
         - Create evm accounts and deploy contract
         """
 
-        # search for volume and delete if exists, then create
+        # search for volume and delete if exists
         try:
             vol = self.client.volumes.get(DEFAULT_VOLUME_NAME)
             vol.remove()
 
-        finally:
-            vol = self.client.volumes.create(
-                name=DEFAULT_VOLUME_NAME)
+        except docker.errors.NotFound:
+            pass
 
-        self._eosio_volume = vol
+        except docker.errors.APIError as api_err:
+            if api_err.status_code == 409:
+                self.logger.critical(
+                    'eosio_volume in use, docker envoirment messy, cleanup '
+                    'volumes and rerun.')
+                sys.exit(1)
+
+        self._eosio_volume = self.client.volumes.create(
+            name=DEFAULT_VOLUME_NAME)
+
         self._eosio_volume_path = Path(self.client.api.inspect_volume(
             self._eosio_volume.name)['Mountpoint'])
 
@@ -317,7 +344,7 @@ class TEVMController:
         self._eosio_node_container = self.exit_stack.enter_context(
             self.open_container(
                 'eosio_nodeos',
-                'eosio:2.0.13-evm',
+                self._eosio_node_container_tag,
                 command=['/bin/bash', '-c', 'trap : TERM INT; sleep infinity & wait'],
                 ports=ports,
                 volumes=[
@@ -393,7 +420,7 @@ class TEVMController:
         self._hyperion_indexer_container = self.exit_stack.enter_context(
             self.open_container(
                 'hyperion-indexer',
-                'telos.net/hyperion:0.1.0',
+                self._hyperion_indexer_container_tag,
                 command=[
                     '/bin/bash', '-c',
                     '/home/hyperion/scripts/run-hyperion.sh telos-testnet-indexer'
@@ -412,7 +439,7 @@ class TEVMController:
         self._hyperion_api_container = self.exit_stack.enter_context(
             self.open_container(
                 'hyperion-api',
-                'telos.net/hyperion:0.1.0',
+                self._hyperion_api_container_tag,
                 command=[
                     '/bin/bash', '-c',
                     '/home/hyperion/scripts/run-hyperion.sh telos-testnet-api'
@@ -502,21 +529,49 @@ def build(
                 if update:
                     print(update, end='', flush=True)
 
+        try:
+            client.images.get(build_args['tag'])
+
+        except docker.errors.NotFound:
+            print(
+                f'couldn\'t build container {build_args["tag"]} at '
+                f'{build_args["path"]}')
+            sys.exit(1)
+
     print('built containers.')
 
 
 @cli.command()
-def pull():
+@click.option(
+    '--redis-tag', default='redis:5.0.9-buster',
+    help='Redis container image tag.')
+@click.option(
+    '--rabbitmq-tag', default='rabbitmq:3.8.3-management',
+    help='Rabbitmq container image tag.')
+@click.option(
+    '--elasticsearch-tag', default='docker.elastic.co/elasticsearch/elasticsearch:7.7.1',
+    help='Elastic search container image tag.')
+@click.option(
+    '--kibana-tag', default='docker.elastic.co/kibana/kibana:7.7.1',
+    help='Kibana container image tag.')
+def pull(**kwargs):
     """Pull required service container images.
     """
     client = docker.from_env()
 
-    manifest = [
-        ('redis', '5.0.9-buster'),
-        ('rabbitmq', '3.8.3-management'),
-        ('docker.elastic.co/elasticsearch/elasticsearch', '7.7.1'),
-        ('docker.elastic.co/kibana/kibana', '7.7.1')
-    ]
+    manifest = []
+    for key, arg in kwargs.items():
+        try:
+            repo, tag = arg.split(':')
+
+        except ValueError:
+            print(
+                f'Malformed tag {key}=\'{arg}\','
+                ' must be of format \'{repo}:{tag}\'.')
+            sys.exit(1)
+    
+        manifest.append((repo, tag))
+
     for repo, tag in manifest:
         print(f'pulling {repo}:{tag}... ', end='', flush=True)
         client.images.pull(repo, tag)
@@ -594,18 +649,32 @@ def config(
     '--loglevel', default='warning',
     help='Provide logging level. Example --loglevel debug, default=warning')
 @click.option(
-    '--state-plugin-log-cleanup', default=False, is_flag=True,
-    help='Enable state history plugin log cleanup/rotation.')
+    '--redis-tag', default='redis:5.0.9-buster',
+    help='Redis container image tag.')
+@click.option(
+    '--rabbitmq-tag', default='rabbitmq:3.8.3-management',
+    help='Rabbitmq container image tag.')
+@click.option(
+    '--elasticsearch-tag', default='docker.elastic.co/elasticsearch/elasticsearch:7.7.1',
+    help='Elastic search container image tag.')
+@click.option(
+    '--kibana-tag', default='docker.elastic.co/kibana/kibana:7.7.1',
+    help='Kibana container image tag.')
+@click.option(
+    '--eosio-tag', default='eosio:2.0.13-evm',
+    help='Eosio nodeos container image tag.')
+@click.option(
+    '--hyperion-tag', default='telos.net/hyperion:0.1.0',
+    help='Hyperion container image tag.')
 def up(
     pid,
     port,
     logpath,
     loglevel,
-    state_plugin_log_cleanup
+    **kwargs  # leave container tags to kwargs 
 ):
     """Bring tevmc daemon up.
     """
-    logging.info(f'mem stats: {psutil.virtual_memory()}')
     if Path(pid).resolve().exists():
         print('daemon pid file exists. abort.')
         sys.exit(1)
@@ -626,18 +695,39 @@ def up(
     logger.addHandler(fh)
     keep_fds = [fh.stream.fileno()]
 
+    # check required images are present
+    manifest = []
+    for key, arg in kwargs.items():
+        try:
+            repo, tag = arg.split(':')
+
+        except ValueError:
+            logger.critical(
+                f'Malformed tag {key}=\'{arg}\','
+                ' must be of format \'{repo}:{tag}\'.')
+            sys.exit(1)
+    
+        manifest.append((repo, tag))
+
+    logger.info(
+        f'container manifest: {json.dumps(manifest, indent=4)}')
+
+    client = docker.from_env()
+    for repo, tag in manifest:
+        try:
+            client.images.get(f'{repo}:{tag}')
+
+        except docker.errors.NotFound:
+            logger.critical(f'docker image {repo}:{tag} not present, abort.')
+            sys.exit(1)
+
     def wait_exit_forever():
 
-        with TEVMController(logger=logger) as tevm:
+        with TEVMController(logger=logger, **kwargs) as tevm:
             logger.critical('control point reached')
             try:
                 while True:
-                    if state_plugin_log_cleanup:
-                        for file in Path(
-                            tevm._eosio_volume_path / 'state-history'
-                        ).glob('*'):
-                            logger.info(file)
-                    time.sleep(10)
+                    time.sleep(90)
 
             except KeyboardInterrupt:
                 logger.warning('interrupt catched.')

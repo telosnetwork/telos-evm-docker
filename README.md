@@ -45,6 +45,13 @@ Or if not found:
 
     python3 -m pip install .
 
+If you don't want to install it as a package run:
+
+    pip install -r requirements.txt
+
+And then to execute change the bare `tevmc` command for `./tevmc.run` while
+on the root of the repo.
+
 
 Build docker (must be inside repo):
 
