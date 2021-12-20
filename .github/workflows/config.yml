@@ -1,12 +1,6 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
-# Controls when the action will run. 
 on:
-  push:
-    branches:
-      - python_toolchain
   pull_request:
     branches:
       - master
@@ -14,24 +8,15 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   indexing_test:
-    name: Hardhat Tests
+    name: Indexing Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-
-      - name: Setup Node
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-        
-      - name: Setup hardhat 
-        run: cd tests/test_hardhat/ && npm install --save-dev hardhat
 
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -52,17 +37,5 @@ jobs:
       - name: Build docker containers
         run: tevmc build
 
-      - name: Bring tevmc daemon up
-        run: tevmc up --loglevel=info
-
-      - name: Await services init 
-        run: tevmc wait-init --show
-
-      - name: Await eosio.evm indexing
-        run: tevmc is-indexed eosio.evm
-
-          # - name: Run hardhat tests
-          #   run: cd tests/test_hardhat/ && npx hardhat test
-
-      - name: Bring tevmc daemon down
-        run : tevmc down
+      - name: Run pytest 
+        run: pytest

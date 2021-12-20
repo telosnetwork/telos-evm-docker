@@ -19,12 +19,13 @@ import docker
 import requests
 
 from docker.types import LogConfig, Mount
-from py_eosio.cleos import CLEOS
 from py_eosio.sugar import (
     wait_for_attr, get_container,
     docker_open_process, docker_wait_process
 )
 from daemonize import Daemonize
+
+from .cleos_evm import CLEOSEVM
 
 
 DEFAULT_NETWORK_NAME = 'docker_hyperion'
@@ -364,7 +365,7 @@ class TEVMController:
         )
 
         # setup cleos wrapper
-        cleos = CLEOS(
+        cleos = CLEOSEVM(
             self.client,
             self._eosio_node_container,
             logger=self.logger)
@@ -580,6 +581,9 @@ def pull(**kwargs):
 
 @cli.command()
 @click.option(
+    '--chain-name', default='telos-testnet',
+    help='Chain name used through out config files.')
+@click.option(
     '--hyperion-cfg-path', default='docker/hyperion/config/chains/telos-testnet.config.json',
     help='Path to hyperion config file')
 @click.option(
@@ -595,6 +599,7 @@ def pull(**kwargs):
     '--index-only-evm/--index-all', default=False,
     help='Show output while waiting for bootstrap.')
 def config(
+    chain_name,
     hyperion_cfg_path,
     indexer_start_on,
     indexer_stop_on,
@@ -623,7 +628,9 @@ def config(
     if index_only_evm:
         with open(evm_abi_path, 'r') as abi_file:
             abi = decode_or_die(abi_file)
-        actions = [row['name'] for row in abi['actions']]
+        actions = [
+            f'{chain_name}::eosio.evm::{row["name"]}' for row in abi['actions']
+        ]
 
     config['whitelists']['actions'] = actions
 
