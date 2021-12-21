@@ -4,6 +4,11 @@ from py_eosio.sugar import random_string
 
 
 def test_cleos_evm_create(tevmc):
+    """Create a random account and have it create a random evm account,
+    then wait for hyperion to index the transaction.
+    Finally get account action history and verify `eosio.evm::create` is
+    present.
+    """
 
     account = tevmc.cleos.new_account()
     

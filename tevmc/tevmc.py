@@ -568,7 +568,7 @@ def pull(**kwargs):
         except ValueError:
             print(
                 f'Malformed tag {key}=\'{arg}\','
-                ' must be of format \'{repo}:{tag}\'.')
+                f' must be of format \'{repo}:{tag}\'.')
             sys.exit(1)
     
         manifest.append((repo, tag))
@@ -711,7 +711,7 @@ def up(
         except ValueError:
             logger.critical(
                 f'Malformed tag {key}=\'{arg}\','
-                ' must be of format \'{repo}:{tag}\'.')
+                f' must be of format \'{repo}:{tag}\'.')
             sys.exit(1)
     
         manifest.append((repo, tag))
@@ -726,6 +726,10 @@ def up(
 
         except docker.errors.NotFound:
             logger.critical(f'docker image {repo}:{tag} not present, abort.')
+            print(
+                f'Docker image \'{repo}:{tag}\' is required, please run '
+                '\'tevmc pull\' to download the required images.'
+            )
             sys.exit(1)
 
     def wait_exit_forever():
