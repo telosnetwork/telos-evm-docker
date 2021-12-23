@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from py_eosio.sugar import random_string
+from py_eosio.sugar import random_string, collect_stdout
 
 
 def test_cleos_evm_create(tevmc):
@@ -15,11 +15,11 @@ def test_cleos_evm_create(tevmc):
     ec, out = tevmc.cleos.create_evm_account(
         account, random_string())
 
-    tx_id = out['transaction_id']
+    tx_hash = collect_stdout(out)
 
     assert ec == 0
 
-    tevmc.cleos.hyperion_await_tx(tx_id) 
+    tevmc.cleos.hyperion_await_evm_tx(tx_hash) 
 
     account_action_history = tevmc.cleos.hyperion_get_actions(
         account=account)

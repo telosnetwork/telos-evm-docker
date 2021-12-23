@@ -39,6 +39,14 @@ class CLEOSEVM(CLEOS):
         return requests.get(
             f'{self.hyperion_api_endpoint}/v2/health').json()
 
+    def hyperion_await_evm_tx(self, tx_hash):
+        while True:
+            resp = requests.get(
+                f'{self.hyperion_api_endpoint}/v2/evm/get_transactions',
+                params={'hash': tx_hash}).json()
+
+            breakpoint()
+
     def hyperion_await_tx(self, tx_id):
         while True:
             resp = requests.get(
@@ -51,6 +59,8 @@ class CLEOSEVM(CLEOS):
             if resp['executed']:
                 break
 
+            self.logger.info('await transaction:')
+            self.logger.info(resp)
             time.sleep(0.1)
 
     def hyperion_get_actions(self, **kwargs):

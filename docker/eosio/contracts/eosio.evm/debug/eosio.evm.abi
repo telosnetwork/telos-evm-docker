@@ -353,6 +353,18 @@
                     "type": "uint64"
                 },
                 {
+                    "name": "bytecost",
+                    "type": "uint64"
+                },
+                {
+                    "name": "bytesused",
+                    "type": "uint64"
+                },
+                {
+                    "name": "bytesbought",
+                    "type": "uint64"
+                },
+                {
                     "name": "target_free",
                     "type": "uint64"
                 },

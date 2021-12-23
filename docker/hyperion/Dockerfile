@@ -1,25 +1,19 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
-RUN apt-get update && \
-    apt-get install -y build-essential git curl netcat
+RUN apt-get update && apt-get upgrade -y && apt-get autoremove && apt-get install -y build-essential git curl netcat
 
 RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
-RUN apt-get install -y nodejs && \
-    npm install pm2 -g && \
-    git clone https://github.com/eosrio/hyperion-history-api.git && \
-    cd hyperion-history-api && git checkout v3.3.5
+RUN apt-get install -y nodejs && npm install pm2 -g && git clone https://github.com/eosrio/hyperion-history-api.git && cd hyperion-history-api && git checkout v3.3.5
 
 COPY ./config/connections.json /hyperion-history-api/connections.json
 COPY ./config/ecosystem.config.js /hyperion-history-api/ecosystem.config.js
 COPY ./config/chains/ /hyperion-history-api/chains/
-COPY ./hyperion-home /home/hyperion/
+COPY ./home /home/hyperion/
 COPY ./scripts/ /home/hyperion/scripts/
-COPY ./config/plugins/ /hyperion-history-api/plugins/
 
 RUN useradd -m -s /bin/bash hyperion && chown -R hyperion:hyperion /hyperion-history-api && chown -R hyperion:hyperion /home/hyperion
 RUN chmod -R 600 "/home/hyperion/.ssh/config"
 RUN chmod -R 600 "/home/hyperion/.ssh/evm_plugin"
-
 USER hyperion
 WORKDIR /hyperion-history-api
 

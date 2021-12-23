@@ -20,9 +20,11 @@ import requests
 
 from docker.types import LogConfig, Mount
 from py_eosio.sugar import (
+    Asset,
     wait_for_attr, get_container,
     docker_open_process, docker_wait_process
 )
+from py_eosio.tokens import sys_token
 from daemonize import Daemonize
 
 from .cleos_evm import CLEOSEVM
@@ -38,13 +40,13 @@ class TEVMController:
         self,
         client = None,
         logger = None,
-        log_level: str = 'warning',
+        log_level: str = 'info',
         producer_key: str = '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
         redis_tag: str = 'redis:5.0.9-buster',
         rabbitmq_tag: str = 'rabbitmq:3.8.3-management',
         elasticsearch_tag: str = 'docker.elastic.co/elasticsearch/elasticsearch:7.7.1',
         kibana_tag: str = 'docker.elastic.co/kibana/kibana:7.7.1',
-        eosio_tag: str = 'eosio:2.0.13-evm',
+        eosio_tag: str = 'eosio:2.1.0-evm',
         hyperion_tag: str = 'telos.net/hyperion:0.1.0'
     ):
         self.client = docker.from_env()
@@ -54,7 +56,7 @@ class TEVMController:
         self.logger = logger
 
         if logger is None:
-            self.logger = logging.getLogger('tevmc')
+            self.logger = logging.getLogger()
             self.logger.setLevel(log_level.upper())
 
         self.producer_key = producer_key
@@ -371,7 +373,9 @@ class TEVMController:
             logger=self.logger)
 
         # init wallet
-        cleos.start_keosd() 
+        cleos.start_keosd(
+            '-c',
+            '/root/eosio-wallet/config.ini') 
         cleos.setup_wallet(self.producer_key)
 
         # init nodeos
@@ -394,26 +398,52 @@ class TEVMController:
 
         self.cleos = cleos
 
-    def deploy_evm(self):
+    def deploy_evm(
+        self,
+        debug: bool = False,
+        start_bytes: int = 1073741824,
+        target_free: int = 1073741824,
+        min_buy: int = 20000,
+        fee_transfer_pct: int = 100,
+        gas_per_byte: int = 69
+    ):
+    
         # create evm accounts
         self.cleos.create_account_staked(
-            'eosio', 'eosio.evm', ram=1024000)
+            'eosio', 'eosio.evm', ram=start_bytes)
         self.cleos.create_account_staked(
-            'eosio', 'fees.evm', ram=1024000)
+            'eosio', 'fees.evm', ram=100000)
+
+        ram_price_post = self.cleos.get_ram_price()
+
+        start_cost = Asset(ram_price_post.amount * start_bytes, sys_token)
+
         self.cleos.create_account_staked(
-            'eosio', 'rpc.evm', ram=1024000)
+            'eosio', 'rpc.evm',
+            cpu='10000.0000 TLOS',
+            net='10000.0000 TLOS',
+            ram=100000)
+
+        contract_path = '/opt/eosio/bin/contracts/eosio.evm'
+        if debug:
+            contract_path += '/debug'
 
         self.cleos.deploy_contract(
-            'eosio.evm',
-            '/opt/eosio/bin/contracts/eosio.evm', create_account=False)
+            'eosio.evm', contract_path,
+            privileged=True,
+            create_account=False)
 
-        self.cleos.wait_blocks(4)
-        self.cleos.push_action(
+        ec, out = self.cleos.push_action(
             'eosio.evm',
-            'setgas',
-            [100000000000, '0.0002 TLOS'],
-            'eosio.evm@active'
-        )
+            'init',
+            [
+                start_bytes,
+                start_cost,
+                target_free,
+                min_buy,
+                fee_transfer_pct,
+                gas_per_byte
+            ], 'eosio.evm@active')
 
     def start_hyperion_indexer(self):
         """Start hyperion_indexer container and await port init.
@@ -491,7 +521,7 @@ def cli():
     '--eosio-path', default='docker/eosio',
     help='Path to eosio docker directory')
 @click.option(
-    '--eosio-tag', default='eosio:2.0.13-evm',
+    '--eosio-tag', default='eosio:2.1.0-evm',
     help='Eosio container tag')
 @click.option(
     '--hyperion-path', default='docker/hyperion',
@@ -668,7 +698,7 @@ def config(
     '--kibana-tag', default='docker.elastic.co/kibana/kibana:7.7.1',
     help='Kibana container image tag.')
 @click.option(
-    '--eosio-tag', default='eosio:2.0.13-evm',
+    '--eosio-tag', default='eosio:2.1.0-evm',
     help='Eosio nodeos container image tag.')
 @click.option(
     '--hyperion-tag', default='telos.net/hyperion:0.1.0',
