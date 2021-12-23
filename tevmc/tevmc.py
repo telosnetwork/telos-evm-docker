@@ -21,7 +21,7 @@ import requests
 from docker.types import LogConfig, Mount
 from py_eosio.sugar import (
     Asset,
-    wait_for_attr, get_container,
+    wait_for_attr,
     docker_open_process, docker_wait_process
 )
 from py_eosio.tokens import sys_token
@@ -34,6 +34,10 @@ DEFAULT_NETWORK_NAME = 'docker_hyperion'
 DEFAULT_VOLUME_NAME = 'eosio_volume'
 
 
+class TEVMCException(BaseException):
+    ...
+
+
 class TEVMController:
 
     def __init__(
@@ -44,7 +48,7 @@ class TEVMController:
         producer_key: str = '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
         redis_tag: str = 'redis:5.0.9-buster',
         rabbitmq_tag: str = 'rabbitmq:3.8.3-management',
-        elasticsearch_tag: str = 'docker.elastic.co/elasticsearch/elasticsearch:7.7.1',
+        elasticsearch_tag: str = 'docker.elastic.co/elasticsearch/elasticsearch:7.13.2',
         kibana_tag: str = 'docker.elastic.co/kibana/kibana:7.7.1',
         eosio_tag: str = 'eosio:2.1.0-evm',
         hyperion_tag: str = 'telos.net/hyperion:0.1.0'
@@ -121,11 +125,48 @@ class TEVMController:
         """
         container = None
         try:
-            self.logger.info(f'opening container {name}')
-            container = get_container(
-                self.client,
+            # check if there already is a container running from that image
+            found = self.client.containers.list(
+                filters={'name': name, 'status': 'running'})
+
+            if len(found) > 0:
+                raise TEVMCException(
+                    f'Container from image \'{image}\' is already running.')
+
+            # check if image is present
+            local_images = []
+            for img in self.client.images.list(all=True):
+                local_images += img.tags
+
+            if image not in local_images:
+                """Attempt to pull from remote
+                """
+                splt_image = image.split(':')
+                if len(splt_image) == 2:
+                    repo, tag = splt_image
+                else:
+                    raise ValueError(
+                        f'Expected \'{image}\' to have \'repo:tag\' format.') 
+
+                try:
+                    updates = {}
+                    for update in self.client.api.pull(
+                        repo, tag=tag, stream=True, decode=True
+                    ):
+                        if 'id' in update:
+                            _id = update['id']
+                        if _id not in updates or (updates[_id] != update['status']):
+                            updates[_id] = update['status']
+                            self.logger.info(f'{_id}: {update["status"]}')
+
+                except docker.errors.ImageNotFound:
+                   raise TEVMCException(f'Image \'{image}\' not found on either local or'
+                        ' remote repos. Maybe consider running \'tevmc build\'')
+
+            # finally run container
+            self.logger.info(f'opening {name}...')
+            container = self.client.containers.run(
                 image,
-                force_unique=force_unique,
                 *args, **kwargs,
                 name=name,
                 detach=True,
@@ -332,10 +373,9 @@ class TEVMController:
 
         except docker.errors.APIError as api_err:
             if api_err.status_code == 409:
-                self.logger.critical(
+                raise TEVMCException(
                     'eosio_volume in use, docker envoirment messy, cleanup '
                     'volumes and rerun.')
-                sys.exit(1)
 
         self._eosio_volume = self.client.volumes.create(
             name=DEFAULT_VOLUME_NAME)
@@ -580,7 +620,7 @@ def build(
     '--rabbitmq-tag', default='rabbitmq:3.8.3-management',
     help='Rabbitmq container image tag.')
 @click.option(
-    '--elasticsearch-tag', default='docker.elastic.co/elasticsearch/elasticsearch:7.7.1',
+    '--elasticsearch-tag', default='docker.elastic.co/elasticsearch/elasticsearch:7.13.2',
     help='Elastic search container image tag.')
 @click.option(
     '--kibana-tag', default='docker.elastic.co/kibana/kibana:7.7.1',
@@ -692,7 +732,7 @@ def config(
     '--rabbitmq-tag', default='rabbitmq:3.8.3-management',
     help='Rabbitmq container image tag.')
 @click.option(
-    '--elasticsearch-tag', default='docker.elastic.co/elasticsearch/elasticsearch:7.7.1',
+    '--elasticsearch-tag', default='docker.elastic.co/elasticsearch/elasticsearch:7.13.2',
     help='Elastic search container image tag.')
 @click.option(
     '--kibana-tag', default='docker.elastic.co/kibana/kibana:7.7.1',
@@ -807,7 +847,7 @@ def down(pid):
 def stream(logpath, source):
     """Stream logs from either the tevmc daemon or a container.
     """
-
+    client = docker.from_env()
     try:
         if source == 'daemon':
             with open(logpath, 'r') as logfile:
@@ -816,9 +856,24 @@ def stream(logpath, source):
                     line = logfile.readline()
                     print(line, end='', flush=True)
 
-        else:
-            client = docker.from_env()
+        elif source == 'hyperion-indexer-serial':
+            try:
+                hyperion = client.containers.get('hyperion-indexer')
 
+            except docker.errors.NotFound:
+                print('Hyperion container not found!')
+                sys.exit(1)
+
+            exec_id, exec_stream = docker_open_process(
+                client, hyperion,
+                ['/bin/bash', '-c',
+                'tail -f /hyperion-history-api/logs/telos-testnet/deserialization_errors.log'])
+
+            for chunk in exec_stream:
+                msg = chunk.decode('utf-8')
+                print(msg, end='', flush=True)
+
+        else:
             try:
                 container = client.containers.get(source)
                 for chunk in container.logs(stream=True):

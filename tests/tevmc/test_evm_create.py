@@ -1,31 +1,33 @@
 #!/usr/bin/env python3
 
-from py_eosio.sugar import random_string, collect_stdout
+from py_eosio.sugar import random_string, collect_stdout, Asset
+from py_eosio.tokens import sys_token
 
 
 def test_cleos_evm_create(tevmc):
     """Create a random account and have it create a random evm account,
-    then wait for hyperion to index the transaction.
-    Finally get account action history and verify `eosio.evm::create` is
-    present.
+    then get its ethereum address.
+    Send some TLOS and verify in the ethereum side the balance gets added.
     """
 
     account = tevmc.cleos.new_account()
     
     ec, out = tevmc.cleos.create_evm_account(
         account, random_string())
-
-    tx_hash = collect_stdout(out)
-
     assert ec == 0
 
-    tevmc.cleos.hyperion_await_evm_tx(tx_hash) 
+    eth_addr = tevmc.cleos.eth_account_from_name(account)
+    assert eth_addr
 
-    account_action_history = tevmc.cleos.hyperion_get_actions(
-        account=account)
+    quantity = Asset(100, sys_token)
 
-    tx_ids = [
-        tx['trx_id'] for tx in account_action_history['actions']
-    ]
+    tevmc.cleos.transfer_token('eosio', account, quantity, 'evm test')
+    tevmc.cleos.transfer_token(account, 'eosio.evm', quantity, 'Deposit')
 
-    assert tx_id in tx_ids
+    balance = tevmc.cleos.eth_get_balance(eth_addr)
+
+    def eth_to_wei(x):
+        # https://eth-converter.com/
+        return x * 1000000000000000000
+
+    assert balance == eth_to_wei(quantity.amount)
