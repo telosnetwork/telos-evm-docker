@@ -3,12 +3,9 @@
 import time
 import logging
 
-
 import click
 import psutil
 import requests
-
-
 
 from .cli import cli
 

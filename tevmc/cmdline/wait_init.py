@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 
-
-
 import click
-
-
 
 from .cli import cli
 

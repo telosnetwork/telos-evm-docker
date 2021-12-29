@@ -2,14 +2,12 @@
 
 import sys
 
-
 import click
 import docker
 
 from py_eosio.sugar import (
     docker_open_process
 )
-
 
 from .cli import cli
 

@@ -3,10 +3,7 @@
 import sys
 import json
 
-
 import click
-
-
 
 from .cli import cli
 

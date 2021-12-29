@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 
-
-
 import click
 import docker
 import requests
 
-
 from ..config import (
     DEFAULT_NETWORK_NAME, DEFAULT_VOLUME_NAME
 )
-
 from .cli import cli
 
 

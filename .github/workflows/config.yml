@@ -33,13 +33,13 @@ jobs:
           pip install -e .
 
       - name: Pull docker containers
-        run: tevmc pull
+        run: tevmc pull --headless
 
       - name: Config hyperion
         run: tevmc config --index-only-evm
 
       - name: Build docker containers
-        run: tevmc build
+        run: tevmc build --headless
 
       - name: Run pytest 
-        run: pytest
+        run: pytest --log-cli-level=INFO

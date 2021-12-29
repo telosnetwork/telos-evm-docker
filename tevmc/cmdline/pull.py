@@ -3,17 +3,59 @@
 import sys
 import json
 
-
 import click
 import docker
 
 from tqdm import tqdm
 
-
 from .cli import cli
+from ..config import MAX_STATUS_SIZE
 
+
+class DownloadInProgress:
+    """ Helper class to manage download progress bar
+    """
+
+    def __init__(self, pos: int):
+        self.pos = pos
+        self.prev_progress = 0
+        self.prev_total = 0
+        self.current_progress = 0
+        self.current_total = 0
+        self.bar = tqdm(pos, bar_format='{l_bar}{bar}')
+
+    def update(self, update):
+        if 'status' in update:
+            status_txt = format(
+                update['status'][:MAX_STATUS_SIZE], f' <{MAX_STATUS_SIZE}')
+            self.bar.set_description(desc=status_txt)
+
+        if 'progressDetail' in update:
+            detail = update['progressDetail']
+
+            if 'current' not in detail or 'total' not in detail:
+                return
+
+            progress = detail['current']
+            total = detail['total']
+            
+            if total != self.current_total:
+                self.prev_total = self.current_total
+                self.bar.reset(total=total)
+                self.current_total = total
+
+            if progress != self.current_progress:
+                self.prev_progress = self.current_progress
+                self.bar.update(n=progress)
+                self.curent_progress = progress
+
+    def close(self):
+        self.bar.close()
 
 @cli.command()
+@click.option(
+    '--headless/--interactive', default=False,
+    help='Display pretty output or just stream logs.')
 @click.option(
     '--redis-tag', default='redis:5.0.9-buster',
     help='Redis container image tag.')
@@ -26,7 +68,7 @@ from .cli import cli
 @click.option(
     '--kibana-tag', default='docker.elastic.co/kibana/kibana:7.7.1',
     help='Kibana container image tag.')
-def pull(**kwargs):
+def pull(headless, **kwargs):
     """Pull required service container images.
     """
     client = docker.from_env()
@@ -44,46 +86,6 @@ def pull(**kwargs):
     
         manifest.append((repo, tag))
 
-    max_size = 54
-
-    class DownloadInProgress:
-
-        def __init__(self, pos: int):
-            self.pos = pos
-            self.prev_progress = 0
-            self.prev_total = 0
-            self.current_progress = 0
-            self.current_total = 0
-            self.bar = tqdm(pos, bar_format='{l_bar}{bar}')
-
-        def update(self, update):
-            if 'status' in update:
-                status_txt = format(update['status'][:max_size], f' <{max_size}')
-                self.bar.set_description(desc=status_txt)
-
-            if 'progressDetail' in update:
-                detail = update['progressDetail']
-
-                if 'current' not in detail or 'total' not in detail:
-                    return
-
-                progress = detail['current']
-                total = detail['total']
-                
-                if total != self.current_total:
-                    self.prev_total = self.current_total
-                    self.bar.reset(total=total)
-                    self.current_total = total
-
-                if progress != self.current_progress:
-                    self.prev_progress = self.current_progress
-                    self.bar.update(n=progress)
-                    self.curent_progress = progress
-
-        def close(self):
-            self.bar.close()
-
-
     for repo, tag in manifest:
         print(f'pulling {repo}:{tag}... ')
 
@@ -92,7 +94,13 @@ def pull(**kwargs):
             update = chunk.decode('utf-8')
             update = json.loads(update.rstrip())
 
-            status = update['status']
+            _id = update.get('id', None)
+            status = update.get('status', None)
+            detail = update.get('progressDetail', None)
+
+            if headless:
+                print(f'{_id}: {status} {detail}')
+                continue
         
             if ('Pulling from library' in status or
                 'id' not in update):
