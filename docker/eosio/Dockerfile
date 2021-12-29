@@ -18,8 +18,17 @@ RUN wget https://github.com/EOSIO/eos/releases/download/v2.1.0/eosio_2.1.0-1-ubu
     apt-get install -y ./eosio_2.1.0-1-ubuntu-18.04_amd64.deb && \
     rm -rf *.deb
 
+COPY snapshots ./snapshots
+
 # final configuration
-COPY config.ini ./config.ini
+COPY config.local.ini ./config.local.ini
+COPY config.testnet.ini ./config.testnet.ini
+COPY config.mainnet.ini ./config.mainnet.ini
+
+COPY genesis.local.json ./genesis.local.json
+COPY genesis.testnet.json ./genesis.testnet.json
+COPY genesis.mainnet.json ./genesis.mainnet.json
+
 COPY keosd_config.ini ./eosio-wallet/config.ini
-COPY genesis.json ./genesis.json
+
 EXPOSE 8888

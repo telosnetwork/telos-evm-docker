@@ -1,37 +1,27 @@
 #!/usr/bin/env python3
 
-import os
 import sys
-import json
-import time
 import shutil
-import socket
-import signal
 import logging
 
-from typing import List, Dict
+from typing import Dict, Optional
 from pathlib import Path
 from contextlib import contextmanager, ExitStack
 
-import click
-import psutil
 import docker
-import requests
 
 from docker.types import LogConfig, Mount
 from py_eosio.sugar import (
     Asset,
-    wait_for_attr,
-    docker_open_process, docker_wait_process
+    wait_for_attr
 )
 from py_eosio.tokens import sys_token
-from daemonize import Daemonize
 
+from .config import (
+    DEFAULT_NETWORK_NAME, DEFAULT_VOLUME_NAME
+)
 from .cleos_evm import CLEOSEVM
 
-
-DEFAULT_NETWORK_NAME = 'docker_hyperion'
-DEFAULT_VOLUME_NAME = 'eosio_volume'
 
 
 class TEVMCException(BaseException):
@@ -45,6 +35,9 @@ class TEVMController:
         client = None,
         logger = None,
         log_level: str = 'info',
+        debug_evm: bool = True,
+        chain_name: str = 'telos-local-testnet',
+        snapshot: Optional[str] = None,
         producer_key: str = '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
         redis_tag: str = 'redis:5.0.9-buster',
         rabbitmq_tag: str = 'rabbitmq:3.8.3-management',
@@ -56,14 +49,26 @@ class TEVMController:
         self.client = docker.from_env()
         self.root_pwd = Path(__file__).parent.parent.resolve()
         self.exit_stack = ExitStack()
-
+        
+        self.chain_name = chain_name
+        self.snapshot = snapshot
         self.logger = logger
 
         if logger is None:
             self.logger = logging.getLogger()
             self.logger.setLevel(log_level.upper())
 
+        self.debug_evm = debug_evm
         self.producer_key = producer_key
+
+        splt_chain_name = chain_name.split('-')
+        if len(splt_chain_name) < 2:
+            raise TEVMController(f'Wrong chain_name format! {chain_name}')
+
+        self.chain_type = splt_chain_name[1]
+        chain_types = ['local', 'testnet', 'mainnet']
+        if self.chain_type not in chain_types:
+            raise ValueError(f'Chain type must be one of {chain_types}')
 
         self.network = None
 
@@ -94,7 +99,12 @@ class TEVMController:
         try:
             self.network = self.client.networks.get(DEFAULT_NETWORK_NAME)
         except docker.errors.NotFound:
-            self.network = self.client.networks.create(DEFAULT_NETWORK_NAME, driver='bridge')
+            self.network = self.client.networks.create(
+                DEFAULT_NETWORK_NAME,
+                driver='bridge',
+                labels={
+                    'created-by': 'tevmc'
+                })
 
     @contextmanager
     def temporary_directory(self, dir: Path):
@@ -174,8 +184,10 @@ class TEVMController:
                 log_config=LogConfig(
                     type=LogConfig.types.JSON,
                     config={'max-size': '2m' }),
-                restart_policy={
-                    "Name": "on-failure", "MaximumRetryCount": 3})
+                remove=True,
+                labels={
+                    'created-by': 'tevmc'
+                })
 
             self.logger.info(f'waiting on networking check')
             ip = wait_for_attr(container, (
@@ -193,12 +205,12 @@ class TEVMController:
                 self.logger.critical(e) 
 
             self.logger.info(f'remove image for \"{name}\"')
-            try:
-                if container:
-                    container.remove()
+            # try:
+            #     if container:
+            #         container.remove()
 
-            except docker.errors.APIError as e:
-                self.logger.critical(e)
+            # except docker.errors.APIError as e:
+            #     self.logger.critical(e)
     
     def stream_logs(self, container):
         if container is None:
@@ -349,6 +361,8 @@ class TEVMController:
 
     def start_eosio_node(
         self,
+        chain_type: str,  # local, testnet, mainnet,
+        snapshot: Optional[str] = None,
         ports: Dict[str, str] = {
             '8080/tcp': '8080/tcp',
             '8888/tcp': '8888/tcp'
@@ -362,6 +376,7 @@ class TEVMController:
         - Wait for nodeos to produce blocks
         - Create evm accounts and deploy contract
         """
+        self.logger.info(f'starting {chain_type} eosio node.')
 
         # search for volume and delete if exists
         try:
@@ -378,7 +393,10 @@ class TEVMController:
                     'volumes and rerun.')
 
         self._eosio_volume = self.client.volumes.create(
-            name=DEFAULT_VOLUME_NAME)
+            name=DEFAULT_VOLUME_NAME,
+            labels={
+                'created-by': 'tevmc'
+            })
 
         self._eosio_volume_path = Path(self.client.api.inspect_volume(
             self._eosio_volume.name)['Mountpoint'])
@@ -418,23 +436,34 @@ class TEVMController:
             '/root/eosio-wallet/config.ini') 
         cleos.setup_wallet(self.producer_key)
 
+        kwargs = {}
+        if snapshot:
+            kwargs['snapshot'] = snapshot
+
+        else:
+            kwargs['genesis'] = f'/root/genesis.{chain_type}.json'
+
         # init nodeos
         cleos.start_nodeos_from_config(
-            '/root',
-            state_plugin=True,
-            genesis='/root/genesis.json')
+            f'/root/config.{chain_type}.ini',
+            state_plugin=True, **kwargs) 
 
-        # await for nodeos to produce a block
-        cleos.wait_produced()
-        try:
-            cleos.boot_sequence(
-                sys_contracts_mount='/opt/eosio/bin/contracts')
+        if chain_type == 'local':
+            # await for nodeos to produce a block
+            cleos.wait_produced(from_file='/root/nodeos.log')
+            try:
+                cleos.boot_sequence(
+                    sys_contracts_mount='/opt/eosio/bin/contracts')
 
-        except AssertionError:
-            ec, out = cleos.gather_nodeos_output()
-            self.logger.critical(f'nodeos exit code: {ec}')
-            self.logger.critical(f'nodeos output:\n{out}\n')
-            sys.exit(1)
+            except AssertionError:
+                ec, out = cleos.gather_nodeos_output()
+                self.logger.critical(f'nodeos exit code: {ec}')
+                self.logger.critical(f'nodeos output:\n{out}\n')
+                sys.exit(1)
+
+        else:
+            # await for nodeos to receive a block from peers
+            cleos.wait_received(from_file='/root/nodeos.log')
 
         self.cleos = cleos
 
@@ -485,7 +514,7 @@ class TEVMController:
                 gas_per_byte
             ], 'eosio.evm@active')
 
-    def start_hyperion_indexer(self):
+    def start_hyperion_indexer(self, chain: str):
         """Start hyperion_indexer container and await port init.
         """
         self._hyperion_indexer_container = self.exit_stack.enter_context(
@@ -494,7 +523,7 @@ class TEVMController:
                 self._hyperion_indexer_container_tag,
                 command=[
                     '/bin/bash', '-c',
-                    '/home/hyperion/scripts/run-hyperion.sh telos-testnet-indexer'
+                    f'/home/hyperion/scripts/run-hyperion.sh {chain}-indexer'
                 ],
                 force_unique=True
             )
@@ -504,7 +533,7 @@ class TEVMController:
         #    if '02_continuous_reader] Websocket connected!' in msg:
         #        break
 
-    def start_hyperion_api(self, port: str = '7000/tcp'):
+    def start_hyperion_api(self, chain: str, port: str = '7000/tcp'):
         """Start hyperion_api container and await port init.
         """
         self._hyperion_api_container = self.exit_stack.enter_context(
@@ -513,7 +542,7 @@ class TEVMController:
                 self._hyperion_api_container_tag,
                 command=[
                     '/bin/bash', '-c',
-                    '/home/hyperion/scripts/run-hyperion.sh telos-testnet-api'
+                    f'/home/hyperion/scripts/run-hyperion.sh {chain}-api'
                 ],
                 force_unique=True,
                 ports={port: port}
@@ -533,17 +562,22 @@ class TEVMController:
     def __enter__(self):
         self.init_network()
 
-        self.start_eosio_node()
-
-        self.deploy_evm()
-
         self.start_redis()
         self.start_rabbitmq()
         self.start_elasticsearch()
         self.start_kibana()
 
-        self.start_hyperion_indexer()
-        self.start_hyperion_api()
+        self.start_eosio_node(
+            self.chain_type,
+            snapshot=self.snapshot)
+
+        if self.chain_type == 'local':
+            self.deploy_evm(
+                debug=self.debug_evm)
+
+        self.start_hyperion_indexer(self.chain_name)
+        self.start_hyperion_api(self.chain_name)
+
 
         return self
 
@@ -551,410 +585,3 @@ class TEVMController:
         self.exit_stack.pop_all().close()
         self.network.remove()
 
-
-@click.group()
-def cli():
-    pass
-
-@cli.command()
-@click.option(
-    '--eosio-path', default='docker/eosio',
-    help='Path to eosio docker directory')
-@click.option(
-    '--eosio-tag', default='eosio:2.1.0-evm',
-    help='Eosio container tag')
-@click.option(
-    '--hyperion-path', default='docker/hyperion',
-    help='Path to hyperion docker directory')
-@click.option(
-    '--hyperion-tag', default='telos.net/hyperion:0.1.0',
-    help='Eosio container tag')
-def build(
-    eosio_path,
-    eosio_tag,
-    hyperion_path,
-    hyperion_tag
-):
-    """Build in-repo docker containers.
-    """
-    client = docker.from_env()
-
-    builds = [
-        {'path': eosio_path, 'tag': eosio_tag},
-        {'path': hyperion_path, 'tag': hyperion_tag},
-    ]
-
-    for build_args in builds:
-        for chunk in client.api.build(**build_args):
-            update = None
-            _str = chunk.decode('utf-8').rstrip()
-
-            # sometimes several json packets are sent per chunk
-            splt_str = _str.split('\n')
-            
-            for packet in splt_str:
-                msg = json.loads(packet)
-                update = msg.get('status', None)
-                update = msg.get('stream', None)
-
-                if update:
-                    print(update, end='', flush=True)
-
-        try:
-            client.images.get(build_args['tag'])
-
-        except docker.errors.NotFound:
-            print(
-                f'couldn\'t build container {build_args["tag"]} at '
-                f'{build_args["path"]}')
-            sys.exit(1)
-
-    print('built containers.')
-
-
-@cli.command()
-@click.option(
-    '--redis-tag', default='redis:5.0.9-buster',
-    help='Redis container image tag.')
-@click.option(
-    '--rabbitmq-tag', default='rabbitmq:3.8.3-management',
-    help='Rabbitmq container image tag.')
-@click.option(
-    '--elasticsearch-tag', default='docker.elastic.co/elasticsearch/elasticsearch:7.13.2',
-    help='Elastic search container image tag.')
-@click.option(
-    '--kibana-tag', default='docker.elastic.co/kibana/kibana:7.7.1',
-    help='Kibana container image tag.')
-def pull(**kwargs):
-    """Pull required service container images.
-    """
-    client = docker.from_env()
-
-    manifest = []
-    for key, arg in kwargs.items():
-        try:
-            repo, tag = arg.split(':')
-
-        except ValueError:
-            print(
-                f'Malformed tag {key}=\'{arg}\','
-                f' must be of format \'{repo}:{tag}\'.')
-            sys.exit(1)
-    
-        manifest.append((repo, tag))
-
-    for repo, tag in manifest:
-        print(f'pulling {repo}:{tag}... ', end='', flush=True)
-        client.images.pull(repo, tag)
-        print(f'done.')
-
-
-@cli.command()
-@click.option(
-    '--chain-name', default='telos-testnet',
-    help='Chain name used through out config files.')
-@click.option(
-    '--hyperion-cfg-path', default='docker/hyperion/config/chains/telos-testnet.config.json',
-    help='Path to hyperion config file')
-@click.option(
-    '--indexer-start-on', default=1,
-    help='Block number at which hyperion indexer must start.')
-@click.option(
-    '--indexer-stop-on', default=0,
-    help='Block number at which hyperion indexer must stop.')
-@click.option(
-    '--evm-abi-path', default='docker/eosio/contracts/eosio.evm/eosio.evm.abi',
-    help='Path to eosio.evm abi file, to parse actions and support --index-only-evm')
-@click.option(
-    '--index-only-evm/--index-all', default=False,
-    help='Show output while waiting for bootstrap.')
-def config(
-    chain_name,
-    hyperion_cfg_path,
-    indexer_start_on,
-    indexer_stop_on,
-    evm_abi_path,
-    index_only_evm
-):
-
-    def decode_or_die(file):
-        try:
-            return json.loads(file.read())
-
-        except json.decoder.JSONDecodeError as e:
-            print('error parsing config! {e}')
-            sys.exit(1)
-
-    # hyperion
-    with open(hyperion_cfg_path) as config_file:
-        config = decode_or_die(config_file)
-
-    # index_only_evm
-    # hyperion has an indexer action whitelist, so to only index
-    # evm transaction we must add all eosio.evm actions to the 
-    # whitelist, to dynamically get all the actions we parse the
-    # provided abi file
-    actions = []
-    if index_only_evm:
-        with open(evm_abi_path, 'r') as abi_file:
-            abi = decode_or_die(abi_file)
-        actions = [
-            f'{chain_name}::eosio.evm::{row["name"]}' for row in abi['actions']
-        ]
-
-    config['whitelists']['actions'] = actions
-
-    config['indexer']['start_on'] = indexer_start_on
-    config['indexer']['stop_on'] = indexer_stop_on
-
-    # truncate config and re-write
-    with open(hyperion_cfg_path, 'w+') as config_file:
-        config_file.write(json.dumps(config, indent=4))
-
-
-@cli.command()
-@click.option(
-    '--pid', default='/tmp/tevmc.pid',
-    help='Path to lock file for daemon')
-@click.option(
-    '--port', default=6666,
-    help='Port to listen for termination.')
-@click.option(
-    '--logpath', default='/tmp/tevmc.log',
-    help='Log file path.')
-@click.option(
-    '--loglevel', default='warning',
-    help='Provide logging level. Example --loglevel debug, default=warning')
-@click.option(
-    '--redis-tag', default='redis:5.0.9-buster',
-    help='Redis container image tag.')
-@click.option(
-    '--rabbitmq-tag', default='rabbitmq:3.8.3-management',
-    help='Rabbitmq container image tag.')
-@click.option(
-    '--elasticsearch-tag', default='docker.elastic.co/elasticsearch/elasticsearch:7.13.2',
-    help='Elastic search container image tag.')
-@click.option(
-    '--kibana-tag', default='docker.elastic.co/kibana/kibana:7.7.1',
-    help='Kibana container image tag.')
-@click.option(
-    '--eosio-tag', default='eosio:2.1.0-evm',
-    help='Eosio nodeos container image tag.')
-@click.option(
-    '--hyperion-tag', default='telos.net/hyperion:0.1.0',
-    help='Hyperion container image tag.')
-def up(
-    pid,
-    port,
-    logpath,
-    loglevel,
-    **kwargs  # leave container tags to kwargs 
-):
-    """Bring tevmc daemon up.
-    """
-    if Path(pid).resolve().exists():
-        print('daemon pid file exists. abort.')
-        sys.exit(1)
-
-    loglevel = loglevel.upper()
-
-    fmt = logging.Formatter(
-        fmt='%(asctime)s:%(levelname)s:%(message)s',
-        datefmt='%H:%M:%S'
-    )
-
-    logger = logging.getLogger('tevmc')
-    logger.setLevel(loglevel)
-    logger.propagate = False
-    fh = logging.FileHandler(logpath, 'w')
-    fh.setLevel(loglevel)
-    fh.setFormatter(fmt)
-    logger.addHandler(fh)
-    keep_fds = [fh.stream.fileno()]
-
-    # check required images are present
-    manifest = []
-    for key, arg in kwargs.items():
-        try:
-            repo, tag = arg.split(':')
-
-        except ValueError:
-            logger.critical(
-                f'Malformed tag {key}=\'{arg}\','
-                f' must be of format \'{repo}:{tag}\'.')
-            sys.exit(1)
-    
-        manifest.append((repo, tag))
-
-    logger.info(
-        f'container manifest: {json.dumps(manifest, indent=4)}')
-
-    client = docker.from_env()
-    for repo, tag in manifest:
-        try:
-            client.images.get(f'{repo}:{tag}')
-
-        except docker.errors.NotFound:
-            logger.critical(f'docker image {repo}:{tag} not present, abort.')
-            print(
-                f'Docker image \'{repo}:{tag}\' is required, please run '
-                '\'tevmc pull\' to download the required images.'
-            )
-            sys.exit(1)
-
-    def wait_exit_forever():
-
-        with TEVMController(logger=logger, **kwargs) as tevm:
-            logger.critical('control point reached')
-            try:
-                while True:
-                    time.sleep(90)
-
-            except KeyboardInterrupt:
-                logger.warning('interrupt catched.')
-            
-    daemon = Daemonize(
-        app='tevmc',
-        pid=pid,
-        action=wait_exit_forever,
-        keep_fds=keep_fds)
-
-    daemon.start()
-
-
-@cli.command()
-@click.option(
-    '--pid', default='/tmp/tevmc.pid',
-    help='Path to lock file for daemon')
-def down(pid):
-    """Bring tevmc daemon down.
-    """
-    try:
-        with open(pid, 'r') as pidfile:
-            pid = pidfile.read()
-
-        os.kill(int(pid), signal.SIGINT)
-
-    except FileNotFoundError:
-        print('Couldn\'t open pid file at {pid}')
-
-
-@cli.command()
-@click.option(
-    '--logpath', default='/tmp/tevmc.log',
-    help='Log file path.')
-@click.argument('source')
-def stream(logpath, source):
-    """Stream logs from either the tevmc daemon or a container.
-    """
-    client = docker.from_env()
-    try:
-        if source == 'daemon':
-            with open(logpath, 'r') as logfile:
-                line = ''
-                while 'Stopping daemon.' not in line:
-                    line = logfile.readline()
-                    print(line, end='', flush=True)
-
-        elif source == 'hyperion-indexer-serial':
-            try:
-                hyperion = client.containers.get('hyperion-indexer')
-
-            except docker.errors.NotFound:
-                print('Hyperion container not found!')
-                sys.exit(1)
-
-            exec_id, exec_stream = docker_open_process(
-                client, hyperion,
-                ['/bin/bash', '-c',
-                'tail -f /hyperion-history-api/logs/telos-testnet/deserialization_errors.log'])
-
-            for chunk in exec_stream:
-                msg = chunk.decode('utf-8')
-                print(msg, end='', flush=True)
-
-        else:
-            try:
-                container = client.containers.get(source)
-                for chunk in container.logs(stream=True):
-                    msg = chunk.decode('utf-8')
-                    print(msg, end='', flush=True)
-
-            except docker.errors.NotFound:
-                print(f'Container \"{source}\" not found!')
-
-    except KeyboardInterrupt:
-        print('Interrupted.')
-
-
-@cli.command()
-@click.option(
-    '--show/--no-show', default=False,
-    help='Show output while waiting for bootstrap.')
-@click.option(
-    '--logpath', default='/tmp/tevmc.log',
-    help='Log file path.')
-def wait_init(show, logpath):
-    """Await for full daemon initialization.
-    """
-
-    with open(logpath, 'r') as logfile:
-        line = ''
-        try:
-            while 'control point reached' not in line:
-                line = logfile.readline()
-                if show:
-                    print(line, end='', flush=True)
-
-        except KeyboardInterrupt:
-            print('Interrupted.')
-
-
-@cli.command()
-@click.argument('contract')
-def is_indexed(contract):
-    """Check if a contract has been indexed by hyperion.
-    """
-    stop = False
-
-    while not stop:
-        try:
-            resp = requests.get(
-                'http://127.0.0.1:7000/v2/history/get_actions',
-                params={
-                    'account': contract
-                }
-            ).json()
-            logging.info(resp)
-
-        except requests.exceptions.ConnectionError as e:
-            logging.critical(e)
-
-        if 'actions' in resp and len(resp['actions']) > 0:
-            logging.info(resp)
-            logging.critical("\n\n\nINDEXED\n\n\n")
-            stop = True
-            break
-
-        logging.info(f'retry')
-        logging.info(f'mem stats: {psutil.virtual_memory()}')
-        try:
-            resp = requests.get(
-                'http://127.0.0.1:7000/v2/health').json()
-
-            for service in resp['health']:
-                if service['status'] == 'OK':
-                    pass
-                elif service['status'] == 'Warning':
-                    logging.warning(service)
-                else:
-                    logging.critical(service)
-                    stop = True
-
-        except requests.exceptions.ConnectionError as e:
-            logging.critical(e)
-
-        time.sleep(1)
-
-if __name__ == '__main__':
-    cli()

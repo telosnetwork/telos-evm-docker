@@ -8,6 +8,7 @@ setup(
     version='0.1a0',
     packages=find_packages(),
     install_requires=[
+        'tqdm',
         'click',
         'pytest',
         'psutil',
@@ -19,7 +20,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'tevmc = tevmc:cli',
+            'tevmc = tevmc.cmdline:cli',
         ],
     },
 )

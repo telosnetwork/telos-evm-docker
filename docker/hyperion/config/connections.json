@@ -1,30 +1,46 @@
 {
-  "amqp": {
-    "host": "rabbitmq:5672",
-    "api": "rabbitmq:15672",
-    "user": "username",
-    "pass": "password",
-    "vhost": "/hyperion"
-  },
-  "elasticsearch": {
-    "protocol": "http",
-    "host": "elasticsearch:9200",
-    "ingest_nodes": ["elasticsearch:9200"],
-    "user": "elastic",
-    "pass": "password"
-  },
-  "redis": {
-    "host": "redis",
-    "port": "6379"
-  },
-  "chains": {
-    "telos-testnet": {
-      "name": "Telos testnet",
-      "chain_id": "c4c5fcc7b6e5e7484eb6b609e755050ebba977c4c291a63aab42d94c0fb8c2cf",
-      "http": "http://eosio_nodeos:8888",
-      "ship": "ws://eosio_nodeos:8080",
-      "WS_ROUTER_PORT": 7000,
-      "WS_ROUTER_HOST": "hyperion-api"
+    "amqp": {
+        "host": "rabbitmq:5672",
+        "api": "rabbitmq:15672",
+        "user": "username",
+        "pass": "password",
+        "vhost": "/hyperion"
+    },
+    "elasticsearch": {
+        "protocol": "http",
+        "host": "elasticsearch:9200",
+        "ingest_nodes": ["elasticsearch:9200"],
+        "user": "elastic",
+        "pass": "password"
+    },
+    "redis": {
+        "host": "redis",
+        "port": "6379"
+    },
+    "chains": {
+        "telos-local-testnet": {
+            "name": "Telos Local Testnet",
+            "chain_id": "c4c5fcc7b6e5e7484eb6b609e755050ebba977c4c291a63aab42d94c0fb8c2cf",
+            "http": "http://eosio_nodeos:8888",
+            "ship": "ws://eosio_nodeos:8080",
+            "WS_ROUTER_PORT": 7000,
+            "WS_ROUTER_HOST": "hyperion-api"
+        },
+        "telos-testnet": {
+            "name": "Telos Testnet",
+            "chain_id": "1eaa0824707c8c16bd25145493bf062aecddfeb56c736f6ba6397f3195f33c9f",
+            "http": "http://eosio_nodeos:8888",
+            "ship": "ws://eosio_nodeos:8080",
+            "WS_ROUTER_PORT": 7000,
+            "WS_ROUTER_HOST": "hyperion-api"
+        },
+        "telos-mainnet": {
+            "name": "Telos Mainnet",
+            "chain_id": "4667b205c6838ef70ff7988f6e8257e8be0e1284a2f59699054a018f743b1d11",
+            "http": "http://eosio_nodeos:8888",
+            "ship": "ws://eosio_nodeos:8080",
+            "WS_ROUTER_PORT": 7000,
+            "WS_ROUTER_HOST": "hyperion-api"
+        }
     }
-  }
 }

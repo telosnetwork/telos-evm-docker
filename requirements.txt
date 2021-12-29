@@ -1,3 +1,4 @@
+tqdm
 click
 pytest
 psutil
