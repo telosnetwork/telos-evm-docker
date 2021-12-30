@@ -575,9 +575,14 @@ class TEVMController:
             self.deploy_evm(
                 debug=self.debug_evm)
 
+        self._eosio_node_container.update(
+            blkio_weight=10)
+
         self.start_hyperion_indexer(self.chain_name)
         self.start_hyperion_api(self.chain_name)
 
+        self._eosio_node_container.update(
+            blkio_weight=500)
 
         return self
 

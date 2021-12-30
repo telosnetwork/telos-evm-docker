@@ -34,6 +34,10 @@ from .cli import cli
     '--hyperion-api-name', default='hyperion-api',
     help='Hyperion api container name.')
 def clean(**kwargs):
+    """Cleanup docker envoirment, kill all running containers,
+    remove them, and prune networks and volumes.
+    """
+
     client = docker.from_env(timeout=10)
     for arg, val in kwargs.items():
         try:

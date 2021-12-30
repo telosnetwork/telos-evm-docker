@@ -31,6 +31,8 @@ def config(
     evm_abi_path,
     index_only_evm
 ):
+    """Helper to edit hyperion config files.
+    """
 
     def decode_or_die(file):
         try:

@@ -41,6 +41,9 @@ from .cli import cli
     '--release-evm/--debug-evm', default=False,
     help='Deploy release/debug evm contract.')
 @click.option(
+    '--docker-timeout', default=60,
+    help='Docker client command timeout.')
+@click.option(
     '--redis-tag', default='redis:5.0.9-buster',
     help='Redis container image tag.')
 @click.option(
@@ -66,6 +69,7 @@ def up(
     snapshot,
     chain_name,
     release_evm,
+    docker_timeout,
     **kwargs  # leave container tags to kwargs 
 ):
     """Bring tevmc daemon up.
@@ -109,7 +113,7 @@ def up(
         f'container manifest: {json.dumps(manifest, indent=4)}')
 
     # check images are present in local docker repo
-    client = docker.from_env()
+    client = docker.from_env(timeout=docker_timeout)
     for repo, tag in manifest:
         try:
             client.images.get(f'{repo}:{tag}')
