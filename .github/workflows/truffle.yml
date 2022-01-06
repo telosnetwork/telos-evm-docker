@@ -31,7 +31,8 @@ jobs:
         run: npm install -g truffle
           
       - name: Setup Truffle HD Wallet
-        run: bash -c 'cd tests/ && npm install @truffle/hdwallet-provider'
+        working-directory: ./tests/test_erc20
+        run: npm install @truffle/hdwallet-provider
 
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -56,13 +57,11 @@ jobs:
         run: tevmc up --loglevel=info
 
       - name: Wait block indexing
-        run: tevmc wait-block 100
-
-      - name: Run test_itxs
-        run: bash -c 'cd tests/test_itxs && truffle --network private test'
+        run: tevmc wait-init
 
       - name: Run test_erc20
-        run: bash -c 'cd tests/test_erc20 && truffle --network private test'
+        working-directory: ./tests/test_erc20
+        run: truffle --network private test
 
       - name: Pull services down
         run: tevmc down

@@ -11,6 +11,19 @@ from .cli import cli
 
 
 @cli.command()
+@click.option(
+    '--logpath', default='/tmp/tevmc.log',
+    help='Log file path.')
+def wait_init(logpath):
+    with open(logpath, 'r') as logfile:
+        while True:
+            line = logfile.readline()
+            print(line)
+            if 'control point reached' in line:
+                break
+
+
+@cli.command()
 @click.argument('block-num')
 def wait_block(block_num):
     """Await for block indexing.
