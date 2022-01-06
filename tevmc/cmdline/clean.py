@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import time
 import click
 import docker
+import psutil
 import requests
 
 from ..config import (
@@ -10,8 +12,10 @@ from ..config import (
 from .cli import cli
 
 
-
 @cli.command()
+@click.option(
+    '--pid', default='/tmp/tevmc.pid',
+    help='Path to lock file for daemon')
 @click.option(
     '--redis-name', default='redis',
     help='Redis container name.')
@@ -33,27 +37,48 @@ from .cli import cli
 @click.option(
     '--hyperion-api-name', default='hyperion-api',
     help='Hyperion api container name.')
-def clean(**kwargs):
+def clean(pid, **kwargs):
     """Cleanup docker envoirment, kill all running containers,
     remove them, and prune networks and volumes.
     """
 
+    print('Stopping daemon... ', end='', flush=True)
+    try:
+        with open(pid, 'r') as pidfile:
+            pid = int(pidfile.read())
+
+        tevmcd = psutil.Process(pid)
+        tevmcd.terminate()
+        tevmcd.wait()
+        print('done.')
+
+    except FileNotFoundError:
+        print('daemon not running.')
+
     client = docker.from_env(timeout=10)
     for arg, val in kwargs.items():
-        try:
-            container = client.containers.get(val)
-            if container.status == 'running':
-                print(f'Container {val} is running, killing... ', end='', flush=True)
-                container.kill()
-                print('done.')
+        while True:
+            try:
+                container = client.containers.get(val)
+                if container.status == 'running':
+                    print(f'Container {val} is running, killing... ', end='', flush=True)
+                    container.kill()
+                    print('done.')
 
-            container.remove()
+                container.remove()
 
-        except requests.exceptions.ReadTimeout:
-            print('timeout!')
+            except docker.errors.APIError as err:
+                if 'already in progress' in str(err):
+                    time.sleep(0.1)
+                    continue
 
-        except docker.errors.NotFound:
-            print(f'{val} not found!')
+            except requests.exceptions.ReadTimeout:
+                print('timeout!')
+
+            except docker.errors.NotFound:
+                print(f'{val} not found!')
+
+            break
 
     client = docker.from_env(timeout=120)
 

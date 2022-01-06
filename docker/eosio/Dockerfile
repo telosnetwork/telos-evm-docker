@@ -13,7 +13,6 @@ RUN apt-get update && \
 COPY contracts /opt/eosio/bin/contracts
 
 # install snapshots from latest evm deployments
-RUN mkdir /root/snapshots
 WORKDIR /root/snapshots
 RUN wget https://telos-snapshots.s3.amazonaws.com/testnet/telos-testnet-20211020-blknum-136229794.tar.gz &&\
     tar xvf telos-testnet-20211020-blknum-136229794.tar.gz && \

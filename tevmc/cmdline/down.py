@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import os
-import signal
-
+import psutil
 import click
 
 from .cli import cli
@@ -17,9 +15,11 @@ def down(pid):
     """
     try:
         with open(pid, 'r') as pidfile:
-            pid = pidfile.read()
+            pid = int(pidfile.read())
 
-        os.kill(int(pid), signal.SIGINT)
+        tevmcd = psutil.Process(pid)
+        tevmcd.terminate()
+        tevmcd.wait()
 
     except FileNotFoundError:
         print(f'Couldn\'t open pid file at {pid}')

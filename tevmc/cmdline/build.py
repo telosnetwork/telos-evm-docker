@@ -75,13 +75,25 @@ class BuildInProgress:
     help='Path to hyperion docker directory')
 @click.option(
     '--hyperion-tag', default='telos.net/hyperion:0.1.0',
-    help='Eosio container tag')
+    help='Hyperion container tag')
+@click.option(
+    '--testing/--release', default=False,
+    help='Build testing container or not.')
+@click.option(
+    '--testing-path', default='docker/testing',
+    help='Path to testing docker directory')
+@click.option(
+    '--testing-tag', default='tevm:testing',
+    help='Testing container tag')
 def build(
     headless,
     eosio_path,
     eosio_tag,
     hyperion_path,
-    hyperion_tag
+    hyperion_tag,
+    testing,
+    testing_path,
+    testing_tag
 ):
     """Build in-repo docker containers.
     """
@@ -91,6 +103,9 @@ def build(
         {'path': eosio_path, 'tag': eosio_tag},
         {'path': hyperion_path, 'tag': hyperion_tag}
     ]
+
+    if testing:
+        builds.append({'path': testing_path, 'tag': testing_tag})
 
     for build_args in builds:
         if not headless:

@@ -146,35 +146,35 @@
             "fields": [
                 {
                     "name": "callType",
-                    "type": "string"
+                    "type": "uint8[]"
                 },
                 {
                     "name": "from",
-                    "type": "string"
+                    "type": "checksum160"
                 },
                 {
                     "name": "gas",
-                    "type": "string"
+                    "type": "uint8[]"
                 },
                 {
                     "name": "input",
-                    "type": "string"
+                    "type": "uint8[]"
                 },
                 {
                     "name": "to",
-                    "type": "string"
+                    "type": "uint8[]"
                 },
                 {
                     "name": "value",
-                    "type": "string"
+                    "type": "uint8[]"
                 },
                 {
                     "name": "gasUsed",
-                    "type": "string"
+                    "type": "uint8[]"
                 },
                 {
                     "name": "output",
-                    "type": "string"
+                    "type": "uint8[]"
                 },
                 {
                     "name": "subtraces",

@@ -1,4 +1,4 @@
-name: TEVMC Tests 
+name: Truffle Tests 
 
 on:
   push:
@@ -13,8 +13,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  indexing_test:
-    name: Pytest Tests
+  truffle_test:
+    name: Truffle Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -41,5 +41,25 @@ jobs:
       - name: Build docker containers
         run: tevmc build --headless --testing
 
-      - name: Run pytest 
-        run: pytest --log-cli-level=INFO
+      - name: Pull services up
+        run: tevmc up --loglevel=info
+
+      - name: Wait block indexing
+        run: tevmc wait-block 100
+
+      - name: Run test_itxs
+        run: |
+          docker run \
+            --network host \
+            tevm:testing \
+            bash -c 'cd test_itxs && truffle --network private test'
+
+      - name: Run test_erc20
+        run: |
+          docker run \
+            --network host \
+            tevm:testing \
+            bash -c 'cd test_erc20 && truffle --network private test'
+
+      - name: Pull services down
+        run: tevmc down

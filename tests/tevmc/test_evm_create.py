@@ -24,10 +24,11 @@ def test_cleos_evm_create(tevmc):
     tevmc.cleos.transfer_token('eosio', account, quantity, 'evm test')
     tevmc.cleos.transfer_token(account, 'eosio.evm', quantity, 'Deposit')
 
-    balance = tevmc.cleos.eth_get_balance(eth_addr)
+    balance = tevmc.cleos.w3.eth.get_balance(eth_addr)
 
     def eth_to_wei(x):
         # https://eth-converter.com/
         return x * 1000000000000000000
 
     assert balance == eth_to_wei(quantity.amount)
+

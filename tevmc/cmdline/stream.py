@@ -6,6 +6,7 @@ import click
 import docker
 
 from py_eosio.sugar import (
+    docker_wait_process,
     docker_open_process
 )
 
@@ -55,9 +56,16 @@ def stream(logpath, source):
                 sys.exit(1)
 
             exec_id, exec_stream = docker_open_process(
+                client, hyperion, ['ls', '/hyperion-history-api/logs'])
+
+            ec, out = docker_wait_process(client, exec_id, exec_stream)
+            
+            chain_name = out.rstrip()
+
+            exec_id, exec_stream = docker_open_process(
                 client, hyperion,
                 ['/bin/bash', '-c',
-                'tail -f /hyperion-history-api/logs/telos-testnet/deserialization_errors.log'])
+                f'tail -f /hyperion-history-api/logs/{chain_name}/deserialization_errors.log'])
 
             for chunk in exec_stream:
                 msg = chunk.decode('utf-8')

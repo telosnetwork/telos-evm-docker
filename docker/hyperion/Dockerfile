@@ -1,9 +1,23 @@
 FROM ubuntu:18.04
 
-RUN apt-get update && apt-get upgrade -y && apt-get autoremove && apt-get install -y build-essential git curl netcat
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get autoremove && \
+    apt-get install -y \
+        git \
+        vim \
+        less \
+        curl \
+        netcat \
+        build-essential
 
 RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
-RUN apt-get install -y nodejs && npm install pm2 -g && git clone https://github.com/eosrio/hyperion-history-api.git && cd hyperion-history-api && git checkout v3.3.5
+RUN apt-get install -y nodejs && \
+    npm install pm2 -g && \
+    git clone https://github.com/guilledk/hyperion-history-api.git && \
+    cd hyperion-history-api && \
+    git checkout debugging
 
 COPY ./config/connections.json /hyperion-history-api/connections.json
 COPY ./config/ecosystem.config.js /hyperion-history-api/ecosystem.config.js

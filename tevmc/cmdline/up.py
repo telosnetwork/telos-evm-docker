@@ -38,7 +38,7 @@ from .cli import cli
     '--chain-name', default='telos-local-testnet',
     help='Chain name for hyperion to index.')
 @click.option(
-    '--release-evm/--debug-evm', default=False,
+    '--release-evm/--debug-evm', default=True,
     help='Deploy release/debug evm contract.')
 @click.option(
     '--docker-timeout', default=60,

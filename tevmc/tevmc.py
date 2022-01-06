@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import os
 import sys
+import time
 import shutil
 import logging
 
@@ -16,6 +18,7 @@ from py_eosio.sugar import (
     wait_for_attr
 )
 from py_eosio.tokens import sys_token
+from py_eosio.sugar import collect_stdout
 
 from .config import (
     DEFAULT_NETWORK_NAME, DEFAULT_VOLUME_NAME
@@ -35,7 +38,7 @@ class TEVMController:
         client = None,
         logger = None,
         log_level: str = 'info',
-        debug_evm: bool = True,
+        debug_evm: bool = False,
         chain_name: str = 'telos-local-testnet',
         snapshot: Optional[str] = None,
         producer_key: str = '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
@@ -465,6 +468,8 @@ class TEVMController:
             # await for nodeos to receive a block from peers
             cleos.wait_received(from_file='/root/nodeos.log')
 
+        self.logger.info(cleos.get_info())
+
         self.cleos = cleos
 
     def deploy_evm(
@@ -478,17 +483,23 @@ class TEVMController:
     ):
     
         # create evm accounts
-        self.cleos.create_account_staked(
-            'eosio', 'eosio.evm', ram=start_bytes)
-        self.cleos.create_account_staked(
-            'eosio', 'fees.evm', ram=100000)
+        self.cleos.new_account(
+            'eosio.evm',
+            key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L',
+            ram=start_bytes)
+
+        self.cleos.new_account(
+            'fees.evm',
+            key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L',
+            ram=100000)
 
         ram_price_post = self.cleos.get_ram_price()
 
         start_cost = Asset(ram_price_post.amount * start_bytes, sys_token)
 
-        self.cleos.create_account_staked(
-            'eosio', 'rpc.evm',
+        self.cleos.new_account(
+            'rpc.evm',
+            key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L',
             cpu='10000.0000 TLOS',
             net='10000.0000 TLOS',
             ram=100000)
@@ -513,6 +524,40 @@ class TEVMController:
                 fee_transfer_pct,
                 gas_per_byte
             ], 'eosio.evm@active')
+
+    def create_test_evm_account(
+        self,
+        name: str = 'evmuser1',
+        data: str = 'foobar',
+        truffle_addr: str = '0xf79b834a37f3143f4a73fc3934edac67fd3a01cd'
+    ):
+        self.cleos.new_account(
+            name,
+            key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L')
+        self.cleos.create_evm_account(name, data)
+        quantity = Asset(111000000, sys_token)
+        
+        self.cleos.transfer_token('eosio', name, quantity, ' ')
+        self.cleos.transfer_token(name, 'eosio.evm', quantity, 'Deposit')
+
+        eth_addr = self.cleos.eth_account_from_name(name)
+        assert eth_addr 
+
+        self.logger.info(f'{name}: {eth_addr}')
+
+        try:
+            out = self.client.containers.run(
+                'tevm:testing',
+                'node initTestingAccount.js',
+                network='host',
+                working_dir='/root/scripts')
+
+            self.logger.info(out.decode('utf-8'))
+
+        except docker.errors.ContainerError as err:
+            self.logger.critical(err.stderr.decode('utf-8'))
+            raise
+
 
     def start_hyperion_indexer(self, chain: str):
         """Start hyperion_indexer container and await port init.
@@ -560,6 +605,8 @@ class TEVMController:
 
         
     def __enter__(self):
+        is_local = self.chain_type == 'local'
+
         self.init_network()
 
         self.start_redis()
@@ -567,26 +614,56 @@ class TEVMController:
         self.start_elasticsearch()
         self.start_kibana()
 
+        containers = [
+            self._redis_container,
+            self._rabbitmq_container,
+            self._elasticsearch_container,
+            self._kibana_container
+        ]
+
+        for container in containers:
+            container.update(blkio_weight=10)
+
         self.start_eosio_node(
             self.chain_type,
             snapshot=self.snapshot)
 
-        if self.chain_type == 'local':
+        if is_local:
             self.deploy_evm(
                 debug=self.debug_evm)
 
-        self._eosio_node_container.update(
-            blkio_weight=10)
+        containers.append(self._eosio_node_container)
+        self._eosio_node_container.update(blkio_weight=10)
+
+        time.sleep(2)
 
         self.start_hyperion_indexer(self.chain_name)
         self.start_hyperion_api(self.chain_name)
 
-        self._eosio_node_container.update(
-            blkio_weight=500)
+        for container in containers:
+            container.update(blkio_weight=500)
+
+        self.cleos.init_w3()
+
+        if is_local:
+            self.create_test_evm_account()
 
         return self
 
     def __exit__(self, type, value, traceback):
+
+        # log dump
+        pid = os.getpid()
+
+        def log_dump(container) -> str:
+            path = f'/tmp/{container.name}-{pid}.log'
+            self.logger.info(path)
+            with open(path, 'wb+') as logfile:
+                logfile.write(container.logs())
+        
+        log_dump(self._hyperion_api_container)
+        log_dump(self._hyperion_indexer_container)
+
         self.exit_stack.pop_all().close()
         self.network.remove()
 

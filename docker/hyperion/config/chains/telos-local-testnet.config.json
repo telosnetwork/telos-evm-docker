@@ -115,12 +115,12 @@
   "plugins": {
     "explorer": {
       "enabled": true,
-      "chain_logo_url": "https://raw.githubusercontent.com/telosnetwork/images/master/chain_icons/telos-logo-light.png",
+      "chain_logo_url": "http://raw.githubusercontent.com/telosnetwork/images/master/chain_icons/telos-logo-light.png",
       "server_name": "localhost:7000"
     },
     "telos-evm": {
       "enabled": true,
-      "chainId": 41,
+      "chainId": 40,
       "signer_account": "rpc.evm",
       "signer_permission": "active",
       "signer_key": "5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL",

@@ -2,9 +2,11 @@ const HDWalletProvider = require("@truffle/hdwallet-provider");
 
 module.exports = {
   contracts_build_directory: './build',
+  defaultNetwork: "hardhat",
   networks: {
     private: {
       provider: () => new HDWalletProvider([
+        '0x8dd3ec4846cecac347a830b758bf7e438c4d9b36a396b189610c90b57a70163d',
         '0x87ef69a835f8cd0c44ab99b7609a20b2ca7f1c8470af4f0e5b44db927d542084',
         '0xe014b35c1921894db39c21dbb33462927ff19d9a43a6e226d2a8c8733cc72c6e',
         '0x13246160959c6a50c4a6ee01b0253d13182c5e8cccc83c7e0894b8af6fdd360b',
@@ -16,10 +18,17 @@ module.exports = {
         '0xccb2775f20f2df9b7c756fe4323ccda06c7bcf81a6dfa2391a38eb58714a2913',
         '0xf051e068357022ee273e6924244007e09f0002ba3902d17e8eb6d2498d829d82'
       ], 'http://127.0.0.1:7000/evm'),
-      gas: 10000000,
-      gasPrice: 5000000000000,
-      network_id: "41",
-      //from: '0xf79b834a37f3143f4a73fc3934edac67fd3a01cd'
+      // gas: 10000000,
+      // gasPrice: 5000000000000,
+      network_id: "40",
+      from: '0xf79b834a37f3143f4a73fc3934edac67fd3a01cd'
+    },
+    hardhat: {
+      // gas: 10000000,
+      // gasPrice: 100000000000,
+      host: "127.0.0.1",
+      port: 8546,
+      network_id: "*"
     },
   },
   compilers: {

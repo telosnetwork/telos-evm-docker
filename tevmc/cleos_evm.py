@@ -5,11 +5,11 @@ import requests
 
 from typing import Optional
 
+from web3 import Web3
 from py_eosio.cleos import CLEOS
 
 
-class ETHRPCError(BaseException):
-    ...
+EVM_CONTRACT = 'eosio.evm'
 
 
 class CLEOSEVM(CLEOS):
@@ -48,7 +48,7 @@ class CLEOSEVM(CLEOS):
         if len(rows) != 1:
             return None
 
-        return f'0x{rows[0]["address"]}'
+        return Web3.toChecksumAddress(f'0x{rows[0]["address"]}')
 
     def create_evm_account(
         self,
@@ -64,6 +64,7 @@ class CLEOSEVM(CLEOS):
 
     """    hyperion interaction
     """
+
     def hyperion_health(self) -> int:
         return requests.get(
             f'{self.hyperion_api_endpoint}/v2/health').json()
@@ -101,33 +102,6 @@ class CLEOSEVM(CLEOS):
     """ EVM RPC
     """
 
-    def evm_rpc(self, method, params):
-        ret = requests.post(
-            f'{self.hyperion_api_endpoint}/evm',
-            json={
-                'jsonrpc': '2.0',
-                'method': method,
-                'params': params,
-                'id': self.__jsonrpc_id
-            }).json()
-
-        self.__jsonrpc_id += 1
-        return ret
-
-    def eth_block_num(self):
-        return self.evm_rpc(
-            'eth_blockNumber', [])
-
-    def eth_get_balance(self, address: int):
-        resp = self.evm_rpc(
-            'eth_getBalance', [address])
-
-        if 'error' in resp:
-            raise ETHRPCError(resp['error'])
-
-        return int(resp['result'], 16)
-
-
-    # def wait_eth_blocks(self, num: int):
-    #     start_block = self.eth_block_num()
-    #     breakpoint()
+    def init_w3(self):
+        self.w3 = Web3(
+            Web3.HTTPProvider(self.hyperion_api_endpoint + '/evm'))
