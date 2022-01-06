@@ -22,6 +22,17 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+
+      - name: Setup Truffle
+        run: npm install -g truffle
+          
+      - name: Setup Truffle HD Wallet
+        run: bash -c 'cd tests/ && npm install @truffle/hdwallet-provider'
+
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
@@ -39,7 +50,7 @@ jobs:
         run: tevmc config --index-only-evm 
 
       - name: Build docker containers
-        run: tevmc build --headless --testing
+        run: tevmc build --headless
 
       - name: Pull services up
         run: tevmc up --loglevel=info
@@ -48,18 +59,10 @@ jobs:
         run: tevmc wait-block 100
 
       - name: Run test_itxs
-        run: |
-          docker run \
-            --network host \
-            tevm:testing \
-            bash -c 'cd test_itxs && truffle --network private test'
+        run: bash -c 'cd tests/test_itxs && truffle --network private test'
 
       - name: Run test_erc20
-        run: |
-          docker run \
-            --network host \
-            tevm:testing \
-            bash -c 'cd test_erc20 && truffle --network private test'
+        run: bash -c 'cd tests/test_erc20 && truffle --network private test'
 
       - name: Pull services down
         run: tevmc down
