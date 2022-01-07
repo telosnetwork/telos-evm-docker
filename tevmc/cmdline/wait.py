@@ -28,25 +28,36 @@ def wait_init(logpath):
 
 @cli.command()
 @click.argument('block-num')
-def wait_block(block_num):
+@click.option(
+    '--endpoint', default='http://127.0.0.1:7000',
+    help='Hyperion endpoint.')
+def wait_block(
+    block_num,
+    endpoint
+):
     """Await for block indexing.
     """
-    client = docker.from_env()
     stop = False
 
     while not stop:
         try:
-            hyperion = client.containers.get('hyperion-indexer')
-            for chunk in hyperion.logs(stream=True):
-                msg = chunk.decode('utf-8')
-                print(msg, end='', flush=True)
-                if f'02_continuous_reader] block_num: {block_num}' in msg:
+            report = requests.get(
+                f'{endpoint}/v2/health').json()
+
+        except requests.exceptions.ConnectionError:
+            print('Conection error, retry in 5 sec...')
+            time.sleep(5)
+            continue
+
+        for info in report['health']:
+            if info['service'] == 'Elasticsearch':
+                last_indexed = info['service_data']['last_indexed_block']
+                print(last_indexed)
+                if last_indexed >= int(block_num):
                     stop = True
                     break
 
-        except docker.errors.NotFound:
-            print(f'Hyperion not found, retrying in 5 seg...')
-            time.sleep(5)
+        time.sleep(1)
 
 
 @cli.command()
