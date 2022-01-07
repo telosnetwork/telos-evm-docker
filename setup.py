@@ -17,6 +17,7 @@ setup(
         'natsort',
         'requests',
         'daemonize',
+        'simple-rlp',
         'py_eosio@git+git://github.com/guilledk/py-eosio.git@docker_only'
     ],
     entry_points={

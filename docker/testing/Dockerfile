@@ -17,12 +17,6 @@ RUN wget https://github.com/EOSIO/eos/releases/download/v2.1.0/eosio_2.1.0-1-ubu
 
 RUN npm install -g truffle yarn
 
-WORKDIR /root/scripts
-
-RUN npm install \
-    node-fetch@"<3.0.0" \
-    git+https://github.com/guilledk/telosevm-js.git
-
 WORKDIR /root/tests
 
 RUN npm install \
@@ -33,7 +27,6 @@ RUN npm install \
 
 WORKDIR /root
 
-COPY ./scripts /root/scripts
 COPY ./tests /root/tests
 
 WORKDIR /root/tests

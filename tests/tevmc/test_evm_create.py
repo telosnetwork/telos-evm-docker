@@ -3,6 +3,8 @@
 from py_eosio.sugar import random_string, collect_stdout, Asset
 from py_eosio.tokens import sys_token
 
+from eth_utils import to_wei
+
 
 def test_cleos_evm_create(tevmc):
     """Create a random account and have it create a random evm account,
@@ -26,9 +28,5 @@ def test_cleos_evm_create(tevmc):
 
     balance = tevmc.cleos.w3.eth.get_balance(eth_addr)
 
-    def eth_to_wei(x):
-        # https://eth-converter.com/
-        return x * 1000000000000000000
-
-    assert balance == eth_to_wei(quantity.amount)
+    assert balance == to_wei(quantity.amount, 'ether')
 

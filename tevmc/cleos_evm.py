@@ -5,11 +5,19 @@ import requests
 
 from typing import Optional
 
+import rlp
+
 from web3 import Web3
 from py_eosio.cleos import CLEOS
+from py_eosio.sugar import Name, Asset
+from eth_utils import to_wei, to_int, decode_hex, remove_0x_prefix
 
 
 EVM_CONTRACT = 'eosio.evm'
+DEFAULT_GAS_PRICE = '0x01'
+DEFAULT_GAS_LIMIT = '0x1e8480'
+DEFAULT_VALUE = '0x00'
+DEFAULT_DATA = '0x00'
 
 
 class CLEOSEVM(CLEOS):
@@ -105,3 +113,87 @@ class CLEOSEVM(CLEOS):
     def init_w3(self):
         self.w3 = Web3(
             Web3.HTTPProvider(self.hyperion_api_endpoint + '/evm'))
+
+    def eth_gas_price(self) -> int:
+        config = self.get_evm_config()
+        assert len(config) == 1
+        config = config[0]
+        assert 'gas_price' in config
+        return to_int(hexstr=f'0x{config["gas_price"]}')
+
+    def eth_raw_tx(
+        self,
+        sender: str,
+        data: str,
+        gas_limit: str,
+        value: str,
+        to: str
+    ):
+        def encode(
+            nonce: int,
+            gas_price: str,
+            gas_limit: str,
+            to: str,
+            value: str,
+            data: str,
+            v: int = 0,
+            r: int = 0,
+            s: int = 0
+        ):
+            l = [
+                nonce,
+                gas_price,
+                gas_limit,
+                to,
+                value,
+                data,
+                v, r, s
+            ]
+
+            for i in range(len(l)):
+                if l[i] is None:
+                    raise ValueError(f'Parameter num {i} is None')
+
+                if isinstance(l[i], str):
+                    l[i] = decode_hex(l[i])
+
+            return rlp.encode(l).hex()
+
+        nonce = self.w3.eth.get_transaction_count(sender)
+        gas_price = self.eth_gas_price()
+
+        return encode(
+            nonce,
+            gas_price,
+            gas_limit,
+            to,
+            value,
+            data
+        )
+
+    def eth_transfer(
+        self,
+        account: Name,
+        sender: str,  # eth addr
+        to: str,  # eth addr
+        quantity: Asset,
+        estimate_gas: bool = False
+    ):
+        raw_tx = self.eth_raw_tx(
+            sender,
+            0,
+            DEFAULT_GAS_LIMIT,
+            to_wei(quantity.amount, 'ether'),
+            to
+        )
+
+        sender = remove_0x_prefix(sender)
+        raw_tx = remove_0x_prefix(raw_tx)
+
+        return self.push_action(
+            EVM_CONTRACT,
+            'raw',
+            [account, raw_tx, estimate_gas, sender],
+            f'{account}@active'
+        )
+        

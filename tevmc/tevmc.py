@@ -545,18 +545,35 @@ class TEVMController:
 
         self.logger.info(f'{name}: {eth_addr}')
 
-        try:
-            out = self.client.containers.run(
-                'tevm:testing',
-                'node initTestingAccount.js',
-                network='host',
-                working_dir='/root/scripts')
+        ec, out = self.cleos.eth_transfer(
+            'evmuser1',
+            eth_addr,
+            truffle_addr,
+            Asset(100000000, sys_token)
+        )
+        assert ec == 0
 
-            self.logger.info(out.decode('utf-8'))
+        addr_amount_pairs = [
+            ('0xc51fE232a0153F1F44572369Cefe7b90f2BA08a5', 100000),
+            ('0xf922CC0c6CA8Cdbf5330A295a11A40911FDD3B6e', 10000),
+            ('0xCfCf671eBE5880d2D7798d06Ff7fFBa9bdA1bE64', 10000),
+            ('0xf6E6c4A9Ca3422C2e4F21859790226DC6179364d', 10000),
+            ('0xe83b5B17AfedDb1f6FF08805CE9A4d5eDc547Fa2', 10000),
+            ('0x97baF2200Bf3053cc568AA278a55445059dF2d97', 10000),
+            ('0x2e5A2c606a5d3244A0E8A4C4541Dfa2Ec0bb0a76', 10000),
+            ('0xb4A541e669D73454e37627CdE2229Ad208d19ebF', 10000),
+            ('0x717230bA327FE8DF1E61434D99744E4aDeFC53a0', 10000),
+            ('0x52b7c04839506427620A2B759c9d729BE0d4d126', 10000)
+        ]
 
-        except docker.errors.ContainerError as err:
-            self.logger.critical(err.stderr.decode('utf-8'))
-            raise
+        for addr, amount in addr_amount_pairs:
+            ec, out = self.cleos.eth_transfer(
+                'evmuser1',
+                eth_addr,
+                addr,
+                Asset(amount, sys_token)
+            )
+            assert ec == 0
 
 
     def start_hyperion_indexer(self, chain: str):

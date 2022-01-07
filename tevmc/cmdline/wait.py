@@ -18,9 +18,12 @@ def wait_init(logpath):
     with open(logpath, 'r') as logfile:
         while True:
             line = logfile.readline()
-            print(line)
-            if 'control point reached' in line:
-                break
+            if line:
+                print(line, end='', flush=True)
+                if 'control point reached' in line:
+                    break
+            else:
+                time.sleep(1)
 
 
 @cli.command()

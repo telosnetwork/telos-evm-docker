@@ -57,7 +57,7 @@ jobs:
         run: tevmc up --loglevel=info
 
       - name: Wait block indexing
-        run: tevmc wait-init
+        run: tevmc wait-block 120
 
       - name: Run test_erc20
         working-directory: ./tests/test_erc20
