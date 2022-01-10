@@ -51,11 +51,14 @@ def wait_block(
 
         for info in report['health']:
             if info['service'] == 'Elasticsearch':
-                last_indexed = info['service_data']['last_indexed_block']
-                print(last_indexed)
-                if last_indexed >= int(block_num):
-                    stop = True
-                    break
+                if 'service_data' in info:
+                    last_indexed = info['service_data']['last_indexed_block']
+                    print(last_indexed)
+                    if last_indexed >= int(block_num):
+                        stop = True
+                        break
+                else:
+                    print(info)
 
         time.sleep(1)
 

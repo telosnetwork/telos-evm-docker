@@ -23,6 +23,13 @@
         "chain_api_error_log": false,
         "custom_core_token": "",
         "enable_export_action": false,
+        "v1_chain_cache": [
+            {"path": "get_block", "ttl": 3000},
+            {"path": "get_info", "ttl": 500},
+            {"path": "get_gas_price", "ttl": 500},
+            {"path": "last_onchain_block", "ttl": 500},
+            {"path": "last_indexed_block", "ttl": 500}
+        ],
         "rate_limit_rpm": 100000,
         "rate_limit_allow": []
     },
@@ -139,7 +146,12 @@
             "contracts": {
                 "main": "eosio.evm"
             },
-            "debug": true
+            "debug": false,
+            "indexerWebsocketHost": "0.0.0.0",
+            "indexerWebsocketPort": "7300",
+            "indexerWebsocketUri": "ws://hyperion-indexer:7300",
+            "rpcWebsocketHost": "0.0.0.0",
+            "rpcWebsocketPort": "7400"
         }
     }
 }

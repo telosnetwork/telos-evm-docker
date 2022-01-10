@@ -33,7 +33,7 @@ WORKDIR /hyperion-history-api
 
 RUN npm install
 
-RUN ./hpm install -b main -r git@github.com:telosnetwork/hyperion-telos-evm-plugin.git telos-evm
+RUN ./hpm install -b websocket -r git@github.com:telosnetwork/hyperion-telos-evm-plugin.git telos-evm
 RUN ./hpm enable telos-evm
 
 RUN ./hpm install -r https://github.com/eosrio/hyperion-explorer-plugin explorer
