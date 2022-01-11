@@ -18,7 +18,7 @@ setup(
         'requests',
         'daemonize',
         'simple-rlp',
-        'py_eosio@git+git://github.com/guilledk/py-eosio.git@docker_only'
+        'py_eosio@git+https://github.com/guilledk/py-eosio.git@docker_only'
     ],
     entry_points={
         'console_scripts': [

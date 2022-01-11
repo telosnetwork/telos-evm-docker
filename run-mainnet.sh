@@ -4,9 +4,10 @@ tevmc clean
 tevmc pull --headless
 
 tevmc config \
-            --hyperion-cfg-path=docker/hyperion/config/chains/telos-mainnet.config.json \
-            --indexer-start-on=180635436 \
-            --index-only-evm
+    --hyperion-cfg-path=docker/hyperion/config/chains/telos-mainnet.config.json \
+    --indexer-start-on=180635436 \
+    --index-only-evm \
+    --sync-fetch-span=2000
 
 tevmc build --headless
 

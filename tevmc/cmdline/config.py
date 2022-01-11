@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 import sys
 import json
 
@@ -13,11 +14,17 @@ from .cli import cli
     '--hyperion-cfg-path', default='docker/hyperion/config/chains/telos-testnet.config.json',
     help='Path to hyperion config file')
 @click.option(
+    '--eosio-cfg-path', default='docker/eosio/config.testnet.ini',
+    help='Path to eosio ini config file')
+@click.option(
     '--indexer-start-on', default=1,
     help='Block number at which hyperion indexer must start.')
 @click.option(
     '--indexer-stop-on', default=0,
     help='Block number at which hyperion indexer must stop.')
+@click.option(
+    '--sync-fetch-span', default=1000,
+    help='Amount of blocks per request when syncing.')
 @click.option(
     '--evm-abi-path', default='docker/eosio/contracts/eosio.evm/eosio.evm.abi',
     help='Path to eosio.evm abi file, to parse actions and support --index-only-evm')
@@ -26,8 +33,10 @@ from .cli import cli
     help='Show output while waiting for bootstrap.')
 def config(
     hyperion_cfg_path,
+    eosio_cfg_path,
     indexer_start_on,
     indexer_stop_on,
+    sync_fetch_span,
     evm_abi_path,
     index_only_evm
 ):
@@ -73,3 +82,15 @@ def config(
     # truncate config and re-write
     with open(hyperion_cfg_path, 'w+') as config_file:
         config_file.write(json.dumps(config, indent=4))
+
+    with open(eosio_cfg_path) as ini_file:
+        eosio_cfg = ini_file.read()
+
+    eosio_cfg = re.sub(
+        r'(sync-fetch-span = )(\d+)',
+        f'sync-fetch-span = {sync_fetch_span}',
+        eosio_cfg
+    )
+
+    with open(eosio_cfg_path, 'w+') as ini_file:
+        ini_file.write(eosio_cfg)
