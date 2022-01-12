@@ -8,7 +8,7 @@ import docker
 
 from tqdm import tqdm
 
-from .cli import cli
+from .cli import cli, get_docker_client
 from ..config import MAX_STATUS_SIZE
 
 
@@ -71,7 +71,7 @@ class DownloadInProgress:
 def pull(headless, **kwargs):
     """Pull required service container images.
     """
-    client = docker.from_env()
+    client = get_docker_client()
 
     manifest = []
     for key, arg in kwargs.items():

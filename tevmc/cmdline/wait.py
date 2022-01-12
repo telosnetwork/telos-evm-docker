@@ -4,7 +4,6 @@ import time
 import logging
 
 import click
-import docker
 import requests
 
 from .cli import cli

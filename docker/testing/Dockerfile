@@ -17,16 +17,16 @@ RUN wget https://github.com/EOSIO/eos/releases/download/v2.1.0/eosio_2.1.0-1-ubu
 
 RUN npm install -g truffle yarn
 
-WORKDIR /root/tests
-
-RUN npm install \
-    eos-evm-js \
-    node-fetch@"<3.0.0" \
-    @truffle/hdwallet-provider \
-    @telosnetwork/telosevm-js@0.1.1-18
-
-WORKDIR /root
-
 COPY ./tests /root/tests
 
-WORKDIR /root/tests
+WORKDIR /root/tests/test_itxs
+RUN npm install
+
+WORKDIR /root/tests/test_erc20
+RUN npm install
+
+WORKDIR /root/tests/test_hardhat
+RUN npm install
+
+WORKDIR /root/tests/test_openzeppelin/openzeppelin-contracts
+RUN npm install

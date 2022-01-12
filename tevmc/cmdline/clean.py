@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import time
 import click
 import docker
@@ -9,7 +10,7 @@ import requests
 from ..config import (
     DEFAULT_NETWORK_NAME, DEFAULT_VOLUME_NAME
 )
-from .cli import cli
+from .cli import cli, get_docker_client
 
 
 @cli.command()
@@ -55,7 +56,8 @@ def clean(pid, **kwargs):
     except FileNotFoundError:
         print('daemon not running.')
 
-    client = docker.from_env(timeout=10)
+    client = get_docker_client(timeout=10)
+
     for arg, val in kwargs.items():
         while True:
             try:

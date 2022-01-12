@@ -10,7 +10,7 @@ from py_eosio.sugar import (
     docker_open_process
 )
 
-from .cli import cli
+from .cli import cli, get_docker_client 
 
 
 @cli.command()
@@ -21,7 +21,7 @@ from .cli import cli
 def stream(logpath, source):
     """Stream logs from either the tevmc daemon or a container.
     """
-    client = docker.from_env()
+    client = get_docker_client()
     try:
         if source == 'daemon':
             with open(logpath, 'r') as logfile:

@@ -545,15 +545,8 @@ class TEVMController:
 
         self.logger.info(f'{name}: {eth_addr}')
 
-        ec, out = self.cleos.eth_transfer(
-            'evmuser1',
-            eth_addr,
-            truffle_addr,
-            Asset(100000000, sys_token)
-        )
-        assert ec == 0
-
         addr_amount_pairs = [
+            (truffle_addr, 100000000),
             ('0xc51fE232a0153F1F44572369Cefe7b90f2BA08a5', 100000),
             ('0xf922CC0c6CA8Cdbf5330A295a11A40911FDD3B6e', 10000),
             ('0xCfCf671eBE5880d2D7798d06Ff7fFBa9bdA1bE64', 10000),

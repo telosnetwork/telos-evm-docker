@@ -8,7 +8,7 @@ import docker
 
 from tqdm import tqdm
 
-from .cli import cli
+from .cli import cli, get_docker_client
 from ..config import MAX_STATUS_SIZE
 
 
@@ -97,7 +97,7 @@ def build(
 ):
     """Build in-repo docker containers.
     """
-    client = docker.from_env()
+    client = get_docker_client()
 
     builds = [
         {'path': eosio_path, 'tag': eosio_tag},

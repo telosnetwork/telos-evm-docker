@@ -15,7 +15,7 @@ from daemonize import Daemonize
 
 from ..tevmc import TEVMController
 
-from .cli import cli
+from .cli import cli, get_docker_client
 
 
 @cli.command()
@@ -113,7 +113,7 @@ def up(
         f'container manifest: {json.dumps(manifest, indent=4)}')
 
     # check images are present in local docker repo
-    client = docker.from_env(timeout=docker_timeout)
+    client = get_docker_client(timeout=docker_timeout)
     for repo, tag in manifest:
         try:
             client.images.get(f'{repo}:{tag}')

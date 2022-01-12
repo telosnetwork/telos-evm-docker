@@ -17,7 +17,7 @@ RUN apt-get install -y nodejs && \
     npm install pm2 -g && \
     git clone https://github.com/guilledk/hyperion-history-api.git && \
     cd hyperion-history-api && \
-    git checkout debugging
+    git checkout v3.3.5 
 
 COPY ./config/connections.json /hyperion-history-api/connections.json
 COPY ./config/ecosystem.config.js /hyperion-history-api/ecosystem.config.js
