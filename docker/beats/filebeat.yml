@@ -1,0 +1,16 @@
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  username: "elastic"
+  password: "password" 
+
+setup.kibana:
+  host: "kibana:5601"
+  username: "elastic"
+  password: "password"
+
+filebeat.inputs:
+- type: filestream
+  paths:
+    - /root/logs/eosio/nodeos.log
+

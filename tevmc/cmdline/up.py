@@ -14,6 +14,7 @@ import requests
 from daemonize import Daemonize
 
 from ..tevmc import TEVMController
+from ..config import *
 
 from .cli import cli, get_docker_client
 
@@ -44,22 +45,22 @@ from .cli import cli, get_docker_client
     '--docker-timeout', default=60,
     help='Docker client command timeout.')
 @click.option(
-    '--redis-tag', default='redis:5.0.9-buster',
+    '--redis-tag', default=REDIS_TAG,
     help='Redis container image tag.')
 @click.option(
-    '--rabbitmq-tag', default='rabbitmq:3.8.3-management',
+    '--rabbitmq-tag', default=RABBITMQ_TAG,
     help='Rabbitmq container image tag.')
 @click.option(
-    '--elasticsearch-tag', default='docker.elastic.co/elasticsearch/elasticsearch:7.13.2',
+    '--elasticsearch-tag', default=ELASTICSEARCH_TAG,
     help='Elastic search container image tag.')
 @click.option(
-    '--kibana-tag', default='docker.elastic.co/kibana/kibana:7.7.1',
+    '--kibana-tag', default=KIBANA_TAG,
     help='Kibana container image tag.')
 @click.option(
-    '--eosio-tag', default='eosio:2.1.0-evm',
+    '--eosio-tag', default=EOSIO_TAG,
     help='Eosio nodeos container image tag.')
 @click.option(
-    '--hyperion-tag', default='telos.net/hyperion:0.1.0',
+    '--hyperion-tag', default=HYPERION_TAG,
     help='Hyperion container image tag.')
 def up(
     pid,

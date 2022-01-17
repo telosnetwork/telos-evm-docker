@@ -18,13 +18,14 @@ from py_eosio.sugar import (
     wait_for_attr
 )
 from py_eosio.tokens import sys_token
-from py_eosio.sugar import collect_stdout
-
-from .config import (
-    DEFAULT_NETWORK_NAME, DEFAULT_VOLUME_NAME
+from py_eosio.sugar import (
+    collect_stdout,
+    docker_open_process,
+    docker_wait_process
 )
-from .cleos_evm import CLEOSEVM
 
+from .config import * 
+from .cleos_evm import CLEOSEVM
 
 
 class TEVMCException(BaseException):
@@ -42,12 +43,13 @@ class TEVMController:
         chain_name: str = 'telos-local-testnet',
         snapshot: Optional[str] = None,
         producer_key: str = '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
-        redis_tag: str = 'redis:5.0.9-buster',
-        rabbitmq_tag: str = 'rabbitmq:3.8.3-management',
-        elasticsearch_tag: str = 'docker.elastic.co/elasticsearch/elasticsearch:7.13.2',
-        kibana_tag: str = 'docker.elastic.co/kibana/kibana:7.7.1',
-        eosio_tag: str = 'eosio:2.1.0-evm',
-        hyperion_tag: str = 'telos.net/hyperion:0.1.0'
+        redis_tag: str = REDIS_TAG,
+        rabbitmq_tag: str = RABBITMQ_TAG,
+        elasticsearch_tag: str = ELASTICSEARCH_TAG,
+        kibana_tag: str = KIBANA_TAG,
+        eosio_tag: str = EOSIO_TAG,
+        beats_tag: str = BEATS_TAG,
+        hyperion_tag: str = HYPERION_TAG
     ):
         self.client = docker.from_env()
         self.root_pwd = Path(__file__).parent.parent.resolve()
@@ -90,6 +92,9 @@ class TEVMController:
         self._eosio_node_container = None
         self._eosio_node_container_tag = eosio_tag
 
+        self._beats_container = None
+        self._beats_container_tag = beats_tag
+
         self._hyperion_indexer_container = None
         self._hyperion_indexer_container_tag = hyperion_tag
         self._hyperion_api_container = None
@@ -105,9 +110,7 @@ class TEVMController:
             self.network = self.client.networks.create(
                 DEFAULT_NETWORK_NAME,
                 driver='bridge',
-                labels={
-                    'created-by': 'tevmc'
-                })
+                labels=DEFAULT_DOCKER_LABEL)
 
     @contextmanager
     def temporary_directory(self, dir: Path):
@@ -188,9 +191,7 @@ class TEVMController:
                     type=LogConfig.types.JSON,
                     config={'max-size': '2m' }),
                 remove=True,
-                labels={
-                    'created-by': 'tevmc'
-                })
+                labels=DEFAULT_DOCKER_LABEL)
 
             self.logger.info(f'waiting on networking check')
             ip = wait_for_attr(container, (
@@ -317,7 +318,7 @@ class TEVMController:
                     'cluster.name': 'es-cluster',
                     'node.name': 'es01',
                     'bootstrap.memory_lock': 'true',
-                    'xpack.security.enabled': 'false',  # TODO: Turn security ON
+                    'xpack.security.enabled': 'true',
                     'ES_JAVA_OPTS': '-Xms2g -Xmx2g',
                     'ES_NETWORK_HOST': '0.0.0.0',
                     'ELASTIC_USERNAME': 'elastic',
@@ -383,7 +384,7 @@ class TEVMController:
 
         # search for volume and delete if exists
         try:
-            vol = self.client.volumes.get(DEFAULT_VOLUME_NAME)
+            vol = self.client.volumes.get(EOSIO_VOLUME_NAME)
             vol.remove()
 
         except docker.errors.NotFound:
@@ -396,10 +397,12 @@ class TEVMController:
                     'volumes and rerun.')
 
         self._eosio_volume = self.client.volumes.create(
-            name=DEFAULT_VOLUME_NAME,
-            labels={
-                'created-by': 'tevmc'
-            })
+            name=EOSIO_VOLUME_NAME,
+            labels=DEFAULT_DOCKER_LABEL)
+
+        self._eosio_log_volume = self.client.volumes.create(
+            name=EOSIO_LOG_VOLUME_NAME,
+            labels=DEFAULT_DOCKER_LABEL)
 
         self._eosio_volume_path = Path(self.client.api.inspect_volume(
             self._eosio_volume.name)['Mountpoint'])
@@ -412,7 +415,8 @@ class TEVMController:
                 command=['/bin/bash', '-c', 'trap : TERM INT; sleep infinity & wait'],
                 ports=ports,
                 volumes=[
-                    f'{self._eosio_volume.name}:/mnt/dev/data'
+                    f'{self._eosio_volume.name}:/mnt/dev/data',
+                    f'{self._eosio_log_volume.name}:/root/logs/eosio',
                 ]
             )
         )
@@ -446,16 +450,19 @@ class TEVMController:
         else:
             kwargs['genesis'] = f'/root/genesis.{chain_type}.json'
 
+        logfile = f'{DEFAULT_LOG_PATH}/{EOSIO_LOG_PATH}/{NODEOS_LOG_PATH}'
+
         # init nodeos
         cleos.start_nodeos_from_config(
             f'/root/config.{chain_type}.ini',
             state_plugin=True,
+            logfile=logfile,
             logging_cfg='/root/logging.json',
             **kwargs) 
 
         if chain_type == 'local':
             # await for nodeos to produce a block
-            cleos.wait_produced(from_file='/root/nodeos.log')
+            cleos.wait_produced(from_file=logfile)
             try:
                 cleos.boot_sequence(
                     sys_contracts_mount='/opt/eosio/bin/contracts')
@@ -468,12 +475,31 @@ class TEVMController:
 
         else:
             # await for nodeos to receive a block from peers
-            cleos.wait_received(from_file='/root/nodeos.log')
+            cleos.wait_received(from_file=logfile)
 
         self.logger.info(cleos.get_info())
 
         self.cleos = cleos
 
+    def start_beats(self):
+        self._beats_container = self.exit_stack.enter_context(
+            self.open_container(
+                'beats',
+                self._beats_container_tag,
+                volumes=[
+                    f'{self._eosio_log_volume.name}:{DEFAULT_LOG_PATH}/{EOSIO_LOG_PATH}',
+                ]
+            )
+        )
+
+        exec_id, exec_stream = docker_open_process(
+            self.client,
+            self._beats_container,
+            ['filebeat', 'setup', '-e'])
+
+        ec, out = docker_wait_process(self.client, exec_id, exec_stream)
+        # assert ec == 0
+    
     def deploy_evm(
         self,
         debug: bool = False,
@@ -648,6 +674,12 @@ class TEVMController:
         self._eosio_node_container.update(blkio_weight=10)
 
         time.sleep(2)
+
+        self._kibana_container.update(blkio_weight=500)
+        self.start_beats()
+        self._kibana_container.update(blkio_weight=10)
+        self._beats_container.update(blkio_weight=10)
+        containers.append(self._beats_container)
 
         self.start_hyperion_indexer(self.chain_name)
         self.start_hyperion_api(self.chain_name)

@@ -7,9 +7,7 @@ import docker
 import psutil
 import requests
 
-from ..config import (
-    DEFAULT_NETWORK_NAME, DEFAULT_VOLUME_NAME
-)
+from ..config import * 
 from .cli import cli, get_docker_client
 
 
@@ -32,6 +30,9 @@ from .cli import cli, get_docker_client
 @click.option(
     '--eosio-name', default='eosio_nodeos',
     help='Eosio node container name.')
+@click.option(
+    '--beats', default='beats',
+    help='Beats container name.')
 @click.option(
     '--hyperion-indexer-name', default='hyperion-indexer',
     help='Hyperion indexer container name.')
@@ -87,16 +88,16 @@ def clean(pid, **kwargs):
     print(
         f'Delete containers created by tevmc... ', end='', flush=True)
     client.containers.prune(
-        filters={'label': {'created-by': 'tevmc'}})
+        filters=DEFAULT_FILTER)
     print('done.')
 
     print(
         f'Delete \'{DEFAULT_NETWORK_NAME}\' network... ', end='', flush=True)
     client.networks.prune(
-        filters={'label': {'created-by': 'tevmc'}})
+        filters=DEFAULT_FILTER)
     print('done.')
 
-    print(f'Delete \'{DEFAULT_VOLUME_NAME}\' volume... ', end='', flush=True)
+    print(f'Delete created volumes... ', end='', flush=True)
     client.volumes.prune(
-        filters={'label': {'created-by': 'tevmc'}})
+        filters=DEFAULT_FILTER)
     print('done.')

@@ -9,7 +9,7 @@ import docker
 from tqdm import tqdm
 
 from .cli import cli, get_docker_client
-from ..config import MAX_STATUS_SIZE
+from ..config import * 
 
 
 class BuildInProgress:
@@ -68,13 +68,19 @@ class BuildInProgress:
     '--eosio-path', default='docker/eosio',
     help='Path to eosio docker directory')
 @click.option(
-    '--eosio-tag', default='eosio:2.1.0-evm',
+    '--eosio-tag', default=EOSIO_TAG,
     help='Eosio container tag')
+@click.option(
+    '--beats-path', default='docker/beats',
+    help='Path to beats docker directory')
+@click.option(
+    '--beats-tag', default=BEATS_TAG,
+    help='Beats container tag')
 @click.option(
     '--hyperion-path', default='docker/hyperion',
     help='Path to hyperion docker directory')
 @click.option(
-    '--hyperion-tag', default='telos.net/hyperion:0.1.0',
+    '--hyperion-tag', default=HYPERION_TAG,
     help='Hyperion container tag')
 @click.option(
     '--testing/--release', default=False,
@@ -83,12 +89,14 @@ class BuildInProgress:
     '--testing-path', default='docker/testing',
     help='Path to testing docker directory')
 @click.option(
-    '--testing-tag', default='tevm:testing',
+    '--testing-tag', default=TESTING_TAG,
     help='Testing container tag')
 def build(
     headless,
     eosio_path,
     eosio_tag,
+    beats_path,
+    beats_tag,
     hyperion_path,
     hyperion_tag,
     testing,
@@ -101,6 +109,7 @@ def build(
 
     builds = [
         {'path': eosio_path, 'tag': eosio_tag},
+        {'path': beats_path, 'tag': beats_tag},
         {'path': hyperion_path, 'tag': hyperion_tag}
     ]
 

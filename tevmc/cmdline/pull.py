@@ -9,7 +9,7 @@ import docker
 from tqdm import tqdm
 
 from .cli import cli, get_docker_client
-from ..config import MAX_STATUS_SIZE
+from ..config import * 
 
 
 class DownloadInProgress:
@@ -57,16 +57,16 @@ class DownloadInProgress:
     '--headless/--interactive', default=False,
     help='Display pretty output or just stream logs.')
 @click.option(
-    '--redis-tag', default='redis:5.0.9-buster',
+    '--redis-tag', default=REDIS_TAG,
     help='Redis container image tag.')
 @click.option(
-    '--rabbitmq-tag', default='rabbitmq:3.8.3-management',
+    '--rabbitmq-tag', default=RABBITMQ_TAG,
     help='Rabbitmq container image tag.')
 @click.option(
-    '--elasticsearch-tag', default='docker.elastic.co/elasticsearch/elasticsearch:7.13.2',
+    '--elasticsearch-tag', default=ELASTICSEARCH_TAG,
     help='Elastic search container image tag.')
 @click.option(
-    '--kibana-tag', default='docker.elastic.co/kibana/kibana:7.7.1',
+    '--kibana-tag', default=KIBANA_TAG,
     help='Kibana container image tag.')
 def pull(headless, **kwargs):
     """Pull required service container images.
