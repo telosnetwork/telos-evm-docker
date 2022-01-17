@@ -449,7 +449,9 @@ class TEVMController:
         # init nodeos
         cleos.start_nodeos_from_config(
             f'/root/config.{chain_type}.ini',
-            state_plugin=True, **kwargs) 
+            state_plugin=True,
+            logging_cfg='/root/logging.json',
+            **kwargs) 
 
         if chain_type == 'local':
             # await for nodeos to produce a block

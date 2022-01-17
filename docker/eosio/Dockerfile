@@ -34,6 +34,8 @@ RUN wget https://github.com/EOSIO/eos/releases/download/v2.1.0/eosio_2.1.0-1-ubu
 
 
 # final configuration
+COPY logging.json ./logging.json
+
 COPY config.local.ini ./config.local.ini
 COPY config.testnet.ini ./config.testnet.ini
 COPY config.mainnet.ini ./config.mainnet.ini

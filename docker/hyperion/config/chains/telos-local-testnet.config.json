@@ -38,7 +38,7 @@
         "chain": "telos-local-testnet",
         "eosio_alias": "eosio",
         "parser": "2.1",
-        "auto_stop": 300,
+        "auto_stop": 900,
         "index_version": "v1",
         "debug": true,
         "bp_logs": false,
