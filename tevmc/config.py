@@ -5,13 +5,13 @@ DEFAULT_FILTER = {'label': DEFAULT_DOCKER_LABEL}
 
 DEFAULT_NETWORK_NAME = 'docker_hyperion'
 EOSIO_VOLUME_NAME = 'eosio_volume'
-EOSIO_LOG_VOLUME_NAME = 'eosio_log_volume'
+
+HYPERION_API_LOG_VOLUME = 'hapi_log_volume'
+HYPERION_INDEXER_LOG_VOLUME = 'hindexer_log_volume'
 
 MAX_STATUS_SIZE = 54
 
-DEFAULT_LOG_PATH = '/root/logs'
-EOSIO_LOG_PATH = 'eosio'
-NODEOS_LOG_PATH = 'nodeos.log'
+DEFAULT_NODEOS_LOG_PATH = '/root/nodeos.log'
 
 
 REDIS_TAG = 'redis:5.0.14-alpine'

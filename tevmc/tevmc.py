@@ -6,13 +6,15 @@ import time
 import shutil
 import logging
 
-from typing import Dict, Optional
+from typing import List, Dict, Optional
 from pathlib import Path
 from contextlib import contextmanager, ExitStack
 
 import docker
+import requests
 
 from docker.types import LogConfig, Mount
+from requests.auth import HTTPBasicAuth
 from py_eosio.sugar import (
     Asset,
     wait_for_attr
@@ -192,7 +194,8 @@ class TEVMController:
                     config={'max-size': '2m' }),
                 remove=True,
                 labels=DEFAULT_DOCKER_LABEL)
-
+            
+            self.logger.info(container.status)
             self.logger.info(f'waiting on networking check')
             ip = wait_for_attr(container, (
                 'NetworkSettings', 'Networks', self.network.name, 'IPAddress'))
@@ -400,23 +403,33 @@ class TEVMController:
             name=EOSIO_VOLUME_NAME,
             labels=DEFAULT_DOCKER_LABEL)
 
-        self._eosio_log_volume = self.client.volumes.create(
-            name=EOSIO_LOG_VOLUME_NAME,
-            labels=DEFAULT_DOCKER_LABEL)
-
         self._eosio_volume_path = Path(self.client.api.inspect_volume(
             self._eosio_volume.name)['Mountpoint'])
+
+        env = {
+            'NODEOS_DATA_DIR': '/mnt/dev/data',
+            'NODEOS_CONFIG': f'/root/config.{chain_type}.ini',
+            'NODEOS_LOG_PATH': DEFAULT_NODEOS_LOG_PATH
+        }
+        if snapshot:
+            env['NODEOS_SNAPSHOT'] = snapshot
+
+        else:
+            env['NODEOS_GENESIS_JSON'] = f'/root/genesis.{chain_type}.json'
 
         # open container
         self._eosio_node_container = self.exit_stack.enter_context(
             self.open_container(
                 'eosio_nodeos',
                 self._eosio_node_container_tag,
-                command=['/bin/bash', '-c', 'trap : TERM INT; sleep infinity & wait'],
+                # command=[
+                #     '/bin/bash', '-c',
+                #     'trap : TERM INT; service cron start; sleep infinity & wait'
+                # ],
+                environment=env,
                 ports=ports,
                 volumes=[
-                    f'{self._eosio_volume.name}:/mnt/dev/data',
-                    f'{self._eosio_log_volume.name}:/root/logs/eosio',
+                    f'{self._eosio_volume.name}:/mnt/dev/data'
                 ]
             )
         )
@@ -431,6 +444,11 @@ class TEVMController:
             ('NetworkSettings', 'Ports', ports['8888/tcp'])
         )
 
+        exec_id, exec_stream = docker_open_process(
+            self.client, self._eosio_node_container,
+            ['/bin/bash', '-c', 
+                'while true; do logrotate /etc/logrotate.conf; sleep 60; done'])
+
         # setup cleos wrapper
         cleos = CLEOSEVM(
             self.client,
@@ -443,26 +461,9 @@ class TEVMController:
             '/root/eosio-wallet/config.ini') 
         cleos.setup_wallet(self.producer_key)
 
-        kwargs = {}
-        if snapshot:
-            kwargs['snapshot'] = snapshot
-
-        else:
-            kwargs['genesis'] = f'/root/genesis.{chain_type}.json'
-
-        logfile = f'{DEFAULT_LOG_PATH}/{EOSIO_LOG_PATH}/{NODEOS_LOG_PATH}'
-
-        # init nodeos
-        cleos.start_nodeos_from_config(
-            f'/root/config.{chain_type}.ini',
-            state_plugin=True,
-            logfile=logfile,
-            logging_cfg='/root/logging.json',
-            **kwargs) 
-
         if chain_type == 'local':
             # await for nodeos to produce a block
-            cleos.wait_produced(from_file=logfile)
+            cleos.wait_produced(from_file=DEFAULT_NODEOS_LOG_PATH)
             try:
                 cleos.boot_sequence(
                     sys_contracts_mount='/opt/eosio/bin/contracts')
@@ -475,30 +476,11 @@ class TEVMController:
 
         else:
             # await for nodeos to receive a block from peers
-            cleos.wait_received(from_file=logfile)
+            cleos.wait_received(from_file=DEFAULT_NODEOS_LOG_PATH)
 
         self.logger.info(cleos.get_info())
 
         self.cleos = cleos
-
-    def start_beats(self):
-        self._beats_container = self.exit_stack.enter_context(
-            self.open_container(
-                'beats',
-                self._beats_container_tag,
-                volumes=[
-                    f'{self._eosio_log_volume.name}:{DEFAULT_LOG_PATH}/{EOSIO_LOG_PATH}',
-                ]
-            )
-        )
-
-        exec_id, exec_stream = docker_open_process(
-            self.client,
-            self._beats_container,
-            ['filebeat', 'setup', '-e'])
-
-        ec, out = docker_wait_process(self.client, exec_id, exec_stream)
-        # assert ec == 0
     
     def deploy_evm(
         self,
@@ -594,39 +576,58 @@ class TEVMController:
                 addr,
                 Asset(amount, sys_token)
             )
+            time.sleep(0.05)
             assert ec == 0
 
 
     def start_hyperion_indexer(self, chain: str):
         """Start hyperion_indexer container and await port init.
         """
+
+        self._indexer_logs_volume = self.client.volumes.create(
+            name=HYPERION_INDEXER_LOG_VOLUME,
+            labels=DEFAULT_DOCKER_LABEL)
+
         self._hyperion_indexer_container = self.exit_stack.enter_context(
             self.open_container(
                 'hyperion-indexer',
                 self._hyperion_indexer_container_tag,
                 command=[
                     '/bin/bash', '-c',
-                    f'/home/hyperion/scripts/run-hyperion.sh {chain}-indexer'
+                    f'/root/scripts/run-hyperion.sh {chain}-indexer'
                 ],
+                volumes={
+                    self._indexer_logs_volume.name:
+                        {'bind': '/root/.pm2/logs', 'mode': 'rw'}
+                },
                 force_unique=True
             )
         )
 
-        #for msg in self.stream_logs(self._hyperion_indexer_container):
+        # for msg in self.stream_logs(self._hyperion_indexer_container):
         #    if '02_continuous_reader] Websocket connected!' in msg:
         #        break
 
     def start_hyperion_api(self, chain: str, port: str = '7000/tcp'):
         """Start hyperion_api container and await port init.
         """
+
+        self._api_logs_volume = self.client.volumes.create(
+            name=HYPERION_API_LOG_VOLUME,
+            labels=DEFAULT_DOCKER_LABEL)
+
         self._hyperion_api_container = self.exit_stack.enter_context(
             self.open_container(
                 'hyperion-api',
                 self._hyperion_api_container_tag,
                 command=[
                     '/bin/bash', '-c',
-                    f'/home/hyperion/scripts/run-hyperion.sh {chain}-api'
+                    f'/root/scripts/run-hyperion.sh {chain}-api'
                 ],
+                volumes={
+                    self._api_logs_volume.name:
+                        {'bind': '/root/.pm2/logs', 'mode': 'rw'}
+                },
                 force_unique=True,
                 ports={port: port}
             )
@@ -640,6 +641,65 @@ class TEVMController:
         for msg in self.stream_logs(self._hyperion_api_container):
             if 'api ready' in msg:
                 break
+
+    def setup_index_patterns(self, patterns: List[str]):
+        for pattern_title in patterns:
+            self.logger.info(
+                f'registering index pattern \'{pattern_title}\'')
+            while True:
+                try:
+                    resp = requests.post(
+                        f'http://localhost:{self._kibana_port[0]["HostPort"]}'
+                        '/api/index_patterns/index_pattern',
+                        auth=HTTPBasicAuth('elastic', 'password'),
+                        headers={'kbn-xsrf': 'true'},
+                        json={
+                            "index_pattern" : {
+                                "title": pattern_title,
+                                "timeFieldName": "@timestamp"
+                            }
+                        }).json()
+                    self.logger.debug(resp)
+
+                except requests.exceptions.ConnectionError:
+                    self.logger.warning('can\'t reach kibana, retry in 3 sec...')
+
+                except requests.exceptions.JSONDecodeError:
+                    self.logger.info('kibana server not ready, retry in 3 sec...')
+
+                else:
+                    break
+
+                time.sleep(3)
+            self.logger.info('registered.')
+
+    def start_beats(self):
+        self._beats_container = self.exit_stack.enter_context(
+            self.open_container(
+                'beats',
+                self._beats_container_tag,
+                volumes={
+                    self._indexer_logs_volume.name:
+                        {'bind': '/root/indexer-logs', 'mode': 'ro'},
+                    self._api_logs_volume.name:
+                        {'bind': '/root/api-logs', 'mode': 'ro'}
+                },
+                environment={
+                    'CHAIN_TYPE': self.chain_type
+                }
+            )
+        )
+
+        exec_id, exec_stream = docker_open_process(
+            self.client,
+            self._beats_container,
+            ['filebeat', 'setup', '--pipelines'])
+
+        ec, out = docker_wait_process(self.client, exec_id, exec_stream)
+        assert ec == 0
+
+        self.setup_index_patterns(
+            [f'{self.chain_name}-action-*', 'filebeat-*'])
 
         
     def __enter__(self):
@@ -675,17 +735,13 @@ class TEVMController:
 
         time.sleep(2)
 
-        self._kibana_container.update(blkio_weight=500)
-        self.start_beats()
-        self._kibana_container.update(blkio_weight=10)
-        self._beats_container.update(blkio_weight=10)
-        containers.append(self._beats_container)
-
         self.start_hyperion_indexer(self.chain_name)
         self.start_hyperion_api(self.chain_name)
 
         for container in containers:
             container.update(blkio_weight=500)
+
+        self.start_beats()
 
         self.cleos.init_w3()
 

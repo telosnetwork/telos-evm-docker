@@ -7,7 +7,11 @@ RUN apt-get update && \
         -y \
         --no-install-recommends \
         wget \
+        logrotate \
         ca-certificates
+
+# logrotate config
+COPY logrotate.conf /etc/logrotate.conf
 
 # install system contracts
 COPY contracts /opt/eosio/bin/contracts
@@ -47,3 +51,7 @@ COPY genesis.mainnet.json ./genesis.mainnet.json
 COPY keosd_config.ini ./eosio-wallet/config.ini
 
 EXPOSE 8888
+
+COPY entrypoint.sh entrypoint.sh
+
+ENTRYPOINT ["/bin/bash", "entrypoint.sh"] 

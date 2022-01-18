@@ -121,6 +121,13 @@ class CLEOSEVM(CLEOS):
         assert 'gas_price' in config
         return to_int(hexstr=f'0x{config["gas_price"]}')
 
+    # def eth_get_transaction_count(self, addr: str) -> int:
+    #     resp = requests.get(
+    #         f'{self.hyperion_api_endpoint}/v2/evm/get_transactions',
+    #         params={'address': addr}
+    #     ).json()
+    #     return resp['total']['value'] 
+
     def eth_raw_tx(
         self,
         sender: str,

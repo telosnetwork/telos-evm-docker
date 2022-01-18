@@ -100,4 +100,17 @@ def clean(pid, **kwargs):
     print(f'Delete created volumes... ', end='', flush=True)
     client.volumes.prune(
         filters=DEFAULT_FILTER)
+
+    for volume_name in [
+        EOSIO_VOLUME_NAME,
+        HYPERION_API_LOG_VOLUME,
+        HYPERION_INDEXER_LOG_VOLUME
+    ]:
+        try:
+            volume = client.volumes.get(volume_name)
+            volume.remove(force=True)
+
+        except docker.errors.NotFound:
+            pass
+
     print('done.')

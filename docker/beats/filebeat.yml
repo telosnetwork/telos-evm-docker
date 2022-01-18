@@ -10,7 +10,22 @@ setup.kibana:
   password: "password"
 
 filebeat.inputs:
-- type: filestream
+- type: log
+  # pipeline: RPCREQUEST
   paths:
-    - /root/logs/eosio/nodeos.log
+    - /root/api-logs/*-api-out.log
+  fields:
+    stand: dev1
+    origin: system
+    application: telos_${CHAIN_TYPE}_api
+  fields_under_root: true
 
+- type: log
+  # pipeline: RPCREQUEST
+  paths:
+    - /root/indexer-logs/*-indexer-out.log
+  fields:
+    stand: dev1
+    origin: system
+    application: telos_${CHAIN_TYPE}_indexer
+  fields_under_root: true
