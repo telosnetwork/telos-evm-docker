@@ -36,7 +36,7 @@ jobs:
         run: tevmc init local
 
       - name: Build
-        working-directory: local
+        working-directory: ./local
         run: tevmc build --headless
 
       - name: Run pytest 

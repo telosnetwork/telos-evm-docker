@@ -26,39 +26,29 @@ You will need `docker` & `python3`.
 #### small python heads up
 
 It's good practice to not modify the python envoirment that comes with the system, as it is sometimes used for system scripts.
-A way to deal with that is to use [pyenv](https://github.com/pyenv/pyenv), `node` developers might know of `nvm` a similar
-tool to manage different `node` versions on the same system.
+A good practice is to use a virtual envoirment:
 
-`pyenv` installs different `python` versions inside `~/.pyenv` by default so it's user level.
-
+    1. linux: https://mothergeo-py.readthedocs.io/en/latest/development/how-to/venv.html
+    2. windows:https://mothergeo-py.readthedocs.io/en/latest/development/how-to/venv-win.html 
+    
 
 To install python dependencies:
 
-    pip install .
+    pip install -U --no-cache-dir -e . -r requirements.txt
 
 If in your system you have both a `python` and `python3` binary, corresponding to `python2.7` and `python3.x`
 respectively. You'll need to specify which version of `pip` to use:
 
-    pip3 install .
+    pip3 install -U --no-cache-dir -e . -r requirements.txt
 
 Or if not found:
 
-    python3 -m pip install .
-
-If you don't want to install it as a package run:
-
-    pip install -r requirements.txt
-
-And then to execute change the bare `tevmc` command for `./tevmc.run` while
-on the root of the repo.
-
-
-Build docker (must be inside repo):
-
-    tevmc build 
+    python3 -m pip install -U --no-cache-dir -e . -r requirements.txt
 
 ## Execution
-    tevmc up --loglevel=info
+    tevmc init local
+    cd local
+    tevmc up
     tevmc stream daemon
 
 ## Important data
