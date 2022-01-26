@@ -37,6 +37,7 @@ kibana = {
     'name': 'kibana',
     'docker_path': 'kibana',
     'tag': 'tevm:kibana',
+    'host': '0.0.0.0',
     'port': 5601
 }
 
@@ -140,7 +141,7 @@ hyperion = {
         'name': 'telos-mainnet',
         'long_name': 'Telos Mainnet',
         'chain_hash': '4667b205c6838ef70ff7988f6e8257e8be0e1284a2f59699054a018f743b1d11',
-        'chain_id': 41,
+        'chain_id': 40,
         'http': 'http://localhost:8888',
         'ship': 'ws://localhost:29999',
         'router_host': '0.0.0.0',
@@ -204,7 +205,7 @@ hyperion = {
         'log_volume': 'api_logs',
         'server_addr': '0.0.0.0',
         'server_port': 7000,
-        'server_name': '0.0.0.0:7000',
+        'server_name': 'rpc.telos.net',
         'provider_name': 'TelosEVM Mainnet node',
         'provider_url': 'https://telos.net'
     }

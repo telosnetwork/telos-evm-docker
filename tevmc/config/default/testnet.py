@@ -37,6 +37,7 @@ kibana = {
     'name': 'kibana',
     'docker_path': 'kibana',
     'tag': 'tevm:kibana',
+    'host': '0.0.0.0',
     'port': 5601
 }
 
