@@ -11,7 +11,7 @@ from .cli import cli
 
 @cli.command()
 @click.option(
-    '--logpath', default='/tmp/tevmc.log',
+    '--logpath', default='tevmc.log',
     help='Log file path.')
 def wait_init(logpath):
     with open(logpath, 'r') as logfile:

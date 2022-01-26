@@ -44,8 +44,12 @@ jobs:
           pip install --upgrade pip
           pip install -e .
 
-      - name: Bootstrap testnet
-        run: ./run-local.sh
+      - name: Init local chain
+        run: tevmc init local
+
+      - name: Bootstrap 
+        working-directory: local
+        run: ./run.sh
 
       - name: Wait blocks
         run: tevmc wait-block 60
@@ -53,6 +57,3 @@ jobs:
       - name: Run test_erc20
         working-directory: ./tests/test_erc20
         run: truffle --network private test
-
-      - name: Pull services down
-        run: tevmc down

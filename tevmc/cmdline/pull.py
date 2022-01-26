@@ -57,33 +57,38 @@ class DownloadInProgress:
     '--headless/--interactive', default=False,
     help='Display pretty output or just stream logs.')
 @click.option(
-    '--redis-tag', default=REDIS_TAG,
-    help='Redis container image tag.')
+    '--target-dir', default='.',
+    help='target')
 @click.option(
-    '--rabbitmq-tag', default=RABBITMQ_TAG,
-    help='Rabbitmq container image tag.')
-@click.option(
-    '--elasticsearch-tag', default=ELASTICSEARCH_TAG,
-    help='Elastic search container image tag.')
-@click.option(
-    '--kibana-tag', default=KIBANA_TAG,
-    help='Kibana container image tag.')
-def pull(headless, **kwargs):
+    '--config', default='tevmc.json',
+    help='Unified config file name.')
+def pull(headless, target_dir, config):
     """Pull required service container images.
     """
+    try:
+        config = load_config(target_dir, config)
+
+    except FileNotFoundError:
+        print('Config not found.')
+        sys.exit(1)
+
     client = get_docker_client()
 
     manifest = []
-    for key, arg in kwargs.items():
+    for container_name, conf in config.items():
+        if container_name in [
+            'nodeos', 'hyperion', 'beats']:
+            continue
+
         try:
-            repo, tag = arg.split(':')
+            repo, tag = conf['tag'].split(':')
 
         except ValueError:
-            print(
+            logger.critical(
                 f'Malformed tag {key}=\'{arg}\','
                 f' must be of format \'{repo}:{tag}\'.')
             sys.exit(1)
-    
+
         manifest.append((repo, tag))
 
     for repo, tag in manifest:

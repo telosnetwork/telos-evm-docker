@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 import json
 import time
@@ -21,60 +22,48 @@ from .cli import cli, get_docker_client
 
 @cli.command()
 @click.option(
-    '--pid', default='/tmp/tevmc.pid',
+    '--pid', default='tevmc.pid',
     help='Path to lock file for daemon')
 @click.option(
-    '--port', default=6666,
-    help='Port to listen for termination.')
+    '--config', default='tevmc.json',
+    help='Unified config file name.')
 @click.option(
-    '--logpath', default='/tmp/tevmc.log',
+    '--logpath', default='tevmc.log',
     help='Log file path.')
 @click.option(
-    '--loglevel', default='warning',
+    '--loglevel', default='info',
     help='Provide logging level. Example --loglevel debug, default=warning')
 @click.option(
-    '--snapshot', default=None,
-    help='Snapshot location inside container.')
-@click.option(
-    '--chain-name', default='telos-local-testnet',
-    help='Chain name for hyperion to index.')
-@click.option(
-    '--release-evm/--debug-evm', default=True,
-    help='Deploy release/debug evm contract.')
+    '--target-dir', default='.',
+    help='target')
 @click.option(
     '--docker-timeout', default=60,
     help='Docker client command timeout.')
-@click.option(
-    '--redis-tag', default=REDIS_TAG,
-    help='Redis container image tag.')
-@click.option(
-    '--rabbitmq-tag', default=RABBITMQ_TAG,
-    help='Rabbitmq container image tag.')
-@click.option(
-    '--elasticsearch-tag', default=ELASTICSEARCH_TAG,
-    help='Elastic search container image tag.')
-@click.option(
-    '--kibana-tag', default=KIBANA_TAG,
-    help='Kibana container image tag.')
-@click.option(
-    '--eosio-tag', default=EOSIO_TAG,
-    help='Eosio nodeos container image tag.')
-@click.option(
-    '--hyperion-tag', default=HYPERION_TAG,
-    help='Hyperion container image tag.')
 def up(
     pid,
-    port,
+    config,
     logpath,
     loglevel,
-    snapshot,
-    chain_name,
-    release_evm,
-    docker_timeout,
-    **kwargs  # leave container tags to kwargs 
+    target_dir,
+    docker_timeout
 ):
     """Bring tevmc daemon up.
     """
+    try:
+        config = load_config(target_dir, config)
+
+    except FileNotFoundError:
+        print('Config not found.')
+        sys.exit(1)
+
+    prev_run_pid = None
+    try:
+        with open(target_dir + '/.prev', 'r') as prev_pid_file:
+            prev_run_pid = int(prev_pid_file.read())
+
+    except FileNotFoundError:
+        pass
+        
     if Path(pid).resolve().exists():
         print('daemon pid file exists. abort.')
         sys.exit(1)
@@ -98,9 +87,13 @@ def up(
 
     # create image manifest ie images needed to run daemon 
     manifest = []
-    for key, arg in kwargs.items():
+    for container_name, conf in config.items():
+        if 'docker_path' not in conf:
+            continue
+
         try:
-            repo, tag = arg.split(':')
+            repo, tag = conf['tag'].split(':')
+            tag = f'{tag}-{config["hyperion"]["chain"]["name"]}'
 
         except ValueError:
             logger.critical(
@@ -123,19 +116,22 @@ def up(
             logger.critical(f'docker image {repo}:{tag} not present, abort.')
             print(
                 f'Docker image \'{repo}:{tag}\' is required, please run '
-                '\'tevmc pull\' to download the required images.'
+                '\'tevmc build\' to build the required images.'
             )
             sys.exit(1)
 
     # main daemon thread
     def wait_exit_forever():
+        if not Path('.prev').is_file():
+            with open('.prev', 'w+') as prev_pid_file:
+                prev_pid_file.write(
+                    str(os.getpid()) + '\n')
+
         try:
             with TEVMController(
+                config,
                 logger=logger,
-                debug_evm=not release_evm,
-                chain_name=chain_name,
-                snapshot=snapshot,
-                **kwargs
+                prev_pid=prev_run_pid
             ) as tevm:
                 logger.critical('control point reached')
                 try:
@@ -150,13 +146,14 @@ def up(
                 'docker timeout! usually means system hung, '
                 'please await tear down or run \'tevmc clean\''
                 'to cleanup envoirment.')
-            
+
     # daemonize
     daemon = Daemonize(
         app='tevmc',
         pid=pid,
         action=wait_exit_forever,
-        keep_fds=keep_fds)
+        keep_fds=keep_fds,
+        chdir=target_dir)
 
     daemon.start()
 

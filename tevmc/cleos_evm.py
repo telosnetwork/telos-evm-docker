@@ -10,6 +10,7 @@ import rlp
 from web3 import Web3
 from py_eosio.cleos import CLEOS
 from py_eosio.sugar import Name, Asset
+from py_eosio.tokens import sys_token
 from eth_utils import to_wei, to_int, decode_hex, remove_0x_prefix
 
 
@@ -33,6 +34,101 @@ class CLEOSEVM(CLEOS):
         self.hyperion_api_endpoint = hyperion_api_endpoint
 
         self.__jsonrpc_id = 0
+    
+    def deploy_evm(
+        self,
+        start_bytes: int = 1073741824,
+        target_free: int = 1073741824,
+        min_buy: int = 20000,
+        fee_transfer_pct: int = 100,
+        gas_per_byte: int = 69
+    ):
+    
+        # create evm accounts
+        self.new_account(
+            'eosio.evm',
+            key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L',
+            ram=start_bytes)
+
+        self.new_account(
+            'fees.evm',
+            key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L',
+            ram=100000)
+
+        ram_price_post = self.get_ram_price()
+
+        start_cost = Asset(ram_price_post.amount * start_bytes, sys_token)
+
+        self.new_account(
+            'rpc.evm',
+            key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L',
+            cpu='10000.0000 TLOS',
+            net='10000.0000 TLOS',
+            ram=100000)
+
+        contract_path = '/opt/eosio/bin/contracts/eosio.evm'
+
+        self.deploy_contract(
+            'eosio.evm', contract_path,
+            privileged=True,
+            create_account=False)
+
+        ec, out = self.push_action(
+            'eosio.evm',
+            'init',
+            [
+                start_bytes,
+                start_cost,
+                target_free,
+                min_buy,
+                fee_transfer_pct,
+                gas_per_byte
+            ], 'eosio.evm@active')
+        assert ec == 0
+
+    def create_test_evm_account(
+        self,
+        name: str = 'evmuser1',
+        data: str = 'foobar',
+        truffle_addr: str = '0xf79b834a37f3143f4a73fc3934edac67fd3a01cd'
+    ):
+        self.new_account(
+            name,
+            key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L')
+        self.create_evm_account(name, data)
+        quantity = Asset(111000000, sys_token)
+        
+        self.transfer_token('eosio', name, quantity, ' ')
+        self.transfer_token(name, 'eosio.evm', quantity, 'Deposit')
+
+        eth_addr = self.eth_account_from_name(name)
+        assert eth_addr 
+
+        self.logger.info(f'{name}: {eth_addr}')
+
+        addr_amount_pairs = [
+            (truffle_addr, 100000000),
+            ('0xc51fE232a0153F1F44572369Cefe7b90f2BA08a5', 100000),
+            ('0xf922CC0c6CA8Cdbf5330A295a11A40911FDD3B6e', 10000),
+            ('0xCfCf671eBE5880d2D7798d06Ff7fFBa9bdA1bE64', 10000),
+            ('0xf6E6c4A9Ca3422C2e4F21859790226DC6179364d', 10000),
+            ('0xe83b5B17AfedDb1f6FF08805CE9A4d5eDc547Fa2', 10000),
+            ('0x97baF2200Bf3053cc568AA278a55445059dF2d97', 10000),
+            ('0x2e5A2c606a5d3244A0E8A4C4541Dfa2Ec0bb0a76', 10000),
+            ('0xb4A541e669D73454e37627CdE2229Ad208d19ebF', 10000),
+            ('0x717230bA327FE8DF1E61434D99744E4aDeFC53a0', 10000),
+            ('0x52b7c04839506427620A2B759c9d729BE0d4d126', 10000)
+        ]
+
+        for addr, amount in addr_amount_pairs:
+            ec, out = self.eth_transfer(
+                'evmuser1',
+                eth_addr,
+                addr,
+                Asset(amount, sys_token)
+            )
+            time.sleep(0.05)
+            assert ec == 0
 
 
     """    eosio.evm interaction

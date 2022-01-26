@@ -15,13 +15,31 @@ from .cli import cli, get_docker_client
 
 @cli.command()
 @click.option(
-    '--logpath', default='/tmp/tevmc.log',
+    '--pid', default='tevmc.pid',
+    help='Path to lock file for daemon')
+@click.option(
+    '--logpath', default='tevmc.log',
     help='Log file path.')
+@click.option(
+    '--target-dir', default='.',
+    help='target')
+@click.option(
+    '--config', default='tevmc.json',
+    help='Unified config file name.')
 @click.argument('source')
-def stream(logpath, source):
+def stream(pid, logpath, target_dir, config, source):
     """Stream logs from either the tevmc daemon or a container.
     """
     client = get_docker_client()
+
+    try:
+        with open(pid, 'r') as pidfile:
+            pid = int(pidfile.read())
+
+    except FileNotFoundError:
+        print('daemon not running.')
+
+
     try:
         if source == 'daemon':
             with open(logpath, 'r') as logfile:
@@ -30,56 +48,17 @@ def stream(logpath, source):
                     line = logfile.readline()
                     print(line, end='', flush=True)
 
-        elif source == 'eosio_nodeos':
-            try:
-                node = client.containers.get('eosio_nodeos')
-
-            except docker.errors.NotFound:
-                print('Eosio container not found!')
-                sys.exit(1)
-
-            exec_id, exec_stream = docker_open_process(
-                client, node,
-                ['/bin/bash', '-c',
-                'tail -f /root/nodeos.log'])
-
-            for chunk in exec_stream:
-                msg = chunk.decode('utf-8')
-                print(msg, end='', flush=True)
-
-        elif source == 'hyperion-indexer-serial':
-            try:
-                hyperion = client.containers.get('hyperion-indexer')
-
-            except docker.errors.NotFound:
-                print('Hyperion container not found!')
-                sys.exit(1)
-
-            exec_id, exec_stream = docker_open_process(
-                client, hyperion, ['ls', '/hyperion-history-api/logs'])
-
-            ec, out = docker_wait_process(client, exec_id, exec_stream)
-            
-            chain_name = out.rstrip()
-
-            exec_id, exec_stream = docker_open_process(
-                client, hyperion,
-                ['/bin/bash', '-c',
-                f'tail -f /hyperion-history-api/logs/{chain_name}/deserialization_errors.log'])
-
-            for chunk in exec_stream:
-                msg = chunk.decode('utf-8')
-                print(msg, end='', flush=True)
-
         else:
             try:
-                container = client.containers.get(source)
-                for chunk in container.logs(stream=True):
-                    msg = chunk.decode('utf-8')
-                    print(msg, end='', flush=True)
+                container = client.containers.get(f'{source}-{pid}')
 
             except docker.errors.NotFound:
                 print(f'Container \"{source}\" not found!')
+                sys.exit(1)
+
+            for chunk in container.logs(stream=True):
+                msg = chunk.decode('utf-8')
+                print(msg, end='', flush=True)
 
     except KeyboardInterrupt:
         print('Interrupted.')

@@ -32,13 +32,11 @@ jobs:
           pip install --upgrade pip
           pip install -e .
 
-      - name: Pull docker containers
-        run: tevmc pull --headless
+      - name: Init local chain
+        run: tevmc init local
 
-      - name: Config hyperion
-        run: tevmc config --index-only-evm 
-
-      - name: Build docker containers
+      - name: Build
+        working-directory: local
         run: tevmc build --headless
 
       - name: Run pytest 

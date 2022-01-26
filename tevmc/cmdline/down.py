@@ -8,7 +8,7 @@ from .cli import cli
 
 @cli.command()
 @click.option(
-    '--pid', default='/tmp/tevmc.pid',
+    '--pid', default='tevmc.pid',
     help='Path to lock file for daemon')
 def down(pid):
     """Bring tevmc daemon down.
