@@ -2,7 +2,8 @@
 
 redis = {
     'name': 'redis',
-    'tag': 'redis:5.0.14-bullseye',
+    'docker_path': 'redis',
+    'tag': 'tevm:redis',
     'host': 'localhost',
     'port': 6379,
     'data_volume': 'redis_data'
@@ -10,7 +11,8 @@ redis = {
 
 rabbitmq = {
     'name': 'rabbitmq',
-    'tag': 'rabbitmq:3.9.12-management',
+    'docker_path': 'rabbitmq',
+    'tag': 'tevm:rabbitmq',
     'host': 'localhost:5672',
     'api': 'localhost:15672',
     'user': 'username',
@@ -21,7 +23,8 @@ rabbitmq = {
 
 elasticsearch = {
     'name': 'elasticsearch',
-    'tag': 'elasticsearch:7.16.3',
+    'docker_path': 'elasticsearch',
+    'tag': 'tevm:elasticsearch',
     'protocol':  'http',
     'host': 'localhost:9200',
     'ingest_nodes': ['localhost:9200'],
@@ -32,13 +35,14 @@ elasticsearch = {
 
 kibana = {
     'name': 'kibana',
-    'tag': 'kibana:7.16.3',
+    'docker_path': 'kibana',
+    'tag': 'tevm:kibana',
     'port': 5601
 }
 
 nodeos = {
     'name': 'nodeos',
-    'tag': 'eosio:2.1.0-evm',
+    'tag': 'tevm:nodeos-2.1.0-evm',
     'docker_path': 'eosio',
     'volume': 'eosio_volume',
     'data_dir': '/mnt/dev/data',
@@ -130,7 +134,7 @@ nodeos = {
 }
 
 hyperion = {
-    'tag': 'telos.net/hyperion:0.1.0',
+    'tag': 'tevm:hyperion',
     'docker_path': 'hyperion',
     'chain': {
         'name': 'telos-mainnet',
@@ -170,6 +174,8 @@ hyperion = {
         'start_on': 180635436,
         'end_on': 0,
         'auto_stop': 0,
+        'rewrite': False,
+        'live_reader': True,
         'blacklists': {
             'actions': [],
             'deltas': []
