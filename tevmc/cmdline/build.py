@@ -162,6 +162,7 @@ def build(headless, target_dir, config):
 
     # kibana
     subst = {
+        'kibana_host': config['kibana']['host'],
         'kibana_port': config['kibana']['port']
     }
     write_docker_template('kibana/Dockerfile', subst)
