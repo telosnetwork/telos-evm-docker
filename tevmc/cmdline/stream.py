@@ -45,8 +45,12 @@ def stream(pid, logpath, target_dir, config, source):
             with open(logpath, 'r') as logfile:
                 line = ''
                 while 'Stopping daemon.' not in line:
-                    line = logfile.readline()
-                    print(line, end='', flush=True)
+                    try:
+                        line = logfile.readline()
+                        print(line, end='', flush=True)
+
+                    except UnicodeDecodeError:
+                        pass
 
         else:
             try:

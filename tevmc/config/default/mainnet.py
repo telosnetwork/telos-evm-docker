@@ -58,7 +58,6 @@ nodeos = {
 
         'chain_state_size': 65536,
         'reversible_blocks_size': 4096,
-        'abi_serializer_max_time': 2000000,
         'account_queries': True,
 
         'http_addr': '0.0.0.0:8888',
@@ -71,7 +70,6 @@ nodeos = {
 
         'agent_name': 'Telos Mainnet',
 
-
         'history_endpoint': '0.0.0.0:29999', 
         'trace_history': True,
         'chain_history': True,
@@ -81,13 +79,6 @@ nodeos = {
         'sync_fetch_span': 2000,
 
         'max_clients': 250,
-        'cleanup_period': 30,
-        'txn_blok_lag': 0,
-        'allowed_connection': 'any',
-        'http_max_response_time': 100000,
-        'http_max_body_size': 10000000,
-
-        'enable_stale_production': False,
         
         'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
 
@@ -100,36 +91,16 @@ nodeos = {
             'eosio::state_history_plugin'
         ],
         'peers': [
-            'p2p.eos.miami:13975',
-            'p2p.telos-21zephyr.com:9876',
-            'seed.telosmadrid.io:9876',
-            'p2p.telosunlimited.io:9876',
-            'seed-telos.infinitybloc.io:9877',
-            'p2p.telos.eosdetroit.io:1337',
-            'a.tlos.goodblock.io:9876',
-            'p2p.telosvoyager.io:9876',
-            'p2p.telosuk.io:9876',
-            'seed1.telos.eosindex.io:9876',
-            'telosafrique.eosnairobi.io:9476',
-            'p2p.theteloscope.io:9876',
-            'api.eosimpera:9876',
-            'p2p.telos.dutcheos.io:9876',
-            'p2p.telos.africa:9876',
-            'p2p.telos.cryptosuvi.io:2222',
-            'telos.eosvibes.io:9876',
-            'telos.eosphere.io:9876',
-            'peer.telos.alohaeos.com:9876',
             'telos.eu.eosamsterdam.net:9120',
-            'telosseed1.atticlab.net:9876',
-            'telos.greymass.com:19871',
-            'node2.us-west.telosglobal.io:9876',
-            'node1.us-west.telosglobal.io:9876',
-            'api.telos.kitchen:9876',
-            'mainnet.telosusa.io:9877',
-            '192.168.50.185:9876',
-            '192.168.50.136:9876',
-            '192.168.50.60:9876',
-            '192.168.50.178:9876'
+            'p2p.telos.eosargentina.io:9879',
+            'p2p.telos.eosdetroit.io:1337',
+            'peer2-telos.eosphere.io:9876',
+            'p2p.telos.africa:9877',
+            'telos.eossweden.eu:8012',
+            'p2p.telosuk.io:9876',
+            'seed.telosmadrid.io:9876',
+            'seed.teloskorea.com:9876',
+            'p2p2.telos.telosgreen.com:9877'
         ]
     }
 }
@@ -150,13 +121,13 @@ hyperion = {
         'explorer': {
             'enabled': True,
             'chain_logo_url': 'http://raw.githubusercontent.com/telosnetwork/images/master/chain_icons/telos-logo-light.png',
-            'server_name': '0.0.0.0:7000'
+            'server_name': 'rpcX.XX.telos.net'
         },
 
         'telos-evm': {
             'enabled': True,
             'signer_account': 'rpc.evm',
-            'signer_permission': 'active',
+            'signer_permission': 'rpc',
             'signer_key': '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
             'contracts': {
                 'main': 'eosio.evm' 
@@ -205,7 +176,7 @@ hyperion = {
         'log_volume': 'api_logs',
         'server_addr': '0.0.0.0',
         'server_port': 7000,
-        'server_name': 'rpc.telos.net',
+        'server_name': 'rpcX.XX.telos.net',
         'provider_name': 'TelosEVM Mainnet node',
         'provider_url': 'https://telos.net'
     }

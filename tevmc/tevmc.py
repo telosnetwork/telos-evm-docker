@@ -61,7 +61,7 @@ class TEVMController:
             self.logger.setLevel(log_level.upper())
 
         self.is_local = 'local' in self.chain_name
-        self.is_replay = prev_pid is not None
+        self.is_restart = prev_pid is not None
         
         if self.is_local:
             self.producer_key = config['nodeos']['ini']['sig_provider'].split(':')[-1]
@@ -161,7 +161,7 @@ class TEVMController:
         container_name: str,
         volume_name: str
     ):
-        if self.is_replay:
+        if self.is_restart:
             vol_name = f'{volume_name}-{self.prev_pid}'
 
             try:
@@ -318,18 +318,16 @@ class TEVMController:
         env = {
             'NODEOS_DATA_DIR': config['data_dir'],
             'NODEOS_CONFIG': f'/root/config.ini',
-            'NODEOS_LOG_PATH': config['log_path']
+            'NODEOS_LOG_PATH': config['log_path'],
+            'NODEOS_LOGCONF': '/root/logging.json'
         }
 
-        if self.is_replay:
-            self.logger.critical(self.prev_pid)
-            env['NODEOS_REPLAY'] = 'true'
+        if not self.is_restart:
+            if 'snapshot' in config:
+                env['NODEOS_SNAPSHOT'] = config['snapshot']
 
-        if 'snapshot' in config and not self.is_replay:
-            env['NODEOS_SNAPSHOT'] = config['snapshot']
-
-        elif 'genesis' in config: 
-            env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
+            elif 'genesis' in config: 
+                env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
 
         # open container
         self.containers['nodeos'] = self.exit_stack.enter_context(
@@ -380,7 +378,7 @@ class TEVMController:
             cleos.wait_produced()
             cleos.wait_blocks(4)
 
-            if not self.is_replay:
+            if not self.is_restart:
                 try:
                     cleos.boot_sequence(
                         sys_contracts_mount='/opt/eosio/bin/contracts')
@@ -541,7 +539,7 @@ class TEVMController:
 
         self.cleos.init_w3()
 
-        if self.is_local and not self.is_replay:
+        if self.is_local and not self.is_restart:
             self.cleos.create_test_evm_account()
 
         return self
