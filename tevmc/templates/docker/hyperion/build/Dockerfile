@@ -22,6 +22,8 @@ RUN apt-get install -y nodejs && \
 WORKDIR /hyperion-history-api
 
 COPY home/.ssh /root/.ssh
+RUN chmod -R 600 "/root/.ssh/config"
+RUN chmod -R 600 "/root/.ssh/evm_plugin"
 
 RUN npm install
 
