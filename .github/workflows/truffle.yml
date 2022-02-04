@@ -41,18 +41,19 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -e .
+          sudo pip install --upgrade pip
+          sudo pip install -e .
 
       - name: Init local chain
-        run: tevmc init local
+        run: sudo tevmc init local
 
       - name: Bootstrap 
         working-directory: local
-        run: ./run.sh
+        run: sudo tevmc run
 
       - name: Wait blocks
-        run: tevmc wait-block 60
+        working-directory: local
+        run: sudo tevmc wait-block 60
 
       - name: Run test_erc20
         working-directory: ./tests/test_erc20
