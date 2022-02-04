@@ -6,6 +6,7 @@ redis = {
     'tag': 'tevm:redis',
     'host': 'localhost',
     'port': 6379,
+    'conf_dir': 'config',
     'data_dir': 'data'
 }
 
@@ -18,6 +19,7 @@ rabbitmq = {
     'user': 'username',
     'pass': 'password',
     'vhost': '/hyperion',
+    'conf_dir': 'config',
     'data_dir': 'data'
 }
 
@@ -30,7 +32,8 @@ elasticsearch = {
     'ingest_nodes': ['localhost:9200'],
     'user': 'elastic',
     'pass': 'password',
-    'data_dir': 'data'
+    'data_dir': 'data',
+    'logs_dir': 'logs'
 }
 
 kibana = {
@@ -39,6 +42,7 @@ kibana = {
     'tag': 'tevm:kibana',
     'host': '0.0.0.0',
     'port': 5601,
+    'conf_dir': 'config',
     'data_dir': 'data'
 }
 
@@ -48,6 +52,8 @@ nodeos = {
     'docker_path': 'eosio',
     'data_dir_guest': '/mnt/dev/data',
     'data_dir_host': 'data',
+    'conf_dir': 'config',
+    'contracts_dir': 'contracts',
     'genesis': 'local',
     'log_path': '/root/nodeos.log',
     'ini': {
@@ -109,7 +115,8 @@ nodeos = {
 hyperion = {
     'tag': 'tevm:hyperion',
     'docker_path': 'hyperion',
-    'log_dir': 'logs',
+    'conf_dir': 'config',
+    'logs_dir': 'logs',
     'chain': {
         'name': 'telos-local-testnet',
         'long_name': 'Telos Local Testnet',
@@ -185,7 +192,9 @@ hyperion = {
 beats = {
     'name': 'beats',
     'tag': 'tevm:beats',
-    'docker_path': 'beats'
+    'docker_path': 'beats',
+    'conf_dir': 'config',
+    'data_dir': 'data'
 }
 
 default_config = {

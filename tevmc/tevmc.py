@@ -130,9 +130,11 @@ class TEVMController:
                 log_config=LogConfig(
                     type=LogConfig.types.JSON,
                     config={'max-size': '100m' }),
-                remove=True,
+                # remove=True,
                 labels=DEFAULT_DOCKER_LABEL)
-            
+           
+            container.reload()
+
             self.logger.info(container.status)
             yield container
 
@@ -157,15 +159,18 @@ class TEVMController:
     def start_redis(self):
         config = self.config['redis']
         docker_dir = self.docker_wd / config['docker_path']
+
+        conf_dir = docker_dir / config['conf_dir']
         data_dir = docker_dir / config['data_dir']
 
+        conf_dir.mkdir(parents=True, exist_ok=True)
         data_dir.mkdir(parents=True, exist_ok=True)
 
         self.mounts['redis'] = [
+            Mount('/root', str(conf_dir.resolve()), 'bind'),
             Mount('/data', str(data_dir.resolve()), 'bind')
         ]
 
-        config = self.config['redis']
         self.containers['redis'] = self.exit_stack.enter_context(
             self.open_container(
                 f'{config["name"]}-{self.pid}',
@@ -174,23 +179,28 @@ class TEVMController:
             ) 
         )
 
-        wait_for_attr(
-            self.containers['redis'],
-            ('NetworkSettings', 'Ports', f'{config["port"]}/tcp')
-        )
+        # wait_for_attr(
+        #     self.containers['redis'],
+        #     ('NetworkSettings', 'Ports', f'{config["port"]}/tcp')
+        # )
 
-        # for msg in self.stream_logs(self._redis_container):
-        #     if 'Ready to accept connections' in msg:
-        #         break
+        for msg in self.stream_logs(self.containers['redis']):
+            if msg is None:
+                raise TEVMCException('failed to start redis')
+            if 'Ready to accept connections' in msg:
+                break
 
     def start_rabbitmq(self):
         config = self.config['rabbitmq']
         docker_dir = self.docker_wd / config['docker_path']
+
+        conf_dir = docker_dir / config['conf_dir']
         data_dir = docker_dir / config['data_dir']
 
         data_dir.mkdir(parents=True, exist_ok=True)
 
         self.mounts['rabbitmq'] = [
+            Mount('/etc/rabbitmq/', str(conf_dir.resolve()), 'bind'),
             Mount('/var/lib/rabbitmq', str(data_dir.resolve()), 'bind')
         ]
 
@@ -207,32 +217,38 @@ class TEVMController:
             )
         )
 
-        host_port = config['host'].split(':')[-1]
-        api_port = config['api'].split(':')[-1]
+        # host_port = config['host'].split(':')[-1]
+        # api_port = config['api'].split(':')[-1]
 
-        wait_for_attr(
-            self.containers['rabbitmq'],
-            ('NetworkSettings', 'Ports', f'{host_port}/tcp')
-        )
+        # wait_for_attr(
+        #     self.containers['rabbitmq'],
+        #     ('NetworkSettings', 'Ports', f'{host_port}/tcp')
+        # )
 
-        wait_for_attr(
-            self.containers['rabbitmq'],
-            ('NetworkSettings', 'Ports', f'{api_port}/tcp')
-        )
+        # wait_for_attr(
+        #     self.containers['rabbitmq'],
+        #     ('NetworkSettings', 'Ports', f'{api_port}/tcp')
+        # )
 
         for msg in self.stream_logs(self.containers['rabbitmq']):
+            if msg is None:
+                raise TEVMCException('failed to start rabbitmq')
             if 'Server startup complete' in msg:
                 break
 
     def start_elasticsearch(self):
         config = self.config['elasticsearch']
         docker_dir = self.docker_wd / config['docker_path']
+
         data_dir = docker_dir / config['data_dir']
+        logs_dir = docker_dir / config['logs_dir']
 
         data_dir.mkdir(parents=True, exist_ok=True)
+        logs_dir.mkdir(parents=True, exist_ok=True)
 
         self.mounts['elasticsearch'] = [
-            Mount('/usr/share/elasticsearch/data', str(data_dir.resolve()), 'bind')
+            Mount('/home/elasticsearch/logs', str(logs_dir.resolve()), 'bind'),
+            Mount('/home/elasticsearch/data', str(data_dir.resolve()), 'bind')
         ]
 
         self.containers['elasticsearch'] = self.exit_stack.enter_context(
@@ -253,11 +269,11 @@ class TEVMController:
                 mounts=self.mounts['elasticsearch']
             )
         )
-        port = config['host'].split(':')[-1]
-        wait_for_attr(
-            self.containers['elasticsearch'],
-            ('NetworkSettings', 'Ports', port)
-        )
+        # port = config['host'].split(':')[-1]
+        # wait_for_attr(
+        #     self.containers['elasticsearch'],
+        #     ('NetworkSettings', 'Ports', port)
+        # )
 
         for msg in self.stream_logs(self.containers['elasticsearch']):
             # self.logger.info(msg.rstrip())
@@ -269,10 +285,12 @@ class TEVMController:
         config_elastic = self.config['elasticsearch']
         docker_dir = self.docker_wd / config['docker_path']
         data_dir = docker_dir / config['data_dir']
+        conf_dir = docker_dir / config['conf_dir']
 
         data_dir.mkdir(parents=True, exist_ok=True)
 
         self.mounts['kibana'] = [
+            Mount('/usr/share/kibana/config', str(conf_dir.resolve()), 'bind'),
             Mount('/data', str(data_dir.resolve()), 'bind')
         ]
 
@@ -289,11 +307,11 @@ class TEVMController:
             )
         )
 
-        port = config['port']
-        wait_for_attr(
-            self.containers['kibana'],
-            ('NetworkSettings', 'Ports', port)
-        )
+        # port = config['port']
+        # wait_for_attr(
+        #     self.containers['kibana'],
+        #     ('NetworkSettings', 'Ports', port)
+        # )
 
         #for msg in self.stream_logs(self.containers['kibana']):
         #    self.logger.info(msg.rstrip())
@@ -309,16 +327,20 @@ class TEVMController:
         - Create evm accounts and deploy contract
         """
         config = self.config['nodeos']
-        data_dir_guest = config['data_dir_guest']
-        data_dir_host = config['data_dir_host']
-
         docker_dir = self.docker_wd / config['docker_path']
-        data_dir = docker_dir / data_dir_host
 
-        data_dir.mkdir(parents=True, exist_ok=True)
+        data_dir_guest = config['data_dir_guest']
+        data_dir_host = docker_dir / config['data_dir_host']
+
+        conf_dir = docker_dir / config['conf_dir']
+        contracts_dir = docker_dir / config['contracts_dir']
+
+        data_dir_host.mkdir(parents=True, exist_ok=True)
 
         self.mounts['nodeos'] = [
-            Mount(data_dir_guest, str(data_dir.resolve()), 'bind')
+            Mount('/root', str(conf_dir.resolve()), 'bind'),
+            Mount('/opt/eosio/bin/contracts', str(contracts_dir.resolve()), 'bind'),
+            Mount(data_dir_guest, str(data_dir_host.resolve()), 'bind')
         ]
 
         env = {
@@ -347,79 +369,79 @@ class TEVMController:
         # for msg in self.stream_logs(self.containers['nodeos']):
         #     self.logger.info(msg.rstrip()) 
 
-        http_port = config['ini']['http_addr'].split(':')[-1]
-        wait_for_attr(
-            self.containers['nodeos'],
-            ('NetworkSettings', 'Ports', http_port)
-        )
+        # http_port = config['ini']['http_addr'].split(':')[-1]
+        # wait_for_attr(
+        #     self.containers['nodeos'],
+        #     ('NetworkSettings', 'Ports', http_port)
+        # )
 
-        ship_port = config['ini']['history_endpoint'].split(':')[-1]
-        wait_for_attr(
-            self.containers['nodeos'],
-            ('NetworkSettings', 'Ports', ship_port)
-        )
+        # ship_port = config['ini']['history_endpoint'].split(':')[-1]
+        # wait_for_attr(
+        #     self.containers['nodeos'],
+        #     ('NetworkSettings', 'Ports', ship_port)
+        # )
 
-        exec_id, exec_stream = docker_open_process(
-            self.client, self.containers['nodeos'],
-            ['/bin/bash', '-c', 
-                'while true; do logrotate /etc/logrotate.conf; sleep 60; done'])
+        try:
+            exec_id, exec_stream = docker_open_process(
+                self.client, self.containers['nodeos'],
+                ['/bin/bash', '-c', 
+                    'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
 
-        # setup cleos wrapper
-        cleos = CLEOSEVM(
-            self.client,
-            self.containers['nodeos'],
-            logger=self.logger)
-        self.cleos = cleos
+            # setup cleos wrapper
+            cleos = CLEOSEVM(
+                self.client,
+                self.containers['nodeos'],
+                logger=self.logger)
+            self.cleos = cleos
 
-        # init wallet
-        cleos.start_keosd(
-            '-c',
-            '/root/eosio-wallet/config.ini') 
+            # init wallet
+            cleos.start_keosd(
+                '-c',
+                '/root/keosd_config.ini') 
 
-        if self.is_local:
-            try:
-                cleos.setup_wallet(self.producer_key)
+            if self.is_local:
+                # await for nodeos to produce a block
+                output = cleos.wait_produced()
+                cleos.wait_blocks(4)
 
-            except docker.errors.APIError as err:
-                self.logger.critical('docker api error: {err}')
-                ec, out = cleos.gather_nodeos_output()
-                self.logger.critical(f'nodeos exit code: {ec}')
-                self.logger.critical(f'nodeos output:\n{out}\n')
-                sys.exit(1)
+                self.is_fresh = 'Initializing fresh blockchain' in output
 
-            # await for nodeos to produce a block
-            output = cleos.wait_produced()
-            cleos.wait_blocks(4)
+                if self.is_fresh:
+                    cleos.setup_wallet(self.producer_key)
 
-            self.is_fresh = 'Initializing fresh blockchain' in output
+                    try:
+                        cleos.boot_sequence(
+                            sys_contracts_mount='/opt/eosio/bin/contracts')
 
-            if self.is_fresh:
-                try:
-                    cleos.boot_sequence(
-                        sys_contracts_mount='/opt/eosio/bin/contracts')
+                        cleos.deploy_evm()
 
-                    cleos.deploy_evm()
+                    except AssertionError:
+                        for msg in self.stream_logs(self.containers['nodeos']):
+                            self.logger.critical(msg.rstrip()) 
+                        sys.exit(1)
 
-                except AssertionError:
-                    ec, out = cleos.gather_nodeos_output()
-                    self.logger.critical(f'nodeos exit code: {ec}')
-                    self.logger.critical(f'nodeos output:\n{out}\n')
-                    sys.exit(1)
+            else:
+                # await for nodeos to receive a block from peers
+                cleos.wait_received()
 
-        else:
-            # await for nodeos to receive a block from peers
-            cleos.wait_received()
+        except docker.errors.APIError as err:
+            self.logger.critical(f'docker api error: {err}')
+            for msg in self.stream_logs(self.containers['nodeos']):
+                self.logger.critical(msg.rstrip()) 
+            sys.exit(1)
 
         self.logger.info(cleos.get_info())
 
     def setup_hyperion_log_mount(self):
         docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
-        data_dir = docker_dir / self.config['hyperion']['log_dir']
+        logs_dir = docker_dir / self.config['hyperion']['logs_dir']
+        conf_dir = docker_dir / self.config['hyperion']['conf_dir']
 
-        data_dir.mkdir(parents=True, exist_ok=True)
+        logs_dir.mkdir(parents=True, exist_ok=True)
 
         self.mounts['hyperion'] = [
-            Mount('/root/.pm2/logs', str(data_dir.resolve()), 'bind')
+            Mount('/hyperion-history-api/chains', str(conf_dir.resolve()), 'bind'),
+            Mount('/root/.pm2/logs', str(logs_dir.resolve()), 'bind')
         ]
 
     def await_full_index(self):
@@ -484,10 +506,10 @@ class TEVMController:
             )
         )
 
-        wait_for_attr(
-            self.containers['hyperion-api'],
-            ('NetworkSettings', 'Ports', port)
-        )
+        # wait_for_attr(
+        #     self.containers['hyperion-api'],
+        #     ('NetworkSettings', 'Ports', port)
+        # )
 
         for msg in self.stream_logs(self.containers['hyperion-api']):
             self.logger.info(msg.rstrip())
@@ -532,12 +554,15 @@ class TEVMController:
         config_elastic = self.config['elasticsearch']
         config_kibana = self.config['kibana']
 
-        docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
-        data_dir = docker_dir / self.config['hyperion']['log_dir']
+        hyperion_docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
+        data_dir = hyperion_docker_dir / self.config['hyperion']['logs_dir']
+        docker_dir = self.docker_wd / config['docker_path']
+        conf_dir = docker_dir / config['conf_dir']
 
         data_dir.mkdir(parents=True, exist_ok=True)
 
         self.mounts['beats'] = [
+            Mount('/etc/filebeat', str(conf_dir.resolve()), 'bind'),
             Mount('/root/logs', str(data_dir.resolve()), 'bind')
         ]
 

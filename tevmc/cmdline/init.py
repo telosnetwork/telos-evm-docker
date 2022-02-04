@@ -2,7 +2,6 @@
 
 import sys
 import json
-import shutil
 
 from string import Template
 from typing import Dict
@@ -31,12 +30,14 @@ def load_config_templates() -> Dict[str, Template]:
 
 def load_docker_templates() -> Dict[str, Template]:
     templ = {}
-    for node in (template_dir / 'docker').glob('*'):
-        if node.is_dir():
-            for inode in node.glob('*'):
-                if inode.is_file():
-                    with open(inode, 'r') as templ_file:
-                        templ[node.name + '/' + inode.name] = Template(templ_file.read())
+    for node in (template_dir / 'docker').glob('**/*'):
+        if node.is_file():
+            with open(node, 'r') as templ_file:
+                try:
+                    key = '/'.join(node.parts[-3:])
+                    templ[key] = Template(templ_file.read())
+                except UnicodeDecodeError:
+                    pass
 
     return templ
 
@@ -83,6 +84,3 @@ def init(config, target_dir, chain_name):
     copy_tree(
         str(template_dir / 'docker'),
         str(node_dir / 'docker'))
-
-    # copy run script
-    shutil.copy(template_dir / 'run.sh', node_dir / 'run.sh')

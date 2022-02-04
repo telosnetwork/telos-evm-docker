@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 import json
 
@@ -131,62 +132,84 @@ def build(headless, target_dir, config):
             target_file.write(
                 templates[fname].substitute(**subst))
 
-    def write_docker_template(file: str, subst: Dict[str, Any]):
+    def write_docker_template(file, subst: Dict[str, Any]):
         with open(docker_dir / file, 'w+') as conf_file:
             conf_file.write(
                 docker_templates[file].substitute(**subst))
 
 
     # redis
-    subst = {
-        'redis_port': config['redis']['port'],
-        'redis_host': config['redis']['host']
-    }   
-    write_docker_template('redis/Dockerfile', subst)
-    write_docker_template('redis/redis.conf', subst)
+    redis_conf = config['redis']
+
+    redis_dir = redis_conf['docker_path']
+    redis_build_dir = redis_dir + '/' + 'build'
+    redis_conf_dir = redis_dir + '/' +  redis_conf['conf_dir']
+
+    subst = flatten('redis', config)   
+    write_docker_template(f'{redis_build_dir}/Dockerfile', subst)
+    write_docker_template(f'{redis_conf_dir}/redis.conf', subst)
 
     # rabbitmq
+    rabbit_conf = config['rabbitmq']
+
+    rabbit_dir = rabbit_conf['docker_path']
+    rabbit_build_dir = rabbit_dir + '/' + 'build'
+    rabbit_conf_dir  = rabbit_dir + '/' + rabbit_conf['conf_dir']
+
     subst = {
-        'rabbitmq_port': config['rabbitmq']['host'].split(':')[-1],
-        'rabbitmq_api_port': config['rabbitmq']['api'].split(':')[-1]
+        'rabbitmq_port': rabbit_conf['host'].split(':')[-1],
+        'rabbitmq_api_port': rabbit_conf['api'].split(':')[-1]
     }
-    write_docker_template('rabbitmq/Dockerfile', subst)
-    write_docker_template('rabbitmq/rabbitmq.conf', subst)
+    write_docker_template(f'{rabbit_build_dir}/Dockerfile', subst)
+    write_docker_template(f'{rabbit_conf_dir}/rabbitmq.conf', subst)
 
     # elasticsearch 
+    elastic_conf = config['elasticsearch']
+
+    elastic_dir = elastic_conf['docker_path']
+    elastic_build_dir = elastic_dir + '/' + 'build'
+    elastic_data_dir = elastic_dir + '/' + elastic_conf['data_dir']
     subst = {
         'elasticsearch_port': config['elasticsearch']['host'].split(':')[-1]
     }
-    write_docker_template('elasticsearch/Dockerfile', subst)
-    write_docker_template('elasticsearch/elasticsearch.yml', subst)
+    write_docker_template(f'{elastic_build_dir}/Dockerfile', subst)
+    write_docker_template(f'{elastic_build_dir}/elasticsearch.yml', subst)
+
+    host_dir = (docker_dir / elastic_data_dir)
+    host_dir.mkdir(parents=True, exist_ok=True)
+    
+    os.chown(host_dir, uid=1000, gid=1000)
 
     # kibana
-    subst = {
-        'kibana_host': config['kibana']['host'],
-        'kibana_port': config['kibana']['port']
-    }
-    write_docker_template('kibana/Dockerfile', subst)
-    write_docker_template('kibana/kibana.yml', subst)
+    kibana_conf = config['kibana']
+
+    kibana_dir = kibana_conf['docker_path']
+    kibana_build_dir = kibana_dir + '/' + 'build'
+    kibana_conf_dir  = kibana_dir + '/' + kibana_conf['conf_dir']
+
+    subst = flatten('kibana', config) 
+    write_docker_template(f'{kibana_build_dir}/Dockerfile', subst)
+    write_docker_template(f'{kibana_conf_dir}/kibana.yml', subst)
 
     # nodeos
     chain_name = get_config('hyperion.chain.name', config)
+    nodeos_conf = config['nodeos']
+    ini_conf = nodeos_conf['ini']
+
+    nodeos_dir = nodeos_conf['docker_path']
+    nodeos_conf_dir = nodeos_dir + '/' + nodeos_conf['conf_dir']
+    nodeos_build_dir = nodeos_dir + '/' + 'build'
 
     subst = {
-        'nodeos_port': config['nodeos']['ini']['http_addr'].split(':')[-1],
-        'nodeos_history_port': config['nodeos']['ini']['history_endpoint'].split(':')[-1]
+        'nodeos_port': ini_conf['http_addr'].split(':')[-1],
+        'nodeos_history_port': ini_conf['history_endpoint'].split(':')[-1]
     }
-    write_docker_template('eosio/Dockerfile', subst)
-
-    # hyperion
-    subst = {
-        'api_port': config['hyperion']['chain']['router_port']
-    }
-    write_docker_template('hyperion/Dockerfile', subst)
+    write_docker_template(f'{nodeos_build_dir}/Dockerfile', subst)
 
     # logrotate.conf
     write_config_file(
         'logrotate.conf',
-        'eosio',
+        nodeos_conf_dir,
         {'nodeos_log_path': get_config('nodeos.log_path', config)})
 
     # nodeos.config.ini
@@ -212,10 +235,20 @@ def build(headless, target_dir, config):
     for peer in subst['peers']:
         conf_str += f'p2p-peer-address = {peer}\n'
 
-    with open(docker_dir / 'eosio/config.ini', 'w+') as target_file:
+    with open(docker_dir / nodeos_conf_dir / 'config.ini', 'w+') as target_file:
         target_file.write(conf_str)
 
     # hyperion
+    hyperion_conf = config['hyperion']
+
+    hyperion_dir = hyperion_conf['docker_path']
+    hyperion_build_dir = hyperion_dir + '/' + 'build'
+    hyperion_conf_dir  = hyperion_dir + '/' + hyperion_conf['conf_dir']
+
+    subst = {
+        'api_port': config['hyperion']['chain']['router_port']
+    }
+    write_docker_template(f'{hyperion_build_dir}/Dockerfile', subst)
 
     # connections.json
     redis_conf = jsonize(flatten('redis', config))
@@ -247,14 +280,14 @@ def build(headless, target_dir, config):
     subst.update(chains)
 
     write_config_file(
-        'connections.json', 'hyperion/config', subst)
+        'connections.json', hyperion_build_dir, subst)
 
     # ecosystem.config.js
     subst = {'name': get_config('hyperion.chain.name', config)}
     subst.update(timestamp)
 
     write_config_file(
-        'ecosystem.config.js', 'hyperion/config', subst)
+        'ecosystem.config.js', hyperion_build_dir, subst)
 
     # telos-net.config.json
     hyperion_api_conf = jsonize(flatten(
@@ -306,7 +339,7 @@ def build(headless, target_dir, config):
         'name': get_config('hyperion.chain.name', config)
     })
 
-    chains_path = docker_dir / 'hyperion/config/chains'
+    chains_path = docker_dir / hyperion_conf_dir
     chains_path.mkdir(parents=True, exist_ok=True)
 
     subst = {}
@@ -318,6 +351,12 @@ def build(headless, target_dir, config):
         target_file.write(
             templates['telos-net.config.json'].substitute(**subst))
 
+    # beats
+    beats_conf = config['beats'] 
+    beats_dir = docker_dir / beats_conf['docker_path']
+    beats_conf_dir = beats_dir / beats_conf['conf_dir']
+    os.chown(beats_conf_dir / 'filebeat.yml', uid=0, gid=0)
+
     # docker build
     client = get_docker_client()
 
@@ -326,7 +365,7 @@ def build(headless, target_dir, config):
         if 'docker_path' in conf:
             builds.append({
                 'tag': f'{conf["tag"]}-{config["hyperion"]["chain"]["name"]}',
-                'path': str(docker_dir / conf['docker_path'])
+                'path': str(docker_dir / conf['docker_path'] / 'build')
             })
 
 

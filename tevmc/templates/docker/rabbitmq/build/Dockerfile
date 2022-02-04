@@ -14,6 +14,4 @@ RUN set eux; \
 	rm -rf /var/lib/apt/lists/*; \
 	rabbitmqadmin --version
 
-COPY rabbitmq.conf /etc/rabbitmq/rabbitmq.conf
-
 EXPOSE $rabbitmq_api_port

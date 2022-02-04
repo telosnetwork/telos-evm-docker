@@ -10,12 +10,6 @@ RUN apt-get update && \
         logrotate \
         ca-certificates
 
-# logrotate config
-COPY logrotate.conf /etc/logrotate.conf
-
-# install system contracts
-COPY contracts /opt/eosio/bin/contracts
-
 # install snapshots from latest evm deployments
 WORKDIR /root/snapshots
 RUN wget https://telos-snapshots.s3.amazonaws.com/testnet/telos-testnet-20211020-blknum-136229794.tar.gz &&\
@@ -36,17 +30,9 @@ RUN wget https://github.com/EOSIO/eos/releases/download/v2.1.0/eosio_2.1.0-1-ubu
     apt-get install -y ./eosio_2.1.0-1-ubuntu-18.04_amd64.deb && \
     rm -rf *.deb
 
-COPY logging.json logging.json
-
-COPY config.ini config.ini
-
-COPY genesis genesis
-
-COPY keosd_config.ini eosio-wallet/config.ini
-
 EXPOSE $nodeos_port
 EXPOSE $nodeos_history_port
 
-COPY entrypoint.sh entrypoint.sh
+COPY entrypoint.sh /opt/entrypoint.sh
 
-ENTRYPOINT ["/bin/bash", "entrypoint.sh"] 
+ENTRYPOINT ["/bin/bash", "/opt/entrypoint.sh"] 

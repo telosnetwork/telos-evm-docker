@@ -19,17 +19,9 @@ RUN apt-get install -y nodejs && \
     cd hyperion-history-api && \
     git checkout v3.3.5 
 
-COPY ./config/connections.json /hyperion-history-api/connections.json
-COPY ./config/ecosystem.config.js /hyperion-history-api/ecosystem.config.js
-COPY ./config/chains/ /hyperion-history-api/chains/
-COPY ./home/.ssh /root/.ssh
-COPY ./scripts/ /root/scripts/
-
-# RUN useradd -m -s /bin/bash hyperion && chown -R hyperion:hyperion /hyperion-history-api && chown -R hyperion:hyperion /home/hyperion
-RUN chmod -R 600 "/root/.ssh/config"
-RUN chmod -R 600 "/root/.ssh/evm_plugin"
-# USER hyperion
 WORKDIR /hyperion-history-api
+
+COPY home/.ssh /root/.ssh
 
 RUN npm install
 
@@ -38,5 +30,10 @@ RUN ./hpm enable telos-evm
 
 RUN ./hpm install -r https://github.com/eosrio/hyperion-explorer-plugin explorer
 RUN ./hpm enable explorer
+
+COPY connections.json connections.json
+COPY ecosystem.config.js ecosystem.config.js
+
+COPY scripts /root/scripts
 
 EXPOSE $api_port

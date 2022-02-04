@@ -37,8 +37,8 @@
 # @path.logs@
 
 path:
-  logs: /var/log/elasticsearch
-  data: /var/data/elasticsearch
+  logs: /home/elasticsearch/logs
+  data: /home/elasticsearch/data
 
 #
 # ----------------------------------- Memory -----------------------------------
