@@ -3,7 +3,7 @@
 from py_eosio.sugar import random_string, collect_stdout, Asset
 from py_eosio.tokens import sys_token
 
-from eth_utils import to_wei
+from tevmc.utils import to_wei
 
 
 def test_cleos_evm_create(tevmc):
@@ -26,7 +26,7 @@ def test_cleos_evm_create(tevmc):
     tevmc.cleos.transfer_token('eosio', account, quantity, 'evm test')
     tevmc.cleos.transfer_token(account, 'eosio.evm', quantity, 'Deposit')
 
-    balance = tevmc.cleos.w3.eth.get_balance(eth_addr)
+    balance = tevmc.cleos.eth_get_balance(eth_addr)
 
     assert balance == to_wei(quantity.amount, 'ether')
 

@@ -344,8 +344,8 @@ class TEVMController:
             )
         )
 
-        #for msg in self.stream_logs(self.containers['nodeos']):
-        #    self.logger.info(msg.rstrip()) 
+        # for msg in self.stream_logs(self.containers['nodeos']):
+        #     self.logger.info(msg.rstrip()) 
 
         http_port = config['ini']['http_addr'].split(':')[-1]
         wait_for_attr(
@@ -377,23 +377,34 @@ class TEVMController:
             '/root/eosio-wallet/config.ini') 
 
         if self.is_local:
-            cleos.setup_wallet(self.producer_key)
-
-            # await for nodeos to produce a block
-            cleos.wait_produced()
-            cleos.wait_blocks(4)
-
             try:
-                cleos.boot_sequence(
-                    sys_contracts_mount='/opt/eosio/bin/contracts')
+                cleos.setup_wallet(self.producer_key)
 
-                cleos.deploy_evm()
-
-            except AssertionError:
+            except docker.errors.APIError as err:
+                self.logger.critical('docker api error: {err}')
                 ec, out = cleos.gather_nodeos_output()
                 self.logger.critical(f'nodeos exit code: {ec}')
                 self.logger.critical(f'nodeos output:\n{out}\n')
                 sys.exit(1)
+
+            # await for nodeos to produce a block
+            output = cleos.wait_produced()
+            cleos.wait_blocks(4)
+
+            self.is_fresh = 'Initializing fresh blockchain' in output
+
+            if self.is_fresh:
+                try:
+                    cleos.boot_sequence(
+                        sys_contracts_mount='/opt/eosio/bin/contracts')
+
+                    cleos.deploy_evm()
+
+                except AssertionError:
+                    ec, out = cleos.gather_nodeos_output()
+                    self.logger.critical(f'nodeos exit code: {ec}')
+                    self.logger.critical(f'nodeos output:\n{out}\n')
+                    sys.exit(1)
 
         else:
             # await for nodeos to receive a block from peers
@@ -575,7 +586,7 @@ class TEVMController:
 
         self.start_beats()
 
-        if self.is_local:
+        if self.is_local and self.is_fresh:
             self.cleos.create_test_evm_account()
 
         return self
@@ -583,14 +594,14 @@ class TEVMController:
     def __exit__(self, type, value, traceback):
 
         # gracefull nodeos exit
-        # self.containers['nodeos'].kill(signal=SIGINT)
         exec_id, exec_stream = docker_open_process(
             self.client,
             self.containers['nodeos'],
             ['pkill', 'nodeos'])
 
         ec, out = docker_wait_process(self.client, exec_id, exec_stream)
-        self.logger.info(ec, out)
+        self.logger.info(ec)
+        self.logger.info(out)
 
         for msg in self.stream_logs(self.containers['nodeos']):
             self.logger.info(msg.rstrip())

@@ -214,26 +214,34 @@ class CLEOSEVM(CLEOS):
         assert 'gas_price' in config
         return to_int(hexstr=f'0x{config["gas_price"]}')
 
+    def eth_get_balance(self, addr: str) -> int:
+        addr = remove_0x_prefix(addr)
+        addr = ('0' * (12 * 2)) + addr
+        rows = self.get_table(
+            'eosio.evm', 'eosio.evm', 'account',
+            '--key-type', 'sha256', '--index', '2',
+            '--lower', addr,
+            '--upper', addr)
+        
+        if len(rows) != 1:
+            return None
+
+        return int(rows[0]['balance'], 16)
+
+
     def eth_get_transaction_count(self, addr: str) -> int:
         addr = remove_0x_prefix(addr)
-        # rows = self.get_table(
-        #     'eosio.evm', 'eosio.evm', 'account',
-        #     '--key-type', 'ripemd160', '--index', '2',
-        #     '--lower', addr,
-        #     '--upper', addr)
-        # 
-        # if len(rows) != 1:
-        #     return None
-
-        rows = self.get_table('eosio.evm', 'eosio.evm', 'account')
-
-        row = next((
-            row for row in rows
-            if row['address'] == addr),
-            None
-        )
+        addr = ('0' * (12 * 2)) + addr
+        rows = self.get_table(
+            'eosio.evm', 'eosio.evm', 'account',
+            '--key-type', 'sha256', '--index', '2',
+            '--lower', addr,
+            '--upper', addr)
         
-        return row['nonce']
+        if len(rows) != 1:
+            return None
+
+        return rows[0]['nonce']
 
     def eth_raw_tx(
         self,
