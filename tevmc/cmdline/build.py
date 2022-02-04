@@ -306,12 +306,15 @@ def build(headless, target_dir, config):
         'name': get_config('hyperion.chain.name', config)
     })
 
+    chains_path = docker_dir / 'hyperion/config/chains'
+    chains_path.mkdir(parents=True, exist_ok=True)
+
     subst = {}
     subst.update(hyperion_api_conf)
     subst.update(hyperion_indexer_conf)
     subst.update(plugins)
     subst.update(other)
-    with open(docker_dir / f'hyperion/config/chains/{chain_name}.config.json', 'w+') as target_file:
+    with open(chains_path / f'{chain_name}.config.json', 'w+') as target_file:
         target_file.write(
             templates['telos-net.config.json'].substitute(**subst))
 
