@@ -8,7 +8,6 @@ setup(
     version='0.1a0',
     packages=find_packages(),
     install_requires=[
-        'web3',
         'tqdm',
         'click',
         'pytest',

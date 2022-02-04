@@ -190,7 +190,9 @@ def build(headless, target_dir, config):
         {'nodeos_log_path': get_config('nodeos.log_path', config)})
 
     # nodeos.config.ini
-    subst = get_config('nodeos.ini', config) | timestamp
+    subst = {}
+    subst.update(get_config('nodeos.ini', config))
+    subst.update(timestamp)
 
     # normalize bools
     for key, val in subst.items():
@@ -238,17 +240,21 @@ def build(headless, target_dir, config):
         }}, indent=4))
     }
 
+    subst = {}
+    subst.update(redis_conf)
+    subst.update(rabbitmq_conf)
+    subst.update(elasticsearch_conf)
+    subst.update(chains)
+
     write_config_file(
-        'connections.json',
-        'hyperion/config',
-        redis_conf | rabbitmq_conf | elasticsearch_conf | chains)
+        'connections.json', 'hyperion/config', subst)
 
     # ecosystem.config.js
+    subst = {'name': get_config('hyperion.chain.name', config)}
+    subst.update(timestamp)
+
     write_config_file(
-        'ecosystem.config.js',
-        'hyperion/config',
-        {'name': get_config('hyperion.chain.name', config)} |
-        timestamp)
+        'ecosystem.config.js', 'hyperion/config', subst)
 
     # telos-net.config.json
     hyperion_api_conf = jsonize(flatten(
@@ -300,9 +306,14 @@ def build(headless, target_dir, config):
         'name': get_config('hyperion.chain.name', config)
     })
 
+    subst = {}
+    subst.update(hyperion_api_conf)
+    subst.update(hyperion_indexer_conf)
+    subst.update(plugins)
+    subst.update(other)
     with open(docker_dir / f'hyperion/config/chains/{chain_name}.config.json', 'w+') as target_file:
-        target_file.write(templates['telos-net.config.json'].substitute(
-            **(hyperion_api_conf | hyperion_indexer_conf | plugins | other)))
+        target_file.write(
+            templates['telos-net.config.json'].substitute(**subst))
 
     # docker build
     client = get_docker_client()

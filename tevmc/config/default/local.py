@@ -6,7 +6,7 @@ redis = {
     'tag': 'tevm:redis',
     'host': 'localhost',
     'port': 6379,
-    'data_volume': 'redis_data'
+    'data_dir': 'data'
 }
 
 rabbitmq = {
@@ -18,7 +18,7 @@ rabbitmq = {
     'user': 'username',
     'pass': 'password',
     'vhost': '/hyperion',
-    'data_volume': 'rabbitmq_data'
+    'data_dir': 'data'
 }
 
 elasticsearch = {
@@ -30,25 +30,26 @@ elasticsearch = {
     'ingest_nodes': ['localhost:9200'],
     'user': 'elastic',
     'pass': 'password',
-    'data_volume': 'elasticsearch_data'
+    'data_dir': 'data'
 }
 
 kibana = {
     'name': 'kibana',
     'docker_path': 'kibana',
     'tag': 'tevm:kibana',
-    'port': 5601
+    'host': '0.0.0.0',
+    'port': 5601,
+    'data_dir': 'data'
 }
 
 nodeos = {
     'name': 'nodeos',
     'tag': 'tevm:nodeos-2.1.0-evm',
     'docker_path': 'eosio',
-    'volume': 'eosio_volume',
-    'data_dir': '/mnt/dev/data',
+    'data_dir_guest': '/mnt/dev/data',
+    'data_dir_host': 'data',
     'genesis': 'local',
     'log_path': '/root/nodeos.log',
-    'data_volume': 'elasticsearch_data',
     'ini': {
         'wasm_runtime': 'eos-vm-jit', 
         'vm_oc_compile_threads': 4,
@@ -88,6 +89,9 @@ nodeos = {
         'enable_stale_production': True,
         
         'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
+    
+        'disable_subjective_billing': True,
+        'max_transaction_time': 500,
 
         'plugins': [
             'eosio::http_plugin',
@@ -105,6 +109,7 @@ nodeos = {
 hyperion = {
     'tag': 'tevm:hyperion',
     'docker_path': 'hyperion',
+    'log_dir': 'logs',
     'chain': {
         'name': 'telos-local-testnet',
         'long_name': 'Telos Local Testnet',
@@ -139,7 +144,6 @@ hyperion = {
     },
     'indexer': {
         'name': 'hyperion-indexer',
-        'log_volume': 'indexer_logs',
         'start_on': 1,
         'end_on': 0,
         'rewrite': False,
@@ -170,7 +174,6 @@ hyperion = {
     },
     'api': {
         'name': 'hyperion-api',
-        'log_volume': 'api_logs',
         'server_addr': '0.0.0.0',
         'server_port': 7000,
         'server_name': '0.0.0.0:7000',

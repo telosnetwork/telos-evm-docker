@@ -42,14 +42,13 @@ class TEVMController:
         client = None,
         logger = None,
         log_level: str = 'info',
-        snapshot: Optional[str] = None,
-        prev_pid: Optional[int] = None
+        snapshot: Optional[str] = None
     ):
         self.pid = os.getpid()
-        self.prev_pid = prev_pid
         self.config = config
         self.client = docker.from_env()
         self.root_pwd = Path().resolve()
+        self.docker_wd = self.root_pwd / 'docker'
         self.exit_stack = ExitStack()
         
         self.chain_name = config['hyperion']['chain']['name']
@@ -61,13 +60,12 @@ class TEVMController:
             self.logger.setLevel(log_level.upper())
 
         self.is_local = 'local' in self.chain_name
-        self.is_restart = prev_pid is not None
         
         if self.is_local:
             self.producer_key = config['nodeos']['ini']['sig_provider'].split(':')[-1]
 
         self.containers = {}
-        self.volumes = {} 
+        self.mounts = {} 
 
     @contextmanager
     def open_container(
@@ -156,42 +154,23 @@ class TEVMController:
             msg = chunk.decode('utf-8')
             yield msg
 
-    def get_prev_or_create_volume(
-        self,
-        container_name: str,
-        volume_name: str
-    ):
-        if self.is_restart:
-            vol_name = f'{volume_name}-{self.prev_pid}'
-
-            try:
-                volume = self.client.volumes.get(vol_name)
-                return volume, vol_name
-
-            except docker.errors.NotFound:
-                self.logger.critical(
-                    'trying to get volume {vol_name} and failed.')
-                raise
-
-        vol_name = f'{volume_name}-{self.pid}'
-        volume = self.client.volumes.create(
-            name=vol_name,
-            labels=DEFAULT_DOCKER_LABEL)
-
-        return volume, vol_name
-
     def start_redis(self):
         config = self.config['redis']
+        docker_dir = self.docker_wd / config['docker_path']
+        data_dir = docker_dir / config['data_dir']
 
-        self.volumes['redis'], vol_name = self.get_prev_or_create_volume(
-            config['data_volume'], 'redis')
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        self.mounts['redis'] = [
+            Mount('/data', str(data_dir.resolve()), 'bind')
+        ]
 
         config = self.config['redis']
         self.containers['redis'] = self.exit_stack.enter_context(
             self.open_container(
                 f'{config["name"]}-{self.pid}',
                 f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                volumes=[f'{vol_name}:/data']
+                mounts=self.mounts['redis']
             ) 
         )
 
@@ -206,9 +185,14 @@ class TEVMController:
 
     def start_rabbitmq(self):
         config = self.config['rabbitmq']
+        docker_dir = self.docker_wd / config['docker_path']
+        data_dir = docker_dir / config['data_dir']
 
-        self.volumes['rabbitmq'], vol_name = self.get_prev_or_create_volume(
-            config['data_volume'], 'rabbitmq')
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        self.mounts['rabbitmq'] = [
+            Mount('/var/lib/rabbitmq', str(data_dir.resolve()), 'bind')
+        ]
 
         self.containers['rabbitmq'] = self.exit_stack.enter_context(
             self.open_container(
@@ -219,7 +203,7 @@ class TEVMController:
                     'RABBITMQ_DEFAULT_PASS': config['pass'],
                     'RABBITMQ_DEFAULT_VHOST': config['vhost'],
                 },
-                volumes=[f'{vol_name}:/var/lib/rabbitmq']
+                mounts=self.mounts['rabbitmq']
             )
         )
 
@@ -242,9 +226,14 @@ class TEVMController:
 
     def start_elasticsearch(self):
         config = self.config['elasticsearch']
+        docker_dir = self.docker_wd / config['docker_path']
+        data_dir = docker_dir / config['data_dir']
 
-        self.volumes['elasticsearch'], vol_name = self.get_prev_or_create_volume(
-            config['data_volume'], 'elasticsearch')
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        self.mounts['elasticsearch'] = [
+            Mount('/usr/share/elasticsearch/data', str(data_dir.resolve()), 'bind')
+        ]
 
         self.containers['elasticsearch'] = self.exit_stack.enter_context(
             self.open_container(
@@ -261,7 +250,7 @@ class TEVMController:
                     'ELASTIC_USERNAME': config['user'],
                     'ELASTIC_PASSWORD': config['pass']
                 },
-                volumes=[f'{vol_name}:/usr/share/elasticsearch/data']
+                mounts=self.mounts['elasticsearch']
             )
         )
         port = config['host'].split(':')[-1]
@@ -278,6 +267,14 @@ class TEVMController:
     def start_kibana(self):
         config = self.config['kibana']
         config_elastic = self.config['elasticsearch']
+        docker_dir = self.docker_wd / config['docker_path']
+        data_dir = docker_dir / config['data_dir']
+
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        self.mounts['kibana'] = [
+            Mount('/data', str(data_dir.resolve()), 'bind')
+        ]
 
         self.containers['kibana'] = self.exit_stack.enter_context(
             self.open_container(
@@ -287,7 +284,8 @@ class TEVMController:
                     'ELASTICSEARCH_HOSTS': f'http://{config_elastic["host"]}',
                     'ELASTICSEARCH_USERNAME': config_elastic['user'],
                     'ELASTICSEARCH_PASSWORD': config_elastic['pass']
-                }
+                },
+                mounts=self.mounts['kibana']
             )
         )
 
@@ -311,23 +309,30 @@ class TEVMController:
         - Create evm accounts and deploy contract
         """
         config = self.config['nodeos']
+        data_dir_guest = config['data_dir_guest']
+        data_dir_host = config['data_dir_host']
 
-        self.volumes['nodeos'], vol_name = self.get_prev_or_create_volume(
-            config['data_volume'], 'nodeos')
+        docker_dir = self.docker_wd / config['docker_path']
+        data_dir = docker_dir / data_dir_host
+
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        self.mounts['nodeos'] = [
+            Mount(data_dir_guest, str(data_dir.resolve()), 'bind')
+        ]
 
         env = {
-            'NODEOS_DATA_DIR': config['data_dir'],
+            'NODEOS_DATA_DIR': config['data_dir_guest'],
             'NODEOS_CONFIG': f'/root/config.ini',
             'NODEOS_LOG_PATH': config['log_path'],
             'NODEOS_LOGCONF': '/root/logging.json'
         }
 
-        if not self.is_restart:
-            if 'snapshot' in config:
-                env['NODEOS_SNAPSHOT'] = config['snapshot']
+        if 'snapshot' in config:
+            env['NODEOS_SNAPSHOT'] = config['snapshot']
 
-            elif 'genesis' in config: 
-                env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
+        elif 'genesis' in config: 
+            env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
 
         # open container
         self.containers['nodeos'] = self.exit_stack.enter_context(
@@ -335,24 +340,24 @@ class TEVMController:
                 f'{config["name"]}-{self.pid}',
                 f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                 environment=env,
-                volumes=[
-                    f'{vol_name}:{config["data_dir"]}'
-                ]
+                mounts=self.mounts['nodeos']
             )
         )
 
         #for msg in self.stream_logs(self.containers['nodeos']):
         #    self.logger.info(msg.rstrip()) 
 
-        # network check
-        # wait_for_attr(
-        #     self.containers['nodeos'],
-        #     ('Config', 'ExposedPorts', '29999/tcp')
-        # )
-        # wait_for_attr(
-        #     self.containers['nodeos'],
-        #     ('Config', 'ExposedPorts', '8888/tcp')
-        # )
+        http_port = config['ini']['http_addr'].split(':')[-1]
+        wait_for_attr(
+            self.containers['nodeos'],
+            ('NetworkSettings', 'Ports', http_port)
+        )
+
+        ship_port = config['ini']['history_endpoint'].split(':')[-1]
+        wait_for_attr(
+            self.containers['nodeos'],
+            ('NetworkSettings', 'Ports', ship_port)
+        )
 
         exec_id, exec_stream = docker_open_process(
             self.client, self.containers['nodeos'],
@@ -378,30 +383,62 @@ class TEVMController:
             cleos.wait_produced()
             cleos.wait_blocks(4)
 
-            if not self.is_restart:
-                try:
-                    cleos.boot_sequence(
-                        sys_contracts_mount='/opt/eosio/bin/contracts')
+            try:
+                cleos.boot_sequence(
+                    sys_contracts_mount='/opt/eosio/bin/contracts')
 
-                    cleos.deploy_evm()
+                cleos.deploy_evm()
 
-                except AssertionError:
-                    ec, out = cleos.gather_nodeos_output()
-                    self.logger.critical(f'nodeos exit code: {ec}')
-                    self.logger.critical(f'nodeos output:\n{out}\n')
-                    sys.exit(1)
+            except AssertionError:
+                ec, out = cleos.gather_nodeos_output()
+                self.logger.critical(f'nodeos exit code: {ec}')
+                self.logger.critical(f'nodeos output:\n{out}\n')
+                sys.exit(1)
 
         else:
             # await for nodeos to receive a block from peers
             cleos.wait_received()
 
         self.logger.info(cleos.get_info())
+
+    def setup_hyperion_log_mount(self):
+        docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
+        data_dir = docker_dir / self.config['hyperion']['log_dir']
+
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        self.mounts['hyperion'] = [
+            Mount('/root/.pm2/logs', str(data_dir.resolve()), 'bind')
+        ]
+
+    def await_full_index(self):
+        while True:
+            try:
+                hhealth = self.cleos.hyperion_health()['health']
+
+                edata = {}
+                ndata = {}
+                for service in hhealth:
+                    if service['service'] == 'Elasticsearch':
+                        edata = service['service_data']
+
+                    if service['service'] == 'NodeosRPC':
+                        ndata = service['service_data']
+
+                delta = ndata['last_irreversible_block'] - edata['last_indexed_block']
+
+                self.logger.info(f'waiting on indexer... delta: {delta}')
+
+                if delta < 100:
+                    break
+
+            except requests.exceptions.ConnectionError:
+                self.logger.warning('connection error... retry...') 
+
+            time.sleep(10)
     
     def start_hyperion_indexer(self):
         config = self.config['hyperion']['indexer']
-
-        self.volumes['hyperion-indexer'], vol_name = self.get_prev_or_create_volume(
-            config['log_volume'], 'hyperion-indexer')
 
         self.containers['hyperion-indexer'] = self.exit_stack.enter_context(
             self.open_container(
@@ -411,10 +448,7 @@ class TEVMController:
                     '/bin/bash', '-c',
                     f'/root/scripts/run-hyperion.sh {self.chain_name}-indexer'
                 ],
-                volumes={
-                    vol_name:
-                        {'bind': '/root/.pm2/logs', 'mode': 'rw'}
-                }
+                mounts=self.mounts['hyperion']
             )
         )
 
@@ -427,9 +461,6 @@ class TEVMController:
         """
         config = self.config['hyperion']['api']
 
-        self.volumes['hyperion-api'], vol_name = self.get_prev_or_create_volume(
-            config['log_volume'], 'hyperion-api')
-
         self.containers['hyperion-api'] = self.exit_stack.enter_context(
             self.open_container(
                 f'{config["name"]}-{self.pid}',
@@ -438,15 +469,12 @@ class TEVMController:
                     '/bin/bash', '-c',
                     f'/root/scripts/run-hyperion.sh {self.chain_name}-api'
                 ],
-                volumes={
-                    vol_name:
-                        {'bind': '/root/.pm2/logs', 'mode': 'rw'}
-                }
+                mounts=self.mounts['hyperion']
             )
         )
 
         wait_for_attr(
-            self.volumes['hyperion-api'],
+            self.containers['hyperion-api'],
             ('NetworkSettings', 'Ports', port)
         )
 
@@ -493,23 +521,27 @@ class TEVMController:
         config_elastic = self.config['elasticsearch']
         config_kibana = self.config['kibana']
 
+        docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
+        data_dir = docker_dir / self.config['hyperion']['log_dir']
+
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        self.mounts['beats'] = [
+            Mount('/root/logs', str(data_dir.resolve()), 'bind')
+        ]
+
         self.containers['beats'] = self.exit_stack.enter_context(
             self.open_container(
                 f'{config["name"]}-{self.pid}',
                 f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                volumes={
-                    self.volumes['hyperion-indexer'].name:
-                        {'bind': '/root/indexer-logs', 'mode': 'ro'},
-                    self.volumes['hyperion-api'].name:
-                        {'bind': '/root/api-logs', 'mode': 'ro'}
-                },
                 environment={
                     'CHAIN_NAME': self.chain_name,
                     'ELASTIC_USER': config_elastic['user'],
                     'ELASTIC_PASS': config_elastic['pass'],
                     'ELASTIC_HOST': config_elastic['host'],
                     'KIBANA_HOST': f'localhost:{config_kibana["port"]}'
-                }
+                },
+                mounts=self.mounts['beats']
             )
         )
 
@@ -533,13 +565,17 @@ class TEVMController:
         self.start_elasticsearch()
         self.start_kibana()
         self.start_nodeos()
+
+        self.setup_hyperion_log_mount()
         self.start_hyperion_indexer()
+
+        # self.await_full_index()
+
         self.start_hyperion_api()
+
         self.start_beats()
 
-        self.cleos.init_w3()
-
-        if self.is_local and not self.is_restart:
+        if self.is_local:
             self.cleos.create_test_evm_account()
 
         return self

@@ -56,14 +56,6 @@ def up(
         print('Config not found.')
         sys.exit(1)
 
-    prev_run_pid = None
-    try:
-        with open(target_dir + '/.prev', 'r') as prev_pid_file:
-            prev_run_pid = int(prev_pid_file.read())
-
-    except FileNotFoundError:
-        pass
-        
     if Path(pid).resolve().exists():
         print('daemon pid file exists. abort.')
         sys.exit(1)
@@ -122,16 +114,10 @@ def up(
 
     # main daemon thread
     def wait_exit_forever():
-        if not Path('.prev').is_file():
-            with open('.prev', 'w+') as prev_pid_file:
-                prev_pid_file.write(
-                    str(os.getpid()) + '\n')
-
         try:
             with TEVMController(
                 config,
-                logger=logger,
-                prev_pid=prev_run_pid
+                logger=logger
             ) as tevm:
                 logger.critical('control point reached')
                 try:

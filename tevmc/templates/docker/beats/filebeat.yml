@@ -12,7 +12,7 @@ setup.kibana:
 filebeat.inputs:
 - type: log
   paths:
-    - /root/api-logs/*-api-out.log
+    - /root/logs/*-api-out.log
   fields:
     origin: system
     application: ${CHAIN_NAME}_api
@@ -20,7 +20,7 @@ filebeat.inputs:
 
 - type: log
   paths:
-    - /root/indexer-logs/*-indexer-out.log
+    - /root/logs/*-indexer-out.log
   fields:
     origin: system
     application: ${CHAIN_NAME}_indexer

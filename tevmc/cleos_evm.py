@@ -3,15 +3,16 @@
 import time
 import requests
 
-from typing import Optional
+from typing import Optional, Dict
 
 import rlp
 
-from web3 import Web3
 from py_eosio.cleos import CLEOS
 from py_eosio.sugar import Name, Asset
 from py_eosio.tokens import sys_token
-from eth_utils import to_wei, to_int, decode_hex, remove_0x_prefix
+# from eth_utils import to_wei, to_int, decode_hex, remove_0x_prefix
+
+from .utils import to_wei, to_int, decode_hex, remove_0x_prefix
 
 
 EVM_CONTRACT = 'eosio.evm'
@@ -152,7 +153,7 @@ class CLEOSEVM(CLEOS):
         if len(rows) != 1:
             return None
 
-        return Web3.toChecksumAddress(f'0x{rows[0]["address"]}')
+        return f'0x{rows[0]["address"]}'
 
     def create_evm_account(
         self,
@@ -169,7 +170,7 @@ class CLEOSEVM(CLEOS):
     """    hyperion interaction
     """
 
-    def hyperion_health(self) -> int:
+    def hyperion_health(self) -> Dict:
         return requests.get(
             f'{self.hyperion_api_endpoint}/v2/health').json()
 
@@ -206,10 +207,6 @@ class CLEOSEVM(CLEOS):
     """ EVM RPC
     """
 
-    def init_w3(self):
-        self.w3 = Web3(
-            Web3.HTTPProvider(self.hyperion_api_endpoint + '/evm'))
-
     def eth_gas_price(self) -> int:
         config = self.get_evm_config()
         assert len(config) == 1
@@ -217,12 +214,26 @@ class CLEOSEVM(CLEOS):
         assert 'gas_price' in config
         return to_int(hexstr=f'0x{config["gas_price"]}')
 
-    # def eth_get_transaction_count(self, addr: str) -> int:
-    #     resp = requests.get(
-    #         f'{self.hyperion_api_endpoint}/v2/evm/get_transactions',
-    #         params={'address': addr}
-    #     ).json()
-    #     return resp['total']['value'] 
+    def eth_get_transaction_count(self, addr: str) -> int:
+        addr = remove_0x_prefix(addr)
+        # rows = self.get_table(
+        #     'eosio.evm', 'eosio.evm', 'account',
+        #     '--key-type', 'ripemd160', '--index', '2',
+        #     '--lower', addr,
+        #     '--upper', addr)
+        # 
+        # if len(rows) != 1:
+        #     return None
+
+        rows = self.get_table('eosio.evm', 'eosio.evm', 'account')
+
+        row = next((
+            row for row in rows
+            if row['address'] == addr),
+            None
+        )
+        
+        return row['nonce']
 
     def eth_raw_tx(
         self,
@@ -262,7 +273,7 @@ class CLEOSEVM(CLEOS):
 
             return rlp.encode(l).hex()
 
-        nonce = self.w3.eth.get_transaction_count(sender)
+        nonce = self.eth_get_transaction_count(sender)
         gas_price = self.eth_gas_price()
 
         return encode(
