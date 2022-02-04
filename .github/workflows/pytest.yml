@@ -29,15 +29,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -e .
+          sudo pip install --upgrade pip
+          sudo pip install -e .
 
       - name: Init local chain
-        run: tevmc init local
+        run: sudo tevmc init local
 
       - name: Build
         working-directory: ./local
-        run: tevmc build --headless
+        run: sudo tevmc build --headless
 
       - name: Run pytest 
-        run: pytest --log-cli-level=INFO
+        working-directory: ./local
+        run: sudo pytest ../tests --log-cli-level=INFO
