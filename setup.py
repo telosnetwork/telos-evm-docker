@@ -16,6 +16,7 @@ setup(
         'natsort',
         'requests',
         'daemonize',
+        'simplejson',
         'simple-rlp',
         'py_eosio@git+https://github.com/guilledk/py-eosio.git@docker_only'
     ],

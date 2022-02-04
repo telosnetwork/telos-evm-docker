@@ -13,6 +13,7 @@ from contextlib import contextmanager, ExitStack
 
 import docker
 import requests
+import simplejson
 
 from docker.types import LogConfig, Mount
 from requests.auth import HTTPBasicAuth
@@ -541,6 +542,9 @@ class TEVMController:
                     self.logger.warning('can\'t reach kibana, retry in 3 sec...')
 
                 except requests.exceptions.JSONDecodeError:
+                    self.logger.info('kibana server not ready, retry in 3 sec...')
+
+                except simplejson.errors.JSONDecodeError:
                     self.logger.info('kibana server not ready, retry in 3 sec...')
 
                 else:
