@@ -47,9 +47,13 @@ jobs:
       - name: Init local chain
         run: sudo tevmc init local
 
-      - name: Bootstrap 
+      - name: Build containers
         working-directory: local
-        run: sudo tevmc run
+        run: sudo tevmc build --headless
+
+      - name: Bootstrap
+        working-directory: local
+        run: sudo tevmc up && sudo tevmc wait-init
 
       - name: Wait blocks
         working-directory: local

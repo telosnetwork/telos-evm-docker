@@ -120,8 +120,8 @@ hyperion = {
     'chain': {
         'name': 'telos-local-testnet',
         'long_name': 'Telos Local Testnet',
-        'chain_hash': 'c4c5fcc7b6e5e7484eb6b609e755050ebba977c4c291a63aab42d94c0fb8c2cf',
-        'chain_id': 40,
+        'chain_hash': '1eaa0824707c8c16bd25145493bf062aecddfeb56c736f6ba6397f3195f33c9f',
+        'chain_id': 41,
         'http': 'http://localhost:8888',
         'ship': 'ws://localhost:29999',
         'router_host': 'localhost',
