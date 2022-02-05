@@ -541,8 +541,8 @@ class TEVMController:
                 except requests.exceptions.ConnectionError:
                     self.logger.warning('can\'t reach kibana, retry in 3 sec...')
 
-                except requests.exceptions.JSONDecodeError:
-                    self.logger.info('kibana server not ready, retry in 3 sec...')
+                #except requests.exceptions.JSONDecodeError:
+                #    self.logger.info('kibana server not ready, retry in 3 sec...')
 
                 except simplejson.errors.JSONDecodeError:
                     self.logger.info('kibana server not ready, retry in 3 sec...')
