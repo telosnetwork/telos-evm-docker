@@ -362,6 +362,9 @@ class BuildInProgress:
         new_status = format(
             f'{status[:MAX_STATUS_SIZE]}', f' <{MAX_STATUS_SIZE}')
 
+        new_status = new_status.replace('\n', '')
+        new_status = new_status.replace('\r', '')
+
         if new_status != self.status:
             self.status = new_status
             self.bar.set_description(desc=new_status)

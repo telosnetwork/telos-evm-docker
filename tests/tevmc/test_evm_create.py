@@ -6,11 +6,12 @@ from py_eosio.tokens import sys_token
 from tevmc.utils import to_wei
 
 
-def test_cleos_evm_create(tevmc):
+def test_cleos_evm_create(tevmc_local):
     """Create a random account and have it create a random evm account,
     then get its ethereum address.
     Send some TLOS and verify in the ethereum side the balance gets added.
     """
+    tevmc = tevmc_local
 
     account = tevmc.cleos.new_account()
     

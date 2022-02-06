@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 import os
 import sys
 import time
@@ -43,8 +44,7 @@ class TEVMController:
         client = None,
         logger = None,
         log_level: str = 'info',
-        root_pwd: Optional[Path] = None,
-        snapshot: Optional[str] = None
+        root_pwd: Optional[Path] = None
     ):
         self.pid = os.getpid()
         self.config = config
@@ -59,7 +59,6 @@ class TEVMController:
         self.docker_wd = self.root_pwd / 'docker'
         
         self.chain_name = config['hyperion']['chain']['name']
-        self.snapshot = snapshot
         self.logger = logger
 
         if logger is None:
@@ -329,6 +328,8 @@ class TEVMController:
                 Mount(data_dir_guest, str(data_dir_host.resolve()), 'bind')
             ]
 
+            is_relaunch = (data_dir_host / 'blocks').is_dir()
+
             env = {
                 'NODEOS_DATA_DIR': config['data_dir_guest'],
                 'NODEOS_CONFIG': f'/root/config.ini',
@@ -336,11 +337,12 @@ class TEVMController:
                 'NODEOS_LOGCONF': '/root/logging.json'
             }
 
-            if 'snapshot' in config:
-                env['NODEOS_SNAPSHOT'] = config['snapshot']
+            if not is_relaunch:
+                if 'snapshot' in config:
+                    env['NODEOS_SNAPSHOT'] = config['snapshot']
 
-            elif 'genesis' in config: 
-                env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
+                elif 'genesis' in config: 
+                    env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
 
             # open container
             self.containers['nodeos'] = self.exit_stack.enter_context(
@@ -416,30 +418,30 @@ class TEVMController:
         ]
 
     def await_full_index(self):
-        while True:
-            try:
-                hhealth = self.cleos.hyperion_health()['health']
 
-                edata = {}
-                ndata = {}
-                for service in hhealth:
-                    if service['service'] == 'Elasticsearch':
-                        edata = service['service_data']
+        if 'testnet' in self.chain_name:
+            endpoint = 'https://testnet.telos.caleos.io' 
+        else:
+            endpoint = 'https://telos.caleos.io'
+        
+        resp = requests.get(f'{endpoint}/v1/chain/get_info').json()
+        remote_head_block = resp['head_block_num']
 
-                    if service['service'] == 'NodeosRPC':
-                        ndata = service['service_data']
+        last_indexed_block = 0
+        for line in self.stream_logs(self.containers['hyperion-indexer']):
+            if 'continuous_reader' in line:
+                self.logger.info(line)
+                last_index_time = time.time()
+                m = re.findall(r'block_num: ([0-9]+)', line)
+                if len(m) == 1:
+                    last_indexed_block = int(m[0])
 
-                delta = ndata['last_irreversible_block'] - edata['last_indexed_block']
+            delta = remote_head_block - last_indexed_block
 
-                self.logger.info(f'waiting on indexer... delta: {delta}')
+            self.logger.info(f'waiting on indexer... delta: {delta}')
 
-                if delta < 100:
-                    break
-
-            except requests.exceptions.ConnectionError:
-                self.logger.warning('connection error... retry...') 
-
-            time.sleep(10)
+            if delta < 100:
+                break
     
     def start_hyperion_indexer(self):
         with self.must_keep_running('hyperion-indexer'):
@@ -573,7 +575,8 @@ class TEVMController:
         self.setup_hyperion_log_mount()
         self.start_hyperion_indexer()
 
-        # self.await_full_index()
+        if not self.is_local:
+            self.await_full_index()
 
         self.start_hyperion_api()
 

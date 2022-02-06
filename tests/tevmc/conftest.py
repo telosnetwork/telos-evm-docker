@@ -7,9 +7,11 @@ import docker
 import logging
 import requests
 
+from contextlib import contextmanager
+
 from tevmc import TEVMController
 from tevmc.config import (
-    local,
+    local, testnet, mainnet,
     build_docker_manifest
 )
 from tevmc.cmdline.init import touch_node_dir
@@ -18,13 +20,14 @@ from tevmc.cmdline.clean import clean
 from tevmc.cmdline.cli import get_docker_client
 
 
-@pytest.fixture(scope='session')
-def tevmc(tmp_path_factory):
 
+@contextmanager
+def bootstrap_test_stack(tmp_path_factory, config):
     client = get_docker_client()
-    config = local.default_config
 
-    tmp_path = tmp_path_factory.getbasetemp() / 'pytest-local'
+    chain_name = config['hyperion']['chain']['name']
+
+    tmp_path = tmp_path_factory.getbasetemp() / chain_name
     manifest = build_docker_manifest(config)
 
     tmp_path.mkdir(parents=True, exist_ok=True)
@@ -77,3 +80,24 @@ def tevmc(tmp_path_factory):
 
                 break
         raise
+
+
+@pytest.fixture(scope='session')
+def tevmc_local(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, local.default_config) as tevmc:
+        yield tevmc
+
+
+@pytest.fixture(scope='session')
+def tevmc_testnet(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, testnet.default_config) as tevmc:
+        yield tevmc
+
+
+@pytest.fixture(scope='session')
+def tevmc_mainnet(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, mainnet.default_config) as tevmc:
+        yield tevmc
