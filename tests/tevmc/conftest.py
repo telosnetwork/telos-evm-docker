@@ -22,7 +22,7 @@ from tevmc.cmdline.cli import get_docker_client
 
 
 @contextmanager
-def bootstrap_test_stack(tmp_path_factory, config):
+def bootstrap_test_stack(tmp_path_factory, config, **kwargs):
     client = get_docker_client()
 
     chain_name = config['hyperion']['chain']['name']
@@ -38,7 +38,8 @@ def bootstrap_test_stack(tmp_path_factory, config):
     try:
         with TEVMController(
             config,
-            root_pwd=tmp_path
+            root_pwd=tmp_path,
+            **kwargs
         ) as _tevmc:
             yield _tevmc
 
@@ -62,10 +63,7 @@ def bootstrap_test_stack(tmp_path_factory, config):
             while True:
                 try:
                     container = client.containers.get(val)
-                    if container.status == 'running':
-                        print(f'Container {val} is running, killing... ', end='', flush=True)
-                        container.kill()
-                        print('done.')
+                    container.stop()
 
                 except docker.errors.APIError as err:
                     if 'already in progress' in str(err):
@@ -82,21 +80,27 @@ def bootstrap_test_stack(tmp_path_factory, config):
         raise
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def tevmc_local(tmp_path_factory):
     with bootstrap_test_stack(
         tmp_path_factory, local.default_config) as tevmc:
         yield tevmc
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def tevmc_testnet(tmp_path_factory):
     with bootstrap_test_stack(
         tmp_path_factory, testnet.default_config) as tevmc:
         yield tevmc
 
+@pytest.fixture(scope='module')
+def tevmc_testnet_no_wait(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, testnet.default_config, wait=False) as tevmc:
+        yield tevmc
 
-@pytest.fixture(scope='session')
+
+@pytest.fixture(scope='module')
 def tevmc_mainnet(tmp_path_factory):
     with bootstrap_test_stack(
         tmp_path_factory, mainnet.default_config) as tevmc:

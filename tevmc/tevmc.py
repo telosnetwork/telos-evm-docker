@@ -44,12 +44,14 @@ class TEVMController:
         client = None,
         logger = None,
         log_level: str = 'info',
-        root_pwd: Optional[Path] = None
+        root_pwd: Optional[Path] = None,
+        wait: bool = True
     ):
         self.pid = os.getpid()
         self.config = config
         self.client = docker.from_env()
         self.exit_stack = ExitStack()
+        self.wait = wait
 
         if not root_pwd:
             self.root_pwd = Path().resolve()
@@ -136,7 +138,7 @@ class TEVMController:
                 log_config=LogConfig(
                     type=LogConfig.types.JSON,
                     config={'max-size': '100m' }),
-                # remove=True,
+                remove=True,
                 labels=DEFAULT_DOCKER_LABEL)
            
             container.reload()
@@ -148,9 +150,12 @@ class TEVMController:
             self.logger.info(f'stopping container \"{name}\"')
             try:
                 if container:
-                    container.stop()
+                    for i in range(3):
+                        container.stop()
             except docker.errors.APIError as e:
-                self.logger.critical(e) 
+                ...
+
+            self.logger.info('stopped.')
 
     
     def stream_logs(self, container):
@@ -562,8 +567,8 @@ class TEVMController:
                 self.setup_index_patterns(
                     [f'{self.chain_name}-action-*', 'filebeat-*'])
 
-        
-    def __enter__(self):
+    
+    def start(self):
         with self.must_keep_running('redis'):
             self.start_redis()
 
@@ -575,7 +580,7 @@ class TEVMController:
         self.setup_hyperion_log_mount()
         self.start_hyperion_indexer()
 
-        if not self.is_local:
+        if not self.is_local and self.wait:
             self.await_full_index()
 
         self.start_hyperion_api()
@@ -585,10 +590,7 @@ class TEVMController:
         if self.is_local and self.is_fresh:
             self.cleos.create_test_evm_account()
 
-        return self
-
-    def __exit__(self, type, value, traceback):
-
+    def stop(self):
         # gracefull nodeos exit
         exec_id, exec_stream = docker_open_process(
             self.client,
@@ -606,3 +608,10 @@ class TEVMController:
         
         self.exit_stack.pop_all().close()
 
+    
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.stop()
