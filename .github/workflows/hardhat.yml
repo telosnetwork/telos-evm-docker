@@ -1,0 +1,61 @@
+name: Hardhat Tests 
+
+on:
+  push:
+    branches:
+      - python_toolchain
+
+  pull_request:
+    branches:
+      - master
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  truffle_test:
+    name: Hardhat Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+
+      - name: Install Hardhat
+        working-directory: ./tests/test_hardhat
+        run: npm install --save-dev hardhat
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          sudo pip install --upgrade pip
+          sudo pip install -e .
+
+      - name: Init local chain
+        run: sudo tevmc init local
+
+      - name: Build containers
+        working-directory: local
+        run: sudo tevmc build --headless
+
+      - name: Bootstrap
+        working-directory: local
+        run: sudo tevmc up && sudo tevmc wait-init
+
+      - name: Wait blocks
+        working-directory: local
+        run: sudo tevmc wait-block 60
+
+      - name: Run test_hardhat
+        working-directory: ./tests/test_hardhat
+        run: npx hardhat test

@@ -1,4 +1,4 @@
-name: Truffle Tests 
+name: Truffle Itxs Tests 
 
 on:
   push:
@@ -14,7 +14,7 @@ on:
 
 jobs:
   truffle_test:
-    name: Truffle Tests
+    name: Truffle Itxs Tests
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -31,7 +31,7 @@ jobs:
         run: npm install -g truffle
           
       - name: Setup Truffle HD Wallet
-        working-directory: ./tests/test_erc20
+        working-directory: ./tests/test_itxs
         run: npm install @truffle/hdwallet-provider
 
       - name: Set up Python
@@ -59,6 +59,6 @@ jobs:
         working-directory: local
         run: sudo tevmc wait-block 60
 
-      - name: Run test_erc20
-        working-directory: ./tests/test_erc20
+      - name: Run test_itxs
+        working-directory: ./tests/test_itxs
         run: truffle --network private test
