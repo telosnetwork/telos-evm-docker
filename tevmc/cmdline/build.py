@@ -8,6 +8,7 @@ import click
 import docker
 
 from typing import Dict, Any
+from hashlib import sha1 
 from pathlib import Path
 from datetime import datetime
 
@@ -18,80 +19,17 @@ from .init import load_config_templates, load_docker_templates
 from ..config import * 
 
 
-class BuildInProgress:
-    """ Helper class to manage build progress bar
-    """
 
-    def __init__(self):
-        self.prev_progress = 0
-        self.prev_total = 0
-        self.current_progress = 0
-        self.current_total = 0
-        self.status = ''
-        self.bar = tqdm(bar_format='{l_bar}{bar}')
-
-    def set_status(self, status: str):
-        new_status = format(
-            f'{status[:MAX_STATUS_SIZE]}', f' <{MAX_STATUS_SIZE}')
-
-        if new_status != self.status:
-            self.status = new_status
-            self.bar.set_description(desc=new_status)
-
-    def update(self, update):
-        if update.startswith('Step'):
-            """Docker sends build updates with format
-                'Step progress/total'
-            Use it to update the progress bar.
-            """
-            step_info = update.split(' ')[1]
-            step_info = step_info.split('/')
-            progress = int(step_info[0])
-            total = int(step_info[1])
-
-            update = update.rstrip()
-            
-            if total != self.current_total:
-                self.prev_total = self.current_total
-                self.bar.reset(total=total)
-                self.current_total = total
-
-            if progress != self.current_progress:
-                self.prev_progress = self.current_progress
-                self.bar.update(n=progress)
-                self.curent_progress = progress
-
-            self.set_status(update) 
-
-    def close(self):
-        self.bar.close()
+class TEVMCBuildException(Exception):
+    ...
 
 
-@cli.command()
-@click.option(
-    '--headless/--interactive', default=False,
-    help='Display pretty output or just stream logs.')
-@click.option(
-    '--target-dir', default='.',
-    help='target')
-@click.option(
-    '--config', default='tevmc.json',
-    help='Unified config file name.')
-def build(headless, target_dir, config):
-    """Build in-repo docker containers.
-    """
-    try:
-        config = load_config(target_dir, config)
-
-    except FileNotFoundError:
-        print('Config not found.')
-        sys.exit(1)
-    
+def perform_config_build(target_dir, config):
     target_dir = Path(target_dir).resolve()
+    target_dir.mkdir(parents=True, exist_ok=True)
 
     docker_dir = target_dir / 'docker'
     docker_dir.mkdir(exist_ok=True)
-
 
     # config build
     timestamp = {'timestamp': str(datetime.now())}
@@ -356,6 +294,158 @@ def build(headless, target_dir, config):
     beats_dir = docker_dir / beats_conf['docker_path']
     beats_conf_dir = beats_dir / beats_conf['conf_dir']
     os.chown(beats_conf_dir / 'filebeat.yml', uid=0, gid=0)
+
+
+def perform_docker_build(target_dir, config, logger):
+    perform_config_build(target_dir, config)
+
+    docker_dir = target_dir / 'docker'
+    docker_dir.mkdir(exist_ok=True)
+
+    # docker build
+    client = get_docker_client()
+
+    builds = []
+    for container, conf in config.items():
+        if 'docker_path' in conf:
+            builds.append({
+                'tag': f'{conf["tag"]}-{config["hyperion"]["chain"]["name"]}',
+                'path': str(docker_dir / conf['docker_path'] / 'build')
+            })
+
+
+    for build_args in builds:
+        stream = ''
+        logger.info(f'building {build_args}...')
+
+        for chunk in client.api.build(**build_args):
+            update = None
+            _str = chunk.decode('utf-8').rstrip()
+
+            # sometimes several json packets are sent per chunk
+            splt_str = _str.split('\n')
+            
+            for packet in splt_str:
+                msg = json.loads(packet)
+                status = msg.get('status', None)
+                status = msg.get('stream', None)
+                if status:
+                    stream += status
+    
+        try:
+            client.images.get(build_args['tag'])
+
+        except docker.errors.NotFound:
+            msg_ex = (
+                f'couldn\'t build container {build_args["tag"]} at '
+                f'{build_args["path"]}')
+            logger.critical(msg_ex)
+            logger.critical(stream)
+            raise TEVMCBuildException(msg_ex)
+
+        logger.info('building complete.')
+
+
+class BuildInProgress:
+    """ Helper class to manage build progress bar
+    """
+
+    def __init__(self):
+        self.prev_progress = 0
+        self.prev_total = 0
+        self.current_progress = 0
+        self.current_total = 0
+        self.status = ''
+        self.bar = tqdm(bar_format='{l_bar}{bar}')
+
+    def set_status(self, status: str):
+        new_status = format(
+            f'{status[:MAX_STATUS_SIZE]}', f' <{MAX_STATUS_SIZE}')
+
+        if new_status != self.status:
+            self.status = new_status
+            self.bar.set_description(desc=new_status)
+
+    def update(self, update):
+        if update.startswith('Step'):
+            """Docker sends build updates with format
+                'Step progress/total'
+            Use it to update the progress bar.
+            """
+            step_info = update.split(' ')[1]
+            step_info = step_info.split('/')
+            progress = int(step_info[0])
+            total = int(step_info[1])
+
+            update = update.rstrip()
+            
+            if total != self.current_total:
+                self.prev_total = self.current_total
+                self.bar.reset(total=total)
+                self.current_total = total
+
+            if progress != self.current_progress:
+                self.prev_progress = self.current_progress
+                self.bar.update(n=progress)
+                self.curent_progress = progress
+
+            self.set_status(update) 
+
+    def close(self):
+        self.bar.close()
+
+
+@cli.command()
+@click.option(
+    '--headless/--interactive', default=False,
+    help='Display pretty output or just stream logs.')
+@click.option(
+    '--target-dir', default='.',
+    help='target')
+@click.option(
+    '--config', default='tevmc.json',
+    help='Unified config file name.')
+def build(headless, target_dir, config):
+    """Build in-repo docker containers.
+    """
+    config_fname = config
+    try:
+        config = load_config(target_dir, config)
+
+    except FileNotFoundError:
+        print('Config not found.')
+        sys.exit(1)
+    
+    target_dir = Path(target_dir).resolve()
+
+    rebuild_conf = False
+    prev_hash = None
+    cfg = config.copy()
+    if 'metadata' in cfg:
+        cfg.pop('metadata', None)
+        prev_hash = config['metadata']['phash']
+        print(f'Previous hash: {prev_hash}')
+
+    hasher = sha1(json.dumps(cfg, sort_keys=True).encode('utf-8'))
+    curr_hash = hasher.hexdigest()
+
+    print(f'Current hash: {curr_hash}')
+
+    rebuild_conf = prev_hash != curr_hash
+
+    if rebuild_conf:
+        config['metadata'] = {}
+        config['metadata']['phash'] = curr_hash
+
+        with open(target_dir / config_fname, 'w+') as uni_conf:
+            uni_conf.write(json.dumps(config, indent=4))
+
+        print('Rebuilding config files...', end='', flush=True)
+        perform_config_build(target_dir, config)
+        print('done.')
+
+    docker_dir = target_dir / 'docker'
+    docker_dir.mkdir(exist_ok=True)
 
     # docker build
     client = get_docker_client()

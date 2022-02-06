@@ -11,7 +11,8 @@ RUN apt-get update && \
         ca-certificates
 
 # install snapshots from latest evm deployments
-WORKDIR /root/snapshots
+WORKDIR /
+
 RUN wget https://telos-snapshots.s3.amazonaws.com/testnet/telos-testnet-20211020-blknum-136229794.tar.gz &&\
     tar xvf telos-testnet-20211020-blknum-136229794.tar.gz && \
     mv \

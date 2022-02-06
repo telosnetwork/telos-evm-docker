@@ -32,13 +32,5 @@ jobs:
           sudo pip install --upgrade pip
           sudo pip install -e .
 
-      - name: Init local chain
-        run: sudo tevmc init local
-
-      - name: Build
-        working-directory: ./local
-        run: sudo tevmc build --headless
-
       - name: Run pytest 
-        working-directory: ./local
-        run: sudo pytest ../tests --log-cli-level=INFO
+        run: sudo pytest --log-cli-level=INFO

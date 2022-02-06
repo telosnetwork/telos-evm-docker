@@ -42,6 +42,17 @@ def load_docker_templates() -> Dict[str, Template]:
     return templ
 
 
+def touch_node_dir(target_dir, conf, fname):
+    # dump default config file
+    with open(target_dir / fname, 'w+') as uni_conf:
+        uni_conf.write(json.dumps(conf, indent=4))
+
+    # copy new directory tree template
+    copy_tree(
+        str(template_dir / 'docker'),
+        str(target_dir / 'docker'))
+
+
 @cli.command()
 @click.option(
     '--config', default='tevmc.json',
@@ -71,16 +82,9 @@ def init(config, target_dir, chain_name):
 
     elif 'mainnet' in chain_name:
         conf = mainnet.default_config
+   
+    target_dir = target_dir / chain_name
+    target_dir.mkdir(parents=True, exist_ok=True)
 
-    # create new node directory
-    node_dir = target_dir / chain_name
-    node_dir.mkdir(exist_ok=True)
+    touch_node_dir(target_dir, conf, config)
 
-    # dump default config file
-    with open(node_dir / config, 'w+') as uni_conf:
-        uni_conf.write(json.dumps(conf, indent=4))
-
-    # copy new directory tree template
-    copy_tree(
-        str(template_dir / 'docker'),
-        str(node_dir / 'docker'))

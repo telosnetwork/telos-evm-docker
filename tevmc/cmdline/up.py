@@ -77,40 +77,25 @@ def up(
     logger.addHandler(fh)
     keep_fds = [fh.stream.fileno()]
 
-    # create image manifest ie images needed to run daemon 
-    manifest = []
-    for container_name, conf in config.items():
-        if 'docker_path' not in conf:
-            continue
+    # create image manifest ie images needed to run daemon
+    try:
+        manifest = build_docker_manifest(config)
 
-        try:
-            repo, tag = conf['tag'].split(':')
-            tag = f'{tag}-{config["hyperion"]["chain"]["name"]}'
-
-        except ValueError:
-            logger.critical(
-                f'Malformed tag {key}=\'{arg}\','
-                f' must be of format \'{repo}:{tag}\'.')
-            sys.exit(1)
-
-        manifest.append((repo, tag))
+    except ValueError as err:
+        print(err.message)
+        sys.exit(1)
 
     logger.info(
         f'container manifest: {json.dumps(manifest, indent=4)}')
 
     # check images are present in local docker repo
     client = get_docker_client(timeout=docker_timeout)
-    for repo, tag in manifest:
-        try:
-            client.images.get(f'{repo}:{tag}')
+    try:
+        check_docker_manifest(client, manifest)
 
-        except docker.errors.NotFound:
-            logger.critical(f'docker image {repo}:{tag} not present, abort.')
-            print(
-                f'Docker image \'{repo}:{tag}\' is required, please run '
-                '\'tevmc build\' to build the required images.'
-            )
-            sys.exit(1)
+    except docker.errors.NotFound as err:
+        logger.critical(err.message)
+        sys.exit(1)
 
     # main daemon thread
     def wait_exit_forever():

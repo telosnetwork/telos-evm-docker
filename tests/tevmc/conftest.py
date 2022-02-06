@@ -4,18 +4,39 @@ import os
 
 import pytest
 import docker
+import logging
 import requests
 
 from tevmc import TEVMController
-from tevmc.config import local
+from tevmc.config import (
+    local,
+    build_docker_manifest
+)
+from tevmc.cmdline.init import touch_node_dir
+from tevmc.cmdline.build import perform_docker_build
 from tevmc.cmdline.clean import clean
 from tevmc.cmdline.cli import get_docker_client
 
 
 @pytest.fixture(scope='session')
-def tevmc():
+def tevmc(tmp_path_factory):
+
+    client = get_docker_client()
+    config = local.default_config
+
+    tmp_path = tmp_path_factory.getbasetemp() / 'pytest-local'
+    manifest = build_docker_manifest(config)
+
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    touch_node_dir(tmp_path, config, 'tevmc.json')
+    perform_docker_build(
+        tmp_path, config, logging)
+
     try:
-        with TEVMController(local.default_config) as _tevmc:
+        with TEVMController(
+            config,
+            root_pwd=tmp_path
+        ) as _tevmc:
             yield _tevmc
 
     except BaseException:
@@ -24,7 +45,7 @@ def tevmc():
         client = get_docker_client(timeout=10)
 
         containers = []
-        for name, conf in local.default_config.items():
+        for name, conf in config.items():
             if 'name' in conf:
                 containers.append(f'{conf["name"]}-{pid}')
 

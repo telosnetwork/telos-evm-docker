@@ -43,14 +43,20 @@ class TEVMController:
         client = None,
         logger = None,
         log_level: str = 'info',
+        root_pwd: Optional[Path] = None,
         snapshot: Optional[str] = None
     ):
         self.pid = os.getpid()
         self.config = config
         self.client = docker.from_env()
-        self.root_pwd = Path().resolve()
-        self.docker_wd = self.root_pwd / 'docker'
         self.exit_stack = ExitStack()
+
+        if not root_pwd:
+            self.root_pwd = Path().resolve()
+        else:
+            self.root_pwd = root_pwd
+
+        self.docker_wd = self.root_pwd / 'docker'
         
         self.chain_name = config['hyperion']['chain']['name']
         self.snapshot = snapshot
@@ -157,167 +163,145 @@ class TEVMController:
             msg = chunk.decode('utf-8')
             yield msg
 
+    @contextmanager
+    def must_keep_running(self, container: str):
+        yield
+        
+        container = self.containers[container]
+        container.reload()
+
+        if container.status != 'running':
+            self.logger.critical('log dump:')
+            self.logger.critical(container.logs().decode('utf-8'))
+            raise TEVMCException(f'{container.name} is not running')
+
     def start_redis(self):
-        config = self.config['redis']
-        docker_dir = self.docker_wd / config['docker_path']
+        with self.must_keep_running('redis'):
+            config = self.config['redis']
+            docker_dir = self.docker_wd / config['docker_path']
 
-        conf_dir = docker_dir / config['conf_dir']
-        data_dir = docker_dir / config['data_dir']
+            conf_dir = docker_dir / config['conf_dir']
+            data_dir = docker_dir / config['data_dir']
 
-        conf_dir.mkdir(parents=True, exist_ok=True)
-        data_dir.mkdir(parents=True, exist_ok=True)
+            data_dir.mkdir(parents=True, exist_ok=True)
 
-        self.mounts['redis'] = [
-            Mount('/root', str(conf_dir.resolve()), 'bind'),
-            Mount('/data', str(data_dir.resolve()), 'bind')
-        ]
+            self.mounts['redis'] = [
+                Mount('/root', str(conf_dir.resolve()), 'bind'),
+                Mount('/data', str(data_dir.resolve()), 'bind')
+            ]
 
-        self.containers['redis'] = self.exit_stack.enter_context(
-            self.open_container(
-                f'{config["name"]}-{self.pid}',
-                f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                mounts=self.mounts['redis']
-            ) 
-        )
+            self.containers['redis'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}',
+                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    mounts=self.mounts['redis']
+                ) 
+            )
 
-        # wait_for_attr(
-        #     self.containers['redis'],
-        #     ('NetworkSettings', 'Ports', f'{config["port"]}/tcp')
-        # )
-
-        for msg in self.stream_logs(self.containers['redis']):
-            if msg is None:
-                raise TEVMCException('failed to start redis')
-            if 'Ready to accept connections' in msg:
-                break
+            for msg in self.stream_logs(self.containers['redis']):
+                if 'Ready to accept connections' in msg:
+                    break
 
     def start_rabbitmq(self):
-        config = self.config['rabbitmq']
-        docker_dir = self.docker_wd / config['docker_path']
+        with self.must_keep_running('rabbitmq'):
+            config = self.config['rabbitmq']
+            docker_dir = self.docker_wd / config['docker_path']
 
-        conf_dir = docker_dir / config['conf_dir']
-        data_dir = docker_dir / config['data_dir']
+            conf_dir = docker_dir / config['conf_dir']
+            data_dir = docker_dir / config['data_dir']
 
-        data_dir.mkdir(parents=True, exist_ok=True)
+            data_dir.mkdir(parents=True, exist_ok=True)
 
-        self.mounts['rabbitmq'] = [
-            Mount('/etc/rabbitmq/', str(conf_dir.resolve()), 'bind'),
-            Mount('/var/lib/rabbitmq', str(data_dir.resolve()), 'bind')
-        ]
+            self.mounts['rabbitmq'] = [
+                Mount('/rabbitmq', str(conf_dir.resolve()), 'bind'),
+                Mount('/var/lib/rabbitmq', str(data_dir.resolve()), 'bind')
+            ]
 
-        self.containers['rabbitmq'] = self.exit_stack.enter_context(
-            self.open_container(
-                f'{config["name"]}-{self.pid}',
-                f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                environment={
-                    'RABBITMQ_DEFAULT_USER': config['user'],
-                    'RABBITMQ_DEFAULT_PASS': config['pass'],
-                    'RABBITMQ_DEFAULT_VHOST': config['vhost'],
-                },
-                mounts=self.mounts['rabbitmq']
+            self.containers['rabbitmq'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}',
+                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    environment={
+                        'RABBITMQ_DEFAULT_USER': config['user'],
+                        'RABBITMQ_DEFAULT_PASS': config['pass'],
+                        'RABBITMQ_DEFAULT_VHOST': config['vhost'],
+                        'RABBITMQ_CONFIG_FILE': '/rabbitmq/rabbitmq.conf'
+                    },
+                    mounts=self.mounts['rabbitmq']
+                )
             )
-        )
 
-        # host_port = config['host'].split(':')[-1]
-        # api_port = config['api'].split(':')[-1]
-
-        # wait_for_attr(
-        #     self.containers['rabbitmq'],
-        #     ('NetworkSettings', 'Ports', f'{host_port}/tcp')
-        # )
-
-        # wait_for_attr(
-        #     self.containers['rabbitmq'],
-        #     ('NetworkSettings', 'Ports', f'{api_port}/tcp')
-        # )
-
-        for msg in self.stream_logs(self.containers['rabbitmq']):
-            if msg is None:
-                raise TEVMCException('failed to start rabbitmq')
-            if 'Server startup complete' in msg:
-                break
+            for msg in self.stream_logs(self.containers['rabbitmq']):
+                if 'Server startup complete' in msg:
+                    break
 
     def start_elasticsearch(self):
-        config = self.config['elasticsearch']
-        docker_dir = self.docker_wd / config['docker_path']
+        with self.must_keep_running('elasticsearch'):
+            config = self.config['elasticsearch']
+            docker_dir = self.docker_wd / config['docker_path']
 
-        data_dir = docker_dir / config['data_dir']
-        logs_dir = docker_dir / config['logs_dir']
+            data_dir = docker_dir / config['data_dir']
+            logs_dir = docker_dir / config['logs_dir']
 
-        data_dir.mkdir(parents=True, exist_ok=True)
-        logs_dir.mkdir(parents=True, exist_ok=True)
+            data_dir.mkdir(parents=True, exist_ok=True)
+            logs_dir.mkdir(parents=True, exist_ok=True)
 
-        self.mounts['elasticsearch'] = [
-            Mount('/home/elasticsearch/logs', str(logs_dir.resolve()), 'bind'),
-            Mount('/home/elasticsearch/data', str(data_dir.resolve()), 'bind')
-        ]
+            self.mounts['elasticsearch'] = [
+                Mount('/home/elasticsearch/logs', str(logs_dir.resolve()), 'bind'),
+                Mount('/home/elasticsearch/data', str(data_dir.resolve()), 'bind')
+            ]
 
-        self.containers['elasticsearch'] = self.exit_stack.enter_context(
-            self.open_container(
-                f'{config["name"]}-{self.pid}',
-                f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                environment={
-                    'discovery.type': 'single-node',
-                    'cluster.name': 'es-cluster',
-                    'node.name': 'es01',
-                    'bootstrap.memory_lock': 'true',
-                    'xpack.security.enabled': 'true',
-                    'ES_JAVA_OPTS': '-Xms2g -Xmx2g',
-                    'ES_NETWORK_HOST': '0.0.0.0',
-                    'ELASTIC_USERNAME': config['user'],
-                    'ELASTIC_PASSWORD': config['pass']
-                },
-                mounts=self.mounts['elasticsearch']
+            self.containers['elasticsearch'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}',
+                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    environment={
+                        'discovery.type': 'single-node',
+                        'cluster.name': 'es-cluster',
+                        'node.name': 'es01',
+                        'bootstrap.memory_lock': 'true',
+                        'xpack.security.enabled': 'true',
+                        'ES_JAVA_OPTS': '-Xms2g -Xmx2g',
+                        'ES_NETWORK_HOST': '0.0.0.0',
+                        'ELASTIC_USERNAME': config['user'],
+                        'ELASTIC_PASSWORD': config['pass']
+                    },
+                    mounts=self.mounts['elasticsearch']
+                )
             )
-        )
-        # port = config['host'].split(':')[-1]
-        # wait_for_attr(
-        #     self.containers['elasticsearch'],
-        #     ('NetworkSettings', 'Ports', port)
-        # )
 
-        for msg in self.stream_logs(self.containers['elasticsearch']):
-            # self.logger.info(msg.rstrip())
-            if ' indices into cluster_state' in msg:
-                break
+            for msg in self.stream_logs(self.containers['elasticsearch']):
+                # self.logger.info(msg.rstrip())
+                if ' indices into cluster_state' in msg:
+                    break
 
     def start_kibana(self):
-        config = self.config['kibana']
-        config_elastic = self.config['elasticsearch']
-        docker_dir = self.docker_wd / config['docker_path']
-        data_dir = docker_dir / config['data_dir']
-        conf_dir = docker_dir / config['conf_dir']
+        with self.must_keep_running('kibana'):
+            config = self.config['kibana']
+            config_elastic = self.config['elasticsearch']
+            docker_dir = self.docker_wd / config['docker_path']
+            data_dir = docker_dir / config['data_dir']
+            conf_dir = docker_dir / config['conf_dir']
 
-        data_dir.mkdir(parents=True, exist_ok=True)
+            data_dir.mkdir(parents=True, exist_ok=True)
 
-        self.mounts['kibana'] = [
-            Mount('/usr/share/kibana/config', str(conf_dir.resolve()), 'bind'),
-            Mount('/data', str(data_dir.resolve()), 'bind')
-        ]
+            self.mounts['kibana'] = [
+                Mount('/usr/share/kibana/config', str(conf_dir.resolve()), 'bind'),
+                Mount('/data', str(data_dir.resolve()), 'bind')
+            ]
 
-        self.containers['kibana'] = self.exit_stack.enter_context(
-            self.open_container(
-                f'{config["name"]}-{self.pid}',
-                f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                environment={
-                    'ELASTICSEARCH_HOSTS': f'http://{config_elastic["host"]}',
-                    'ELASTICSEARCH_USERNAME': config_elastic['user'],
-                    'ELASTICSEARCH_PASSWORD': config_elastic['pass']
-                },
-                mounts=self.mounts['kibana']
+            self.containers['kibana'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}',
+                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    environment={
+                        'ELASTICSEARCH_HOSTS': f'http://{config_elastic["host"]}',
+                        'ELASTICSEARCH_USERNAME': config_elastic['user'],
+                        'ELASTICSEARCH_PASSWORD': config_elastic['pass']
+                    },
+                    mounts=self.mounts['kibana']
+                )
             )
-        )
-
-        # port = config['port']
-        # wait_for_attr(
-        #     self.containers['kibana'],
-        #     ('NetworkSettings', 'Ports', port)
-        # )
-
-        #for msg in self.stream_logs(self.containers['kibana']):
-        #    self.logger.info(msg.rstrip())
-        #    if 'http server running at' in msg:
-        #        break
 
     def start_nodeos(self):
         """Start eosio_nodeos container.
@@ -327,111 +311,97 @@ class TEVMController:
         - Wait for nodeos to produce blocks
         - Create evm accounts and deploy contract
         """
-        config = self.config['nodeos']
-        docker_dir = self.docker_wd / config['docker_path']
+        with self.must_keep_running('nodeos'):
+            config = self.config['nodeos']
+            docker_dir = self.docker_wd / config['docker_path']
 
-        data_dir_guest = config['data_dir_guest']
-        data_dir_host = docker_dir / config['data_dir_host']
+            data_dir_guest = config['data_dir_guest']
+            data_dir_host = docker_dir / config['data_dir_host']
 
-        conf_dir = docker_dir / config['conf_dir']
-        contracts_dir = docker_dir / config['contracts_dir']
+            conf_dir = docker_dir / config['conf_dir']
+            contracts_dir = docker_dir / config['contracts_dir']
 
-        data_dir_host.mkdir(parents=True, exist_ok=True)
+            data_dir_host.mkdir(parents=True, exist_ok=True)
 
-        self.mounts['nodeos'] = [
-            Mount('/root', str(conf_dir.resolve()), 'bind'),
-            Mount('/opt/eosio/bin/contracts', str(contracts_dir.resolve()), 'bind'),
-            Mount(data_dir_guest, str(data_dir_host.resolve()), 'bind')
-        ]
+            self.mounts['nodeos'] = [
+                Mount('/root', str(conf_dir.resolve()), 'bind'),
+                Mount('/opt/eosio/bin/contracts', str(contracts_dir.resolve()), 'bind'),
+                Mount(data_dir_guest, str(data_dir_host.resolve()), 'bind')
+            ]
 
-        env = {
-            'NODEOS_DATA_DIR': config['data_dir_guest'],
-            'NODEOS_CONFIG': f'/root/config.ini',
-            'NODEOS_LOG_PATH': config['log_path'],
-            'NODEOS_LOGCONF': '/root/logging.json'
-        }
+            env = {
+                'NODEOS_DATA_DIR': config['data_dir_guest'],
+                'NODEOS_CONFIG': f'/root/config.ini',
+                'NODEOS_LOG_PATH': config['log_path'],
+                'NODEOS_LOGCONF': '/root/logging.json'
+            }
 
-        if 'snapshot' in config:
-            env['NODEOS_SNAPSHOT'] = config['snapshot']
+            if 'snapshot' in config:
+                env['NODEOS_SNAPSHOT'] = config['snapshot']
 
-        elif 'genesis' in config: 
-            env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
+            elif 'genesis' in config: 
+                env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
 
-        # open container
-        self.containers['nodeos'] = self.exit_stack.enter_context(
-            self.open_container(
-                f'{config["name"]}-{self.pid}',
-                f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                environment=env,
-                mounts=self.mounts['nodeos']
+            # open container
+            self.containers['nodeos'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}',
+                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    environment=env,
+                    mounts=self.mounts['nodeos']
+                )
             )
-        )
 
-        # for msg in self.stream_logs(self.containers['nodeos']):
-        #     self.logger.info(msg.rstrip()) 
+            try:
+                exec_id, exec_stream = docker_open_process(
+                    self.client, self.containers['nodeos'],
+                    ['/bin/bash', '-c', 
+                        'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
 
-        # http_port = config['ini']['http_addr'].split(':')[-1]
-        # wait_for_attr(
-        #     self.containers['nodeos'],
-        #     ('NetworkSettings', 'Ports', http_port)
-        # )
+                # setup cleos wrapper
+                cleos = CLEOSEVM(
+                    self.client,
+                    self.containers['nodeos'],
+                    logger=self.logger)
+                self.cleos = cleos
 
-        # ship_port = config['ini']['history_endpoint'].split(':')[-1]
-        # wait_for_attr(
-        #     self.containers['nodeos'],
-        #     ('NetworkSettings', 'Ports', ship_port)
-        # )
+                # init wallet
+                cleos.start_keosd(
+                    '-c',
+                    '/root/keosd_config.ini') 
 
-        try:
-            exec_id, exec_stream = docker_open_process(
-                self.client, self.containers['nodeos'],
-                ['/bin/bash', '-c', 
-                    'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
+                if self.is_local:
+                    # await for nodeos to produce a block
+                    output = cleos.wait_produced()
+                    cleos.wait_blocks(4)
 
-            # setup cleos wrapper
-            cleos = CLEOSEVM(
-                self.client,
-                self.containers['nodeos'],
-                logger=self.logger)
-            self.cleos = cleos
+                    self.is_fresh = 'Initializing fresh blockchain' in output
 
-            # init wallet
-            cleos.start_keosd(
-                '-c',
-                '/root/keosd_config.ini') 
+                    if self.is_fresh:
+                        cleos.setup_wallet(self.producer_key)
 
-            if self.is_local:
-                # await for nodeos to produce a block
-                output = cleos.wait_produced()
-                cleos.wait_blocks(4)
+                        try:
+                            cleos.boot_sequence(
+                                sys_contracts_mount='/opt/eosio/bin/contracts')
 
-                self.is_fresh = 'Initializing fresh blockchain' in output
+                            cleos.deploy_evm()
 
-                if self.is_fresh:
-                    cleos.setup_wallet(self.producer_key)
+                        except AssertionError:
+                            for msg in self.stream_logs(self.containers['nodeos']):
+                                self.logger.critical(msg.rstrip()) 
+                            sys.exit(1)
 
-                    try:
-                        cleos.boot_sequence(
-                            sys_contracts_mount='/opt/eosio/bin/contracts')
+                else:
+                    # await for nodeos to receive a block from peers
+                    cleos.wait_received()
 
-                        cleos.deploy_evm()
+            except docker.errors.APIError as err:
+                self.logger.critical(f'docker api error: {err}')
+                for msg in self.stream_logs(self.containers['nodeos']):
+                    self.logger.critical(msg.rstrip()) 
+                sys.exit(1)
 
-                    except AssertionError:
-                        for msg in self.stream_logs(self.containers['nodeos']):
-                            self.logger.critical(msg.rstrip()) 
-                        sys.exit(1)
-
-            else:
-                # await for nodeos to receive a block from peers
-                cleos.wait_received()
-
-        except docker.errors.APIError as err:
-            self.logger.critical(f'docker api error: {err}')
-            for msg in self.stream_logs(self.containers['nodeos']):
-                self.logger.critical(msg.rstrip()) 
-            sys.exit(1)
-
-        self.logger.info(cleos.get_info())
+            self.logger.info(cleos.get_info())
 
     def setup_hyperion_log_mount(self):
         docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
@@ -472,50 +442,41 @@ class TEVMController:
             time.sleep(10)
     
     def start_hyperion_indexer(self):
-        config = self.config['hyperion']['indexer']
+        with self.must_keep_running('hyperion-indexer'):
+            config = self.config['hyperion']['indexer']
 
-        self.containers['hyperion-indexer'] = self.exit_stack.enter_context(
-            self.open_container(
-                f'{config["name"]}-{self.pid}',
-                f'{self.config["hyperion"]["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                command=[
-                    '/bin/bash', '-c',
-                    f'/root/scripts/run-hyperion.sh {self.chain_name}-indexer'
-                ],
-                mounts=self.mounts['hyperion']
+            self.containers['hyperion-indexer'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}',
+                    f'{self.config["hyperion"]["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    command=[
+                        '/bin/bash', '-c',
+                        f'/root/scripts/run-hyperion.sh {self.chain_name}-indexer'
+                    ],
+                    mounts=self.mounts['hyperion']
+                )
             )
-        )
 
-        # for msg in self.stream_logs(self._hyperion_indexer_container):
-        #    if '02_continuous_reader] Websocket connected!' in msg:
-        #        break
+    def start_hyperion_api(self):
+        with self.must_keep_running('hyperion-api'):
+            config = self.config['hyperion']['api']
 
-    def start_hyperion_api(self, port: str = '7000/tcp'):
-        """Start hyperion_api container and await port init.
-        """
-        config = self.config['hyperion']['api']
-
-        self.containers['hyperion-api'] = self.exit_stack.enter_context(
-            self.open_container(
-                f'{config["name"]}-{self.pid}',
-                f'{self.config["hyperion"]["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                command=[
-                    '/bin/bash', '-c',
-                    f'/root/scripts/run-hyperion.sh {self.chain_name}-api'
-                ],
-                mounts=self.mounts['hyperion']
+            self.containers['hyperion-api'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}',
+                    f'{self.config["hyperion"]["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    command=[
+                        '/bin/bash', '-c',
+                        f'/root/scripts/run-hyperion.sh {self.chain_name}-api'
+                    ],
+                    mounts=self.mounts['hyperion']
+                )
             )
-        )
 
-        # wait_for_attr(
-        #     self.containers['hyperion-api'],
-        #     ('NetworkSettings', 'Ports', port)
-        # )
-
-        for msg in self.stream_logs(self.containers['hyperion-api']):
-            self.logger.info(msg.rstrip())
-            if 'api ready' in msg:
-                break
+            for msg in self.stream_logs(self.containers['hyperion-api']):
+                self.logger.info(msg.rstrip())
+                if 'api ready' in msg:
+                    break
 
     def setup_index_patterns(self, patterns: List[str]):
         kibana_port = self.config['kibana']['port']
@@ -554,53 +515,56 @@ class TEVMController:
             self.logger.info('registered.')
 
     def start_beats(self):
-        config = self.config['beats']
-        config_elastic = self.config['elasticsearch']
-        config_kibana = self.config['kibana']
+        with self.must_keep_running('beats'):
+            config = self.config['beats']
+            config_elastic = self.config['elasticsearch']
+            config_kibana = self.config['kibana']
 
-        hyperion_docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
-        data_dir = hyperion_docker_dir / self.config['hyperion']['logs_dir']
-        docker_dir = self.docker_wd / config['docker_path']
-        conf_dir = docker_dir / config['conf_dir']
+            hyperion_docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
+            data_dir = hyperion_docker_dir / self.config['hyperion']['logs_dir']
+            docker_dir = self.docker_wd / config['docker_path']
+            conf_dir = docker_dir / config['conf_dir']
 
-        data_dir.mkdir(parents=True, exist_ok=True)
+            data_dir.mkdir(parents=True, exist_ok=True)
 
-        self.mounts['beats'] = [
-            Mount('/etc/filebeat', str(conf_dir.resolve()), 'bind'),
-            Mount('/root/logs', str(data_dir.resolve()), 'bind')
-        ]
+            self.mounts['beats'] = [
+                Mount('/etc/filebeat', str(conf_dir.resolve()), 'bind'),
+                Mount('/root/logs', str(data_dir.resolve()), 'bind')
+            ]
 
-        self.containers['beats'] = self.exit_stack.enter_context(
-            self.open_container(
-                f'{config["name"]}-{self.pid}',
-                f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                environment={
-                    'CHAIN_NAME': self.chain_name,
-                    'ELASTIC_USER': config_elastic['user'],
-                    'ELASTIC_PASS': config_elastic['pass'],
-                    'ELASTIC_HOST': config_elastic['host'],
-                    'KIBANA_HOST': f'localhost:{config_kibana["port"]}'
-                },
-                mounts=self.mounts['beats']
+            self.containers['beats'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}',
+                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    environment={
+                        'CHAIN_NAME': self.chain_name,
+                        'ELASTIC_USER': config_elastic['user'],
+                        'ELASTIC_PASS': config_elastic['pass'],
+                        'ELASTIC_HOST': config_elastic['host'],
+                        'KIBANA_HOST': f'localhost:{config_kibana["port"]}'
+                    },
+                    mounts=self.mounts['beats']
+                )
             )
-        )
 
-        exec_id, exec_stream = docker_open_process(
-            self.client,
-            self.containers['beats'],
-            ['filebeat', 'setup', '--pipelines'])
+            exec_id, exec_stream = docker_open_process(
+                self.client,
+                self.containers['beats'],
+                ['filebeat', 'setup', '--pipelines'])
 
-        ec, out = docker_wait_process(self.client, exec_id, exec_stream)
-        self.logger.info(out)
-        assert ec == 0
+            ec, out = docker_wait_process(self.client, exec_id, exec_stream)
+            self.logger.info(out)
+            assert ec == 0
 
-        if self.is_local:
-            self.setup_index_patterns(
-                [f'{self.chain_name}-action-*', 'filebeat-*'])
+            if self.is_local:
+                self.setup_index_patterns(
+                    [f'{self.chain_name}-action-*', 'filebeat-*'])
 
         
     def __enter__(self):
-        self.start_redis()
+        with self.must_keep_running('redis'):
+            self.start_redis()
+
         self.start_rabbitmq()
         self.start_elasticsearch()
         self.start_kibana()

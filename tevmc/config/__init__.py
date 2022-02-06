@@ -2,8 +2,10 @@
 
 import json
 
-from typing import Dict, Any
+from typing import Dict, List, Any
 from pathlib import Path
+
+import docker
 
 from .default import local, testnet, mainnet
 
@@ -35,4 +37,36 @@ def load_config(location: str, name: str) -> Dict[str, Dict]:
 
     with open(config_file, 'r') as config_file:
         return json.loads(config_file.read())
-    
+
+
+def build_docker_manifest(config: Dict) -> List[str]:
+    manifest = []
+    for container_name, conf in config.items():
+        if 'docker_path' not in conf:
+            continue
+
+        try:
+            repo, tag = conf['tag'].split(':')
+            tag = f'{tag}-{config["hyperion"]["chain"]["name"]}'
+
+        except ValueError:
+            raise ValueError(
+                f'Malformed tag {key}=\'{arg}\','
+                f' must be of format \'{repo}:{tag}\'.')
+
+        manifest.append((repo, tag))
+
+    return manifest
+
+
+def check_docker_manifest(client, manifest: List):
+    for repo, tag in manifest:
+        try:
+            client.images.get(f'{repo}:{tag}')
+
+        except docker.errors.NotFound:
+            raise docker.errors.NotFound(
+                f'Docker image \'{repo}:{tag}\' is required, please run '
+                '\'tevmc build\' to build the required images.'
+            )
+
