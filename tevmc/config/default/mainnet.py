@@ -6,7 +6,8 @@ redis = {
     'tag': 'tevm:redis',
     'host': 'localhost',
     'port': 6379,
-    'data_volume': 'redis_data'
+    'conf_dir': 'config',
+    'data_dir': 'data'
 }
 
 rabbitmq = {
@@ -18,7 +19,8 @@ rabbitmq = {
     'user': 'username',
     'pass': 'password',
     'vhost': '/hyperion',
-    'data_volume': 'rabbitmq_data'
+    'conf_dir': 'config',
+    'data_dir': 'data'
 }
 
 elasticsearch = {
@@ -30,7 +32,8 @@ elasticsearch = {
     'ingest_nodes': ['localhost:9200'],
     'user': 'elastic',
     'pass': 'password',
-    'data_volume': 'elasticsearch_data'
+    'data_dir': 'data',
+    'logs_dir': 'logs'
 }
 
 kibana = {
@@ -38,19 +41,22 @@ kibana = {
     'docker_path': 'kibana',
     'tag': 'tevm:kibana',
     'host': '0.0.0.0',
-    'port': 5601
+    'port': 5601,
+    'conf_dir': 'config',
+    'data_dir': 'data'
 }
 
 nodeos = {
     'name': 'nodeos',
     'tag': 'tevm:nodeos-2.1.0-evm',
     'docker_path': 'eosio',
-    'volume': 'eosio_volume',
-    'data_dir': '/mnt/dev/data',
+    'data_dir_guest': '/mnt/dev/data',
+    'data_dir_host': 'data',
+    'conf_dir': 'config',
+    'contracts_dir': 'contracts',
     'genesis': 'mainnet',
-    'snapshot': '/root/snapshots/snapshot-mainnet-20211026-blk-180635436.bin',
+    'snapshot': '/snapshot-mainnet-20211026-blk-180635436.bin',
     'log_path': '/root/nodeos.log',
-    'data_volume': 'elasticsearch_data',
     'ini': {
         'wasm_runtime': 'eos-vm-jit', 
         'vm_oc_compile_threads': 4,
@@ -82,7 +88,7 @@ nodeos = {
         
         'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',    
         
-        'disable_subjetive_billing': True,
+        'disable_subjective_billing': True,
         'max_transaction_time': 500,
 
         'plugins': [
@@ -111,6 +117,8 @@ nodeos = {
 hyperion = {
     'tag': 'tevm:hyperion',
     'docker_path': 'hyperion',
+    'conf_dir': 'config',
+    'logs_dir': 'logs',
     'chain': {
         'name': 'telos-mainnet',
         'long_name': 'Telos Mainnet',
@@ -145,7 +153,6 @@ hyperion = {
     },
     'indexer': {
         'name': 'hyperion-indexer',
-        'log_volume': 'indexer_logs',
         'start_on': 180635436,
         'end_on': 0,
         'auto_stop': 0,
@@ -176,7 +183,6 @@ hyperion = {
     },
     'api': {
         'name': 'hyperion-api',
-        'log_volume': 'api_logs',
         'server_addr': '0.0.0.0',
         'server_port': 7000,
         'server_name': 'rpcX.XX.telos.net',
@@ -188,7 +194,9 @@ hyperion = {
 beats = {
     'name': 'beats',
     'tag': 'tevm:beats',
-    'docker_path': 'beats'
+    'docker_path': 'beats',
+    'conf_dir': 'config',
+    'data_dir': 'data'
 }
 
 default_config = {

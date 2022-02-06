@@ -57,7 +57,6 @@ nodeos = {
     'genesis': 'testnet',
     'snapshot': '/snapshot-testnet-20211020-blknum-136229794.bin',
     'log_path': '/root/nodeos.log',
-    'data_volume': 'elasticsearch_data',
     'ini': {
         'wasm_runtime': 'eos-vm-jit', 
         'vm_oc_compile_threads': 4,
@@ -141,13 +140,13 @@ hyperion = {
         'explorer': {
             'enabled': True,
             'chain_logo_url': 'http://raw.githubusercontent.com/telosnetwork/images/master/chain_icons/telos-logo-light.png',
-            'server_name': '0.0.0.0:7000'
+            'server_name': 'rpcX.XX.telos.net'
         },
 
         'telos-evm': {
             'enabled': True,
             'signer_account': 'rpc.evm',
-            'signer_permission': 'active',
+            'signer_permission': 'rpc',
             'signer_key': '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
             'contracts': {
                 'main': 'eosio.evm' 
@@ -194,7 +193,7 @@ hyperion = {
         'name': 'hyperion-api',
         'server_addr': '0.0.0.0',
         'server_port': 7000,
-        'server_name': '0.0.0.0:7000',
+        'server_name': 'rpcX.XX.telos.net',
         'provider_name': 'TelosEVM testnet',
         'provider_url': 'https://telos.net'
     }
