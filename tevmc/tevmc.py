@@ -423,7 +423,6 @@ class TEVMController:
         ]
 
     def await_full_index(self):
-
         if 'testnet' in self.chain_name:
             endpoint = 'https://testnet.telos.caleos.io' 
         else:
@@ -435,18 +434,17 @@ class TEVMController:
         last_indexed_block = 0
         for line in self.stream_logs(self.containers['hyperion-indexer']):
             if 'continuous_reader' in line:
-                self.logger.info(line)
-                last_index_time = time.time()
+                self.logger.info(line.rstrip())
                 m = re.findall(r'block_num: ([0-9]+)', line)
                 if len(m) == 1:
                     last_indexed_block = int(m[0])
+                
+                delta = remote_head_block - last_indexed_block
 
-            delta = remote_head_block - last_indexed_block
+                self.logger.info(f'waiting on indexer... delta: {delta}')
 
-            self.logger.info(f'waiting on indexer... delta: {delta}')
-
-            if delta < 100:
-                break
+                if delta < 100:
+                    break
     
     def start_hyperion_indexer(self):
         with self.must_keep_running('hyperion-indexer'):
