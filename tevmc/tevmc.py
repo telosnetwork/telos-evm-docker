@@ -175,8 +175,13 @@ class TEVMController:
         container.reload()
 
         if container.status != 'running':
-            self.logger.critical('log dump:')
-            self.logger.critical(container.logs().decode('utf-8'))
+            self.logger.critical('container status: {container.status}, log dump:')
+            try:
+                self.logger.critical(container.logs().decode('utf-8'))
+
+            except docker.errors.NotFound:
+                self.logger.critical('couldn\'t access logs.')
+
             raise TEVMCException(f'{container.name} is not running')
 
     def start_redis(self):
@@ -203,6 +208,7 @@ class TEVMController:
             )
 
             for msg in self.stream_logs(self.containers['redis']):
+                self.logger.info(msg.rstrip())
                 if 'Ready to accept connections' in msg:
                     break
 
@@ -236,6 +242,7 @@ class TEVMController:
             )
 
             for msg in self.stream_logs(self.containers['rabbitmq']):
+                self.logger.info(msg.rstrip())
                 if 'Server startup complete' in msg:
                     break
 
@@ -275,7 +282,7 @@ class TEVMController:
             )
 
             for msg in self.stream_logs(self.containers['elasticsearch']):
-                # self.logger.info(msg.rstrip())
+                self.logger.info(msg.rstrip())
                 if ' indices into cluster_state' in msg:
                     break
 
