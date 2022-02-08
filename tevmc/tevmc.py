@@ -235,7 +235,8 @@ class TEVMController:
                         'RABBITMQ_DEFAULT_USER': config['user'],
                         'RABBITMQ_DEFAULT_PASS': config['pass'],
                         'RABBITMQ_DEFAULT_VHOST': config['vhost'],
-                        'RABBITMQ_CONFIG_FILE': '/rabbitmq/rabbitmq.conf'
+                        'RABBITMQ_CONFIG_FILE': '/rabbitmq/rabbitmq.conf',
+                        'RABBITMQ_CONF_ENV_FILE': '/rabbitmq/rabbitmq-env.conf'
                     },
                     mounts=self.mounts['rabbitmq']
                 )
