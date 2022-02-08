@@ -175,7 +175,7 @@ class TEVMController:
         container.reload()
 
         if container.status != 'running':
-            self.logger.critical('container status: {container.status}, log dump:')
+            self.logger.critical(f'container status: {container.status}, log dump:')
             try:
                 self.logger.critical(container.logs().decode('utf-8'))
 

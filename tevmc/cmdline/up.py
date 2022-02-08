@@ -14,7 +14,7 @@ import requests
 
 from daemonize import Daemonize
 
-from ..tevmc import TEVMController
+from ..tevmc import TEVMController, TEVMCException
 from ..config import *
 
 from .cli import cli, get_docker_client
@@ -61,7 +61,14 @@ def up(
         sys.exit(1)
 
     if Path(pid).resolve().exists():
-        print('daemon pid file exists. abort.')
+        print('Daemon pid file exists. Abort.')
+        sys.exit(1)
+
+    # simple build check
+    if 'metadata' not in config:
+        print(
+            'No metadata in temvc.json, please build '
+            'with \'tevmc build\' before running.')
         sys.exit(1)
 
     # config logging to file
