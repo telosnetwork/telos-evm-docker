@@ -1,10 +1,6 @@
 name: Hardhat Tests 
 
 on:
-  push:
-    branches:
-      - python_toolchain
-
   pull_request:
     branches:
       - master
