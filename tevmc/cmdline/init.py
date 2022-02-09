@@ -12,7 +12,7 @@ from distutils.dir_util import copy_tree
 import click
 
 from .cli import cli
-from ..config import local, testnet, mainnet
+from ..config import local, testnet, mainnet, randomize_ports
 
 
 source_dir = Path(__file__).parent
@@ -60,8 +60,11 @@ def touch_node_dir(target_dir, conf, fname):
 @click.option(
     '--target-dir', default='.',
     help='target')
+@click.option(
+    '--random-ports/--default-ports', default=False,
+    help='Display pretty output or just stream logs.')
 @click.argument('chain-name')
-def init(config, target_dir, chain_name):
+def init(config, target_dir, chain_name, random_ports):
 
     if not template_dir.is_dir():
         print('Template directory not found.')
@@ -82,6 +85,9 @@ def init(config, target_dir, chain_name):
 
     elif 'mainnet' in chain_name:
         conf = mainnet.default_config
+
+    if random_ports:
+        conf = randomize_ports(conf)
    
     target_dir = target_dir / chain_name
     target_dir.mkdir(parents=True, exist_ok=True)
