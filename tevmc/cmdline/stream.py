@@ -44,7 +44,7 @@ def stream(pid, logpath, target_dir, config, source):
         if source == 'daemon':
             with open(logpath, 'r') as logfile:
                 line = ''
-                while 'Stopping daemon.' not in line:
+                while True:
                     try:
                         line = logfile.readline()
                         print(line, end='', flush=True)

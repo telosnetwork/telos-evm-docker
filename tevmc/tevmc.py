@@ -236,7 +236,9 @@ class TEVMController:
                         'RABBITMQ_DEFAULT_PASS': config['pass'],
                         'RABBITMQ_DEFAULT_VHOST': config['vhost'],
                         'RABBITMQ_CONFIG_FILE': '/rabbitmq/rabbitmq.conf',
-                        'RABBITMQ_CONF_ENV_FILE': '/rabbitmq/rabbitmq-env.conf'
+                        'RABBITMQ_CONF_ENV_FILE': '/rabbitmq/rabbitmq-env.conf',
+                        'RABBITMQ_DIST_PORT': config['dist_port'],
+                        'RABBITMQ_NODENAME': config['node_name']
                     },
                     mounts=self.mounts['rabbitmq']
                 )
@@ -367,54 +369,64 @@ class TEVMController:
                 )
             )
 
-            try:
-                exec_id, exec_stream = docker_open_process(
-                    self.client, self.containers['nodeos'],
-                    ['/bin/bash', '-c', 
-                        'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
+            for msg in self.stream_logs(self.containers['nodeos']):
+                self.logger.info(msg.rstrip())
+                if 'configured http to listen on' in msg:
+                    break
 
-                # setup cleos wrapper
-                cleos = CLEOSEVM(
-                    self.client,
-                    self.containers['nodeos'],
-                    logger=self.logger)
-                self.cleos = cleos
+                elif 'Incorrect plugin configuration' in msg:
+                    raise TEVMCException('Nodeos bootstrap error.')
 
-                # init wallet
-                cleos.start_keosd(
-                    '-c',
-                    '/root/keosd_config.ini') 
+            exec_id, exec_stream = docker_open_process(
+                self.client, self.containers['nodeos'],
+                ['/bin/bash', '-c', 
+                    'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
 
-                if self.is_local:
-                    # await for nodeos to produce a block
-                    output = cleos.wait_produced()
-                    cleos.wait_blocks(4)
+            nodeos_api_port = config['ini']['http_addr'].split(':')[1]
+            hyperion_api_port = self.config['hyperion']['chain']['router_port']
 
-                    self.is_fresh = 'Initializing fresh blockchain' in output
+            cleos_url = f'http://127.0.0.1:{nodeos_api_port}'
+            hyperion_api_url = f'http://127.0.0.1:{hyperion_api_port}'
 
-                    if self.is_fresh:
-                        cleos.setup_wallet(self.producer_key)
+            # setup cleos wrapper
+            cleos = CLEOSEVM(
+                self.client,
+                self.containers['nodeos'],
+                logger=self.logger,
+                url=cleos_url,
+                hyperion_api_endpoint=hyperion_api_url)
 
-                        try:
-                            cleos.boot_sequence(
-                                sys_contracts_mount='/opt/eosio/bin/contracts')
+            self.cleos = cleos
 
-                            cleos.deploy_evm()
+            # init wallet
+            cleos.start_keosd(
+                '-c',
+                '/root/keosd_config.ini') 
 
-                        except AssertionError:
-                            for msg in self.stream_logs(self.containers['nodeos']):
-                                self.logger.critical(msg.rstrip()) 
-                            sys.exit(1)
+            if self.is_local:
+                # await for nodeos to produce a block
+                output = cleos.wait_produced()
+                cleos.wait_blocks(4)
 
-                else:
-                    # await for nodeos to receive a block from peers
-                    cleos.wait_received()
+                self.is_fresh = 'Initializing fresh blockchain' in output
 
-            except docker.errors.APIError as err:
-                self.logger.critical(f'docker api error: {err}')
-                for msg in self.stream_logs(self.containers['nodeos']):
-                    self.logger.critical(msg.rstrip()) 
-                sys.exit(1)
+                if self.is_fresh:
+                    cleos.setup_wallet(self.producer_key)
+
+                    try:
+                        cleos.boot_sequence(
+                            sys_contracts_mount='/opt/eosio/bin/contracts')
+
+                        cleos.deploy_evm()
+
+                    except AssertionError:
+                        for msg in self.stream_logs(self.containers['nodeos']):
+                            self.logger.critical(msg.rstrip()) 
+                        sys.exit(1)
+
+            else:
+                # await for nodeos to receive a block from peers
+                cleos.wait_received()
 
             self.logger.info(cleos.get_info())
 
@@ -604,13 +616,14 @@ class TEVMController:
             ['pkill', 'nodeos'])
 
         ec, out = docker_wait_process(self.client, exec_id, exec_stream)
-        self.logger.info(ec)
-        self.logger.info(out)
+        self.logger.info(f'pkill nodeos: {ec}')
+        self.logger.info('await gracefull nodeos exit...')
 
         for msg in self.stream_logs(self.containers['nodeos']):
-            self.logger.info(msg.rstrip())
             if 'nodeos successfully exiting' in msg:
                 break
+
+        self.logger.info('nodeos exit.')
         
         self.exit_stack.pop_all().close()
 

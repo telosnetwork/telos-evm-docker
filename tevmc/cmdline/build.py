@@ -96,7 +96,9 @@ def perform_config_build(target_dir, config):
 
     subst = {
         'rabbitmq_port': rabbit_conf['host'].split(':')[-1],
-        'rabbitmq_api_port': rabbit_conf['api'].split(':')[-1]
+        'rabbitmq_api_port': rabbit_conf['api'].split(':')[-1],
+        'rabbitmq_dist_port': rabbit_conf['dist_port'],
+        'rabbitmq_prometheus_port': rabbit_conf['prometheus_port']
     }
     write_docker_template(f'{rabbit_build_dir}/Dockerfile', subst)
     write_docker_template(f'{rabbit_conf_dir}/rabbitmq.conf', subst)
@@ -403,12 +405,15 @@ class BuildInProgress:
     '--headless/--interactive', default=False,
     help='Display pretty output or just stream logs.')
 @click.option(
+    '--always-conf/--smart-conf', default=False,
+    help='Force configuration files rebuild from templates.')
+@click.option(
     '--target-dir', default='.',
     help='target')
 @click.option(
     '--config', default='tevmc.json',
     help='Unified config file name.')
-def build(headless, target_dir, config):
+def build(headless, always_conf, target_dir, config):
     """Build in-repo docker containers.
     """
     config_fname = config
@@ -434,7 +439,7 @@ def build(headless, target_dir, config):
 
     print(f'Current hash: {curr_hash}')
 
-    rebuild_conf = prev_hash != curr_hash
+    rebuild_conf = (prev_hash != curr_hash) or always_conf
 
     if rebuild_conf:
         config['metadata'] = {}

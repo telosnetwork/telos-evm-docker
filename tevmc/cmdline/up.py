@@ -136,7 +136,8 @@ def up(
         pid=pid,
         action=wait_exit_forever,
         keep_fds=keep_fds,
-        chdir=target_dir)
+        chdir=target_dir,
+        auto_close_fds=False)
 
     daemon.start()
 
