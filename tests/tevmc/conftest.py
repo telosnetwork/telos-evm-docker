@@ -13,7 +13,7 @@ from tevmc import TEVMController
 from tevmc.config import (
     local, testnet, mainnet,
     build_docker_manifest,
-    randomize_ports
+    randomize_conf
 )
 from tevmc.cmdline.init import touch_node_dir
 from tevmc.cmdline.build import perform_docker_build
@@ -24,7 +24,7 @@ from tevmc.cmdline.cli import get_docker_client
 
 @contextmanager
 def bootstrap_test_stack(tmp_path_factory, config, **kwargs):
-    config = randomize_ports(config)
+    config = randomize_conf(config)
     client = get_docker_client()
 
     chain_name = config['hyperion']['chain']['name']
@@ -95,6 +95,7 @@ def tevmc_testnet(tmp_path_factory):
         tmp_path_factory, testnet.default_config) as tevmc:
         yield tevmc
 
+
 @pytest.fixture(scope='module')
 def tevmc_testnet_no_wait(tmp_path_factory):
     with bootstrap_test_stack(
@@ -106,4 +107,11 @@ def tevmc_testnet_no_wait(tmp_path_factory):
 def tevmc_mainnet(tmp_path_factory):
     with bootstrap_test_stack(
         tmp_path_factory, mainnet.default_config) as tevmc:
+        yield tevmc
+
+
+@pytest.fixture(scope='module')
+def tevmc_mainnet_no_wait(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, mainnet.default_config, wait=False) as tevmc:
         yield tevmc

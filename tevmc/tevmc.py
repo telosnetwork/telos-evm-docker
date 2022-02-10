@@ -201,7 +201,7 @@ class TEVMController:
 
             self.containers['redis'] = self.exit_stack.enter_context(
                 self.open_container(
-                    f'{config["name"]}-{self.pid}',
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     mounts=self.mounts['redis']
                 ) 
@@ -229,7 +229,7 @@ class TEVMController:
 
             self.containers['rabbitmq'] = self.exit_stack.enter_context(
                 self.open_container(
-                    f'{config["name"]}-{self.pid}',
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     environment={
                         'RABBITMQ_DEFAULT_USER': config['user'],
@@ -267,7 +267,7 @@ class TEVMController:
 
             self.containers['elasticsearch'] = self.exit_stack.enter_context(
                 self.open_container(
-                    f'{config["name"]}-{self.pid}',
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     environment={
                         'discovery.type': 'single-node',
@@ -306,7 +306,7 @@ class TEVMController:
 
             self.containers['kibana'] = self.exit_stack.enter_context(
                 self.open_container(
-                    f'{config["name"]}-{self.pid}',
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     environment={
                         'ELASTICSEARCH_HOSTS': f'http://{config_elastic["host"]}',
@@ -362,7 +362,7 @@ class TEVMController:
             # open container
             self.containers['nodeos'] = self.exit_stack.enter_context(
                 self.open_container(
-                    f'{config["name"]}-{self.pid}',
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     environment=env,
                     mounts=self.mounts['nodeos']
@@ -472,7 +472,7 @@ class TEVMController:
 
             self.containers['hyperion-indexer'] = self.exit_stack.enter_context(
                 self.open_container(
-                    f'{config["name"]}-{self.pid}',
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{self.config["hyperion"]["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     command=[
                         '/bin/bash', '-c',
@@ -488,7 +488,7 @@ class TEVMController:
 
             self.containers['hyperion-api'] = self.exit_stack.enter_context(
                 self.open_container(
-                    f'{config["name"]}-{self.pid}',
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{self.config["hyperion"]["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     command=[
                         '/bin/bash', '-c',
@@ -559,7 +559,7 @@ class TEVMController:
 
             self.containers['beats'] = self.exit_stack.enter_context(
                 self.open_container(
-                    f'{config["name"]}-{self.pid}',
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     environment={
                         'CHAIN_NAME': self.chain_name,

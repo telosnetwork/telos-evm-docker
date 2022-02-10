@@ -10,6 +10,8 @@ from pathlib import Path
 
 import docker
 
+from py_eosio.sugar import random_string
+
 from .default import local, testnet, mainnet
 
 
@@ -74,7 +76,7 @@ def check_docker_manifest(client, manifest: List):
             )
 
 
-def randomize_ports(config: Dict) -> Dict:
+def randomize_conf(config: Dict) -> Dict:
     ret = config.copy()
 
     def get_free_port(tries=10):
@@ -108,14 +110,17 @@ def randomize_ports(config: Dict) -> Dict:
     ret['redis']['port'] = get_free_port()
 
     # rabbitmq
+    ret['rabbitmq']['node_name'] = f'{random_string(size=20)}@localhost'
+
     ret['rabbitmq']['host'] = get_free_local_addr()
     ret['rabbitmq']['api'] = get_free_local_addr()
     ret['rabbitmq']['dist_port'] = get_free_port() 
     ret['rabbitmq']['prometheus_port'] = get_free_port()
 
     # elasticsearch
-    ret['elasticsearch']['host'] = get_free_local_addr()
-    ret['elasticsearch']['ingest_nodes'] = [get_free_local_addr()]
+    elastic_addr = get_free_local_addr()
+    ret['elasticsearch']['host'] = elastic_addr
+    ret['elasticsearch']['ingest_nodes'] = [elastic_addr]
 
     # kibana
     ret['kibana']['port'] = get_free_port()
@@ -124,18 +129,23 @@ def randomize_ports(config: Dict) -> Dict:
     nodeos_http_port = get_free_port()
     state_history_port = get_free_port()
     ret['nodeos']['ini']['http_addr'] = f'0.0.0.0:{nodeos_http_port}'
-    ret['nodeos']['ini']['p2p_addr'] = f'0.0.0.0:{state_history_port}'
-    ret['nodeos']['ini']['history_endpoint'] = get_free_remote_addr()
+    ret['nodeos']['ini']['p2p_addr'] = f'0.0.0.0:{get_free_port()}'
+    ret['nodeos']['ini']['history_endpoint'] = f'0.0.0.0:{state_history_port}'
 
     # hyperion
     ret['hyperion']['chain']['http'] = f'http://localhost:{nodeos_http_port}'
-    ret['hyperion']['chain']['ship'] = f'http://localhost:{state_history_port}'
+    ret['hyperion']['chain']['ship'] = f'ws://localhost:{state_history_port}'
     
     hyperion_api_port = get_free_port()
     ret['hyperion']['chain']['router_port'] = hyperion_api_port
 
+    idx_ws_port = get_free_port()
+
     ret['hyperion']['chain']['telos-evm'][
-        'indexerWebsocketHost'] = get_free_port()
+        'indexerWebsocketPort'] = idx_ws_port
+
+    ret['hyperion']['chain']['telos-evm'][
+        'indexerWebsocketUri'] = f'ws://localhost:{idx_ws_port}'
 
     ret['hyperion']['chain']['telos-evm'][
         'rpcWebsocketPort'] = get_free_port()

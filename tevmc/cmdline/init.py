@@ -12,7 +12,7 @@ from distutils.dir_util import copy_tree
 import click
 
 from .cli import cli
-from ..config import local, testnet, mainnet, randomize_ports
+from ..config import local, testnet, mainnet, randomize_conf
 
 
 source_dir = Path(__file__).parent
@@ -61,10 +61,11 @@ def touch_node_dir(target_dir, conf, fname):
     '--target-dir', default='.',
     help='target')
 @click.option(
-    '--random-ports/--default-ports', default=False,
-    help='Display pretty output or just stream logs.')
+    '--random-conf/--default-conf', default=False,
+    help='Randomize port and rabbit node name, useful to boot '
+         'multiple nodes on same host.')
 @click.argument('chain-name')
-def init(config, target_dir, chain_name, random_ports):
+def init(config, target_dir, chain_name, random_conf):
 
     if not template_dir.is_dir():
         print('Template directory not found.')
@@ -86,8 +87,8 @@ def init(config, target_dir, chain_name, random_ports):
     elif 'mainnet' in chain_name:
         conf = mainnet.default_config
 
-    if random_ports:
-        conf = randomize_ports(conf)
+    if random_conf:
+        conf = randomize_conf(conf)
    
     target_dir = target_dir / chain_name
     target_dir.mkdir(parents=True, exist_ok=True)
