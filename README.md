@@ -1,6 +1,10 @@
 # telos-evm-docker
 ## Docker containers for local EVM development and building automated tests
 
+## Snake in your boot edition (WIP)
+
+Not all features of standard build system yet implemented!
+
 ## Overview
 ### eosio_nodeos container
 The Telos node container, this is a local Telos native network on which the TelosEVM contract is deployed
@@ -17,10 +21,35 @@ Hyperion is composed of the following containers:
 - hyperion-api serves the TelosEVM RPC, block explorer, swagger UI and satisfies any API requests
 
 ## Dependencies
-You will need `docker`, `docker-compose` and `jq` installed.
+You will need `docker` & `python3`.
+
+#### small python heads up
+
+It's good practice to not modify the python envoirment that comes with the system, as it is sometimes used for system scripts.
+A good practice is to use a virtual envoirment:
+
+    1. linux: https://mothergeo-py.readthedocs.io/en/latest/development/how-to/venv.html
+    2. windows:https://mothergeo-py.readthedocs.io/en/latest/development/how-to/venv-win.html 
+    
+
+To install python dependencies:
+
+    pip install -U --no-cache-dir -e . -r requirements.txt
+
+If in your system you have both a `python` and `python3` binary, corresponding to `python2.7` and `python3.x`
+respectively. You'll need to specify which version of `pip` to use:
+
+    pip3 install -U --no-cache-dir -e . -r requirements.txt
+
+Or if not found:
+
+    python3 -m pip install -U --no-cache-dir -e . -r requirements.txt
 
 ## Execution
-`./run.sh debug` will recreate changed containers (if they exist), build, and then run the containers.
+    tevmc init local
+    cd local
+    tevmc up
+    tevmc stream daemon
 
 ## Important data
 

@@ -1,0 +1,21 @@
+{
+    "amqp": {
+        "host": $rabbitmq_host,
+        "api": $rabbitmq_api,
+        "user": $rabbitmq_user,
+        "pass": $rabbitmq_pass,
+        "vhost": $rabbitmq_vhost
+    },
+    "elasticsearch": {
+        "protocol": $elasticsearch_protocol,
+        "host": $elasticsearch_host,
+        "ingest_nodes": $elasticsearch_ingest_nodes,
+        "user": $elasticsearch_user,
+        "pass": $elasticsearch_pass
+    },
+    "redis": {
+        "host": $redis_host,
+        "port": $redis_port
+    },
+    "chains": $hyperion_chains
+}

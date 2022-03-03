@@ -1,0 +1,32 @@
+name: TEVMC Tests 
+
+on:
+  pull_request:
+    branches:
+      - master
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  indexing_test:
+    name: Pytest Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          sudo pip install --upgrade pip
+          sudo pip install -e .
+
+      - name: Run pytest 
+        run: sudo pytest --log-cli-level=INFO

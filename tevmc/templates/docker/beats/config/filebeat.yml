@@ -1,0 +1,27 @@
+
+output.elasticsearch:
+  hosts: ["${ELASTIC_HOST}"]
+  username: ${ELASTIC_USER}
+  password: ${ELASTIC_PASS}
+
+setup.kibana:
+  hosts: ["${KIBANA_HOST}"]
+  username: ${ELASTIC_USER}
+  password: ${ELASTIC_PASS}
+
+filebeat.inputs:
+- type: log
+  paths:
+    - /root/logs/*-api-out.log
+  fields:
+    origin: system
+    application: ${CHAIN_NAME}_api
+  fields_under_root: true
+
+- type: log
+  paths:
+    - /root/logs/*-indexer-out.log
+  fields:
+    origin: system
+    application: ${CHAIN_NAME}_indexer
+  fields_under_root: true
