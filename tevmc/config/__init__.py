@@ -145,7 +145,7 @@ def randomize_conf(config: Dict) -> Dict:
         'indexerWebsocketPort'] = idx_ws_port
 
     ret['hyperion']['chain']['telos-evm'][
-        'indexerWebsocketUri'] = f'ws://localhost:{idx_ws_port}'
+        'indexerWebsocketUri'] = f'ws://localhost:{idx_ws_port}/evm'
 
     ret['hyperion']['chain']['telos-evm'][
         'rpcWebsocketPort'] = get_free_port()

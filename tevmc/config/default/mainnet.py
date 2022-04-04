@@ -149,7 +149,7 @@ hyperion = {
             'debug': False,
             'indexerWebsocketHost': '0.0.0.0',
             'indexerWebsocketPort': '7300',
-            'indexerWebsocketUri': 'ws://0.0.0.0:7300',
+            'indexerWebsocketUri': 'ws://localhost:7300/evm',
             'rpcWebsocketHost': '0.0.0.0',
             'rpcWebsocketPort': '7400'
         }

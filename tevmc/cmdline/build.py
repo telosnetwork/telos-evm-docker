@@ -186,7 +186,8 @@ def perform_config_build(target_dir, config):
     hyperion_conf_dir  = hyperion_dir + '/' + hyperion_conf['conf_dir']
 
     subst = {
-        'api_port': config['hyperion']['chain']['router_port']
+        'api_port': config['hyperion']['chain']['router_port'],
+        'ws_port': config['hyperion']['chain']['telos-evm']['rpcWebsocketPort']
     }
     write_docker_template(f'{hyperion_build_dir}/Dockerfile', subst)
 

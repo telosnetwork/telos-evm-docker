@@ -343,6 +343,10 @@ class TEVMController:
                 Mount(data_dir_guest, str(data_dir_host.resolve()), 'bind')
             ]
 
+            if 'mounts' in config:
+                self.mounts['nodeos'] += [
+                    Mount(m['target'], m['source'], 'bind') for m in config['mounts']]
+
             is_relaunch = (data_dir_host / 'blocks').is_dir()
 
             env = {
