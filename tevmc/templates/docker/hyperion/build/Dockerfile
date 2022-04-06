@@ -15,7 +15,7 @@ RUN apt-get update && \
 RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
 RUN apt-get install -y nodejs && \
     npm install pm2 -g && \
-    git clone https://github.com/guilledk/hyperion-history-api.git && \
+    git clone https://github.com/eosrio/hyperion-history-api.git && \
     cd hyperion-history-api && \
     git checkout v3.3.5 
 
@@ -40,3 +40,5 @@ COPY scripts /root/scripts
 
 EXPOSE $api_port
 EXPOSE $ws_port
+EXPOSE $rpc_port
+EXPOSE $ws_router_port

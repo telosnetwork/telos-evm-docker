@@ -127,8 +127,8 @@ hyperion = {
         'chain_id': 41,
         'http': 'http://localhost:8888',
         'ship': 'ws://localhost:29999',
-        'router_host': 'localhost',
-        'router_port': 7000,
+        'router_host': '127.0.0.1',
+        'router_port': 7120,
 
         'explorer': {
             'enabled': True,

@@ -137,7 +137,7 @@ def randomize_conf(config: Dict) -> Dict:
     ret['hyperion']['chain']['ship'] = f'ws://localhost:{state_history_port}'
     
     hyperion_api_port = get_free_port()
-    ret['hyperion']['chain']['router_port'] = hyperion_api_port
+    ret['hyperion']['chain']['router_port'] = get_free_port()
 
     idx_ws_port = get_free_port()
 
@@ -145,7 +145,7 @@ def randomize_conf(config: Dict) -> Dict:
         'indexerWebsocketPort'] = idx_ws_port
 
     ret['hyperion']['chain']['telos-evm'][
-        'indexerWebsocketUri'] = f'ws://localhost:{idx_ws_port}/evm'
+        'indexerWebsocketUri'] = f'ws://127.0.0.1:{idx_ws_port}/evm'
 
     ret['hyperion']['chain']['telos-evm'][
         'rpcWebsocketPort'] = get_free_port()
