@@ -5,9 +5,6 @@ import json
 from websocket import create_connection
 
 
-def test_loop(tevmc_local):
-    breakpoint()
-
 def test_hyperion_websocket(tevmc_local):
 
     tevmc = tevmc_local
@@ -15,7 +12,7 @@ def test_hyperion_websocket(tevmc_local):
     rpc_ws_port = tevmc.config['hyperion']['chain']['telos-evm'][
         'rpcWebsocketPort']
 
-    ws = create_connection(f'ws://localhost:{rpc_ws_port}/evm', timeout=5)
+    ws = create_connection(f'ws://localhost:{rpc_ws_port}/evm', timeout=15)
 
 
     # indexer_ws_uri = tevmc.config['hyperion']['chain']['telos-evm'][
@@ -39,4 +36,18 @@ def test_hyperion_websocket(tevmc_local):
 
     msg = json.loads(ws.recv())
     tevmc.logger.info(msg)
-    assert True
+
+    assert 'difficulty' in msg
+    assert 'extraData' in msg
+    assert 'gasLimit' in msg
+    assert 'miner' in msg
+    assert 'nonce' in msg
+    assert 'parentHash' in msg
+    assert 'receiptsRoot' in msg
+    assert 'sha3Uncles' in msg
+    assert 'stateRoot' in msg
+    assert 'transactionsRoot' in msg
+    assert 'gasUsed' in msg
+    assert 'logsBloom' in msg
+    assert 'number' in msg
+    assert 'timestamp' in msg
