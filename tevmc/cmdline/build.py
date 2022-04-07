@@ -299,6 +299,7 @@ def perform_config_build(target_dir, config):
     beats_dir = docker_dir / beats_conf['docker_path']
     beats_conf_dir = beats_dir / beats_conf['conf_dir']
     os.chown(beats_conf_dir / 'filebeat.yml', uid=0, gid=0)
+    os.chmod(beats_conf_dir / 'filebeat.yml', 0o600)
 
 
 def perform_docker_build(target_dir, config, logger):
