@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import time
 import json
 
 from websocket import create_connection
@@ -11,14 +12,19 @@ def test_hyperion_websocket(tevmc_local):
 
     rpc_ws_port = tevmc.config['hyperion']['chain']['telos-evm'][
         'rpcWebsocketPort']
+   
+    connected = False
+    for i in range(3):
+        try:
+            ws = create_connection(
+                f'ws://localhost:{rpc_ws_port}/evm')#, timeout=15)
+            connected = True
+            break
 
-    ws = create_connection(f'ws://localhost:{rpc_ws_port}/evm', timeout=15)
+        except ConnectionRefusedError:
+            time.sleep(5)
 
-
-    # indexer_ws_uri = tevmc.config['hyperion']['chain']['telos-evm'][
-    #     'indexerWebsocketUri']
-
-    # ws = create_connection(indexer_ws_uri, timeout=5)
+    assert connected
 
     # send subscribe packet
     ws.send(json.dumps({

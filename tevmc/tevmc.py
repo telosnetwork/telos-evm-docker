@@ -45,13 +45,15 @@ class TEVMController:
         logger = None,
         log_level: str = 'info',
         root_pwd: Optional[Path] = None,
-        wait: bool = True
+        wait: bool = True,
+        full: bool = True 
     ):
         self.pid = os.getpid()
         self.config = config
         self.client = docker.from_env()
         self.exit_stack = ExitStack()
         self.wait = wait
+        self.full = full 
 
         if not root_pwd:
             self.root_pwd = Path().resolve()
@@ -582,8 +584,13 @@ class TEVMController:
                 ['filebeat', 'setup', '--pipelines'])
 
             ec, out = docker_wait_process(self.client, exec_id, exec_stream)
-            self.logger.info(out)
-            assert ec == 0
+            if ec != 0:
+                self.logger.error('filebeats pipeline setup error: ')
+                self.logger.error(out)
+
+            else:
+                self.logger.info('pipelines setup')
+
 
             if self.is_local:
                 self.setup_index_patterns(
@@ -596,7 +603,10 @@ class TEVMController:
 
         self.start_rabbitmq()
         self.start_elasticsearch()
-        self.start_kibana()
+
+        if self.full:
+            self.start_kibana()
+
         self.start_nodeos()
 
         self.setup_hyperion_log_mount()
@@ -607,7 +617,8 @@ class TEVMController:
 
         self.start_hyperion_api()
 
-        self.start_beats()
+        if self.full:
+            self.start_beats()
 
         if self.is_local and self.is_fresh:
             self.cleos.create_test_evm_account()
