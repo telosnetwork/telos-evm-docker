@@ -61,7 +61,13 @@ class TEVMController:
             self.root_pwd = root_pwd
 
         self.docker_wd = self.root_pwd / 'docker'
-        
+
+        self.is_relaunch = (
+            self.docker_wd / 
+            config['nodeos']['docker_path'] / 
+            config['nodeos']['data_dir_host'] /
+            'blocks').is_dir()
+
         self.chain_name = config['hyperion']['chain']['name']
         self.logger = logger
 
@@ -267,6 +273,10 @@ class TEVMController:
                 Mount('/home/elasticsearch/data', str(data_dir.resolve()), 'bind')
             ]
 
+            # clean elasticsearch data
+            for d in data_dir.iterdir():
+                shutil.rmtree(d) 
+
             self.containers['elasticsearch'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
@@ -279,8 +289,8 @@ class TEVMController:
                         'xpack.security.enabled': 'true',
                         'ES_JAVA_OPTS': '-Xms2g -Xmx2g',
                         'ES_NETWORK_HOST': '0.0.0.0',
-                        'ELASTIC_USERNAME': config['user'],
-                        'ELASTIC_PASSWORD': config['pass']
+                        #'ELASTIC_USERNAME': config['user'],
+                        #'ELASTIC_PASSWORD': config['pass']
                     },
                     mounts=self.mounts['elasticsearch']
                 )
@@ -290,6 +300,27 @@ class TEVMController:
                 self.logger.info(msg.rstrip())
                 if ' indices into cluster_state' in msg:
                     break
+
+            # setup password for elastic user
+            resp = requests.put(
+                f'http://{config["host"]}/_xpack/security/user/elastic/_password',
+                auth=('elastic', 'temporal'),
+                json={'password': config['elastic_pass']})
+        
+            self.logger.info(resp.text)
+            assert resp.status_code == 200
+
+            # setup user
+            resp = requests.put(
+                f'http://{config["host"]}/_xpack/security/user/{config["user"]}',
+                auth=('elastic', config['elastic_pass']),
+                json={
+                    'password': config['pass'],
+                    'roles': [ 'superuser' ]
+                })
+    
+            self.logger.info(resp.text)
+            assert resp.status_code == 200 
 
     def start_kibana(self):
         with self.must_keep_running('kibana'):
@@ -349,8 +380,6 @@ class TEVMController:
                 self.mounts['nodeos'] += [
                     Mount(m['target'], m['source'], 'bind') for m in config['mounts']]
 
-            is_relaunch = (data_dir_host / 'blocks').is_dir()
-
             env = {
                 'NODEOS_DATA_DIR': config['data_dir_guest'],
                 'NODEOS_CONFIG': f'/root/config.ini',
@@ -358,7 +387,7 @@ class TEVMController:
                 'NODEOS_LOGCONF': '/root/logging.json'
             }
 
-            if not is_relaunch:
+            if not self.is_relaunch:
                 if 'snapshot' in config:
                     env['NODEOS_SNAPSHOT'] = config['snapshot']
 

@@ -33,7 +33,8 @@ elasticsearch = {
     'protocol':  'http',
     'host': 'localhost:9200',
     'ingest_nodes': ['localhost:9200'],
-    'user': 'elastic',
+    'elastic_pass': 'password',
+    'user': 'hyper',
     'pass': 'password',
     'data_dir': 'data',
     'logs_dir': 'logs'

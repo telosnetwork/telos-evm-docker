@@ -13,7 +13,8 @@ from tevmc import TEVMController
 from tevmc.config import (
     local, testnet, mainnet,
     build_docker_manifest,
-    randomize_conf
+    randomize_conf_ports,
+    randomize_conf_creds
 )
 from tevmc.cmdline.init import touch_node_dir
 from tevmc.cmdline.build import perform_docker_build
@@ -21,10 +22,11 @@ from tevmc.cmdline.clean import clean
 from tevmc.cmdline.cli import get_docker_client
 
 
-
 @contextmanager
 def bootstrap_test_stack(tmp_path_factory, config, **kwargs):
-    config = randomize_conf(config)
+    config = randomize_conf_ports(config)
+    config = randomize_conf_creds(config)
+
     client = get_docker_client()
 
     chain_name = config['hyperion']['chain']['name']

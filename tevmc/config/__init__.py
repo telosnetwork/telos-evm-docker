@@ -76,7 +76,7 @@ def check_docker_manifest(client, manifest: List):
             )
 
 
-def randomize_conf(config: Dict) -> Dict:
+def randomize_conf_ports(config: Dict) -> Dict:
     ret = config.copy()
 
     def get_free_port(tries=10):
@@ -151,5 +151,18 @@ def randomize_conf(config: Dict) -> Dict:
         'rpcWebsocketPort'] = get_free_port()
 
     ret['hyperion']['api']['server_port'] = hyperion_api_port
+
+    return ret
+
+def randomize_conf_creds(config: Dict) -> Dict:
+    ret = config.copy()
+
+    # random credentials
+    ret['rabbitmq']['user'] = random_string(size=16)
+    ret['rabbitmq']['pass'] = random_string(size=32)
+
+    ret['elasticsearch']['user'] = random_string(size=16)
+    ret['elasticsearch']['elastic_pass'] = random_string(size=32)
+    ret['elasticsearch']['pass'] = random_string(size=32)
 
     return ret
