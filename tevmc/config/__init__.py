@@ -76,7 +76,7 @@ def check_docker_manifest(client, manifest: List):
             )
 
 
-def randomize_conf(config: Dict) -> Dict:
+def randomize_conf_ports(config: Dict) -> Dict:
     ret = config.copy()
 
     def get_free_port(tries=10):
@@ -137,7 +137,7 @@ def randomize_conf(config: Dict) -> Dict:
     ret['hyperion']['chain']['ship'] = f'ws://localhost:{state_history_port}'
     
     hyperion_api_port = get_free_port()
-    ret['hyperion']['chain']['router_port'] = hyperion_api_port
+    ret['hyperion']['chain']['router_port'] = get_free_port()
 
     idx_ws_port = get_free_port()
 
@@ -145,11 +145,24 @@ def randomize_conf(config: Dict) -> Dict:
         'indexerWebsocketPort'] = idx_ws_port
 
     ret['hyperion']['chain']['telos-evm'][
-        'indexerWebsocketUri'] = f'ws://localhost:{idx_ws_port}'
+        'indexerWebsocketUri'] = f'ws://127.0.0.1:{idx_ws_port}/evm'
 
     ret['hyperion']['chain']['telos-evm'][
         'rpcWebsocketPort'] = get_free_port()
 
     ret['hyperion']['api']['server_port'] = hyperion_api_port
+
+    return ret
+
+def randomize_conf_creds(config: Dict) -> Dict:
+    ret = config.copy()
+
+    # random credentials
+    ret['rabbitmq']['user'] = random_string(size=16)
+    ret['rabbitmq']['pass'] = random_string(size=32)
+
+    ret['elasticsearch']['user'] = random_string(size=16)
+    ret['elasticsearch']['elastic_pass'] = random_string(size=32)
+    ret['elasticsearch']['pass'] = random_string(size=32)
 
     return ret

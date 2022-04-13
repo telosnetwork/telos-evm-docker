@@ -89,9 +89,9 @@
     },
     "features": {
         "streaming": {
-            "enable": false,
-            "traces": false,
-            "deltas": false
+            "enable": true,
+            "traces": true,
+            "deltas": true
         },
         "tables": {
             "proposals": true,

@@ -6,10 +6,12 @@ def test_bootstrap(tevmc_testnet_no_wait):
 
 
 def test_restart(tevmc_testnet_no_wait):
-    tevmc_testnet_no_wait.stop()
+    tevmc = tevmc_testnet_no_wait
 
-    assert (
-        tevmc_testnet_no_wait.docker_wd /
-            'eosio/data/blocks/blocks.log').is_file() 
+    tevmc.stop()
+    tevmc.is_relaunch = True
 
-    tevmc_testnet_no_wait.start()
+    assert (tevmc.docker_wd /
+        'eosio/data/blocks/blocks.log').is_file() 
+
+    tevmc.start()

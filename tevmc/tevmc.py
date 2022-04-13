@@ -45,13 +45,15 @@ class TEVMController:
         logger = None,
         log_level: str = 'info',
         root_pwd: Optional[Path] = None,
-        wait: bool = True
+        wait: bool = True,
+        full: bool = True 
     ):
         self.pid = os.getpid()
         self.config = config
         self.client = docker.from_env()
         self.exit_stack = ExitStack()
         self.wait = wait
+        self.full = full 
 
         if not root_pwd:
             self.root_pwd = Path().resolve()
@@ -59,7 +61,13 @@ class TEVMController:
             self.root_pwd = root_pwd
 
         self.docker_wd = self.root_pwd / 'docker'
-        
+
+        self.is_relaunch = (
+            self.docker_wd / 
+            config['nodeos']['docker_path'] / 
+            config['nodeos']['data_dir_host'] /
+            'blocks').is_dir()
+
         self.chain_name = config['hyperion']['chain']['name']
         self.logger = logger
 
@@ -265,6 +273,10 @@ class TEVMController:
                 Mount('/home/elasticsearch/data', str(data_dir.resolve()), 'bind')
             ]
 
+            # clean elasticsearch data
+            for d in data_dir.iterdir():
+                shutil.rmtree(d) 
+
             self.containers['elasticsearch'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
@@ -277,8 +289,8 @@ class TEVMController:
                         'xpack.security.enabled': 'true',
                         'ES_JAVA_OPTS': '-Xms2g -Xmx2g',
                         'ES_NETWORK_HOST': '0.0.0.0',
-                        'ELASTIC_USERNAME': config['user'],
-                        'ELASTIC_PASSWORD': config['pass']
+                        #'ELASTIC_USERNAME': config['user'],
+                        #'ELASTIC_PASSWORD': config['pass']
                     },
                     mounts=self.mounts['elasticsearch']
                 )
@@ -288,6 +300,27 @@ class TEVMController:
                 self.logger.info(msg.rstrip())
                 if ' indices into cluster_state' in msg:
                     break
+
+            # setup password for elastic user
+            resp = requests.put(
+                f'http://{config["host"]}/_xpack/security/user/elastic/_password',
+                auth=('elastic', 'temporal'),
+                json={'password': config['elastic_pass']})
+        
+            self.logger.info(resp.text)
+            assert resp.status_code == 200
+
+            # setup user
+            resp = requests.put(
+                f'http://{config["host"]}/_xpack/security/user/{config["user"]}',
+                auth=('elastic', config['elastic_pass']),
+                json={
+                    'password': config['pass'],
+                    'roles': [ 'superuser' ]
+                })
+    
+            self.logger.info(resp.text)
+            assert resp.status_code == 200 
 
     def start_kibana(self):
         with self.must_keep_running('kibana'):
@@ -343,7 +376,9 @@ class TEVMController:
                 Mount(data_dir_guest, str(data_dir_host.resolve()), 'bind')
             ]
 
-            is_relaunch = (data_dir_host / 'blocks').is_dir()
+            if 'mounts' in config:
+                self.mounts['nodeos'] += [
+                    Mount(m['target'], m['source'], 'bind') for m in config['mounts']]
 
             env = {
                 'NODEOS_DATA_DIR': config['data_dir_guest'],
@@ -352,7 +387,7 @@ class TEVMController:
                 'NODEOS_LOGCONF': '/root/logging.json'
             }
 
-            if not is_relaunch:
+            if not self.is_relaunch:
                 if 'snapshot' in config:
                     env['NODEOS_SNAPSHOT'] = config['snapshot']
 
@@ -578,8 +613,13 @@ class TEVMController:
                 ['filebeat', 'setup', '--pipelines'])
 
             ec, out = docker_wait_process(self.client, exec_id, exec_stream)
-            self.logger.info(out)
-            assert ec == 0
+            if ec != 0:
+                self.logger.error('filebeats pipeline setup error: ')
+                self.logger.error(out)
+
+            else:
+                self.logger.info('pipelines setup')
+
 
             if self.is_local:
                 self.setup_index_patterns(
@@ -592,7 +632,10 @@ class TEVMController:
 
         self.start_rabbitmq()
         self.start_elasticsearch()
-        self.start_kibana()
+
+        if self.full:
+            self.start_kibana()
+
         self.start_nodeos()
 
         self.setup_hyperion_log_mount()
@@ -603,7 +646,8 @@ class TEVMController:
 
         self.start_hyperion_api()
 
-        self.start_beats()
+        if self.full:
+            self.start_beats()
 
         if self.is_local and self.is_fresh:
             self.cleos.create_test_evm_account()

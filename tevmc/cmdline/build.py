@@ -186,7 +186,10 @@ def perform_config_build(target_dir, config):
     hyperion_conf_dir  = hyperion_dir + '/' + hyperion_conf['conf_dir']
 
     subst = {
-        'api_port': config['hyperion']['chain']['router_port']
+        'api_port': config['hyperion']['api']['server_port'],
+        'ws_port': config['hyperion']['chain']['telos-evm']['indexerWebsocketPort'],
+        'rpc_port': config['hyperion']['chain']['telos-evm']['rpcWebsocketPort'],
+        'ws_router_port': config['hyperion']['chain']['router_port']
     }
     write_docker_template(f'{hyperion_build_dir}/Dockerfile', subst)
 
@@ -296,6 +299,7 @@ def perform_config_build(target_dir, config):
     beats_dir = docker_dir / beats_conf['docker_path']
     beats_conf_dir = beats_dir / beats_conf['conf_dir']
     os.chown(beats_conf_dir / 'filebeat.yml', uid=0, gid=0)
+    os.chmod(beats_conf_dir / 'filebeat.yml', 0o600)
 
 
 def perform_docker_build(target_dir, config, logger):

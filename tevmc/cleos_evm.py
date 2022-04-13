@@ -5,7 +5,7 @@ import requests
 
 from typing import Optional, Dict
 
-import rlp
+import simple_rlp as rlp
 
 from py_eosio.cleos import CLEOS
 from py_eosio.sugar import Name, Asset

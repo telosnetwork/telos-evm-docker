@@ -1,10 +1,6 @@
 # telos-evm-docker
 ## Docker containers for local EVM development and building automated tests
 
-## Snake in your boot edition (WIP)
-
-Not all features of standard build system yet implemented!
-
 ## Overview
 ### eosio_nodeos container
 The Telos node container, this is a local Telos native network on which the TelosEVM contract is deployed
@@ -48,6 +44,7 @@ Or if not found:
 ## Execution
     tevmc init local
     cd local
+    tevnc build
     tevmc up
     tevmc stream daemon
 

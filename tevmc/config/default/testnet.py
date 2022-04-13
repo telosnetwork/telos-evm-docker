@@ -33,7 +33,8 @@ elasticsearch = {
     'protocol':  'http',
     'host': 'localhost:9200',
     'ingest_nodes': ['localhost:9200'],
-    'user': 'elastic',
+    'elastic_pass': 'password',
+    'user': 'hyper',
     'pass': 'password',
     'data_dir': 'data',
     'logs_dir': 'logs'
@@ -137,8 +138,8 @@ hyperion = {
         'chain_id': 41,
         'http': 'http://localhost:8888',
         'ship': 'ws://localhost:29999',
-        'router_host': '0.0.0.0',
-        'router_port': 7000,
+        'router_host': '127.0.0.1',
+        'router_port': 7120,
 
         'explorer': {
             'enabled': True,
@@ -157,7 +158,7 @@ hyperion = {
             'debug': True,
             'indexerWebsocketHost': '0.0.0.0',
             'indexerWebsocketPort': '7300',
-            'indexerWebsocketUri': 'ws://0.0.0.0:7300',
+            'indexerWebsocketUri': 'ws://127.0.0.1:7300/evm',
             'rpcWebsocketHost': '0.0.0.0',
             'rpcWebsocketPort': '7400'
         }
