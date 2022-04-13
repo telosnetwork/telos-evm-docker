@@ -28,7 +28,7 @@ setup(
         'daemonize',
         'simplejson',
         'simple_rlp@git+https://github.com/guilledk/simple-rlp.git',
-        'py_eosio@git+https://github.com/guilledk/py-eosio.git@docker_only'
+        'py_eosio@git+https://github.com/guilledk/py-eosio.git'
     ],
     include_package_data=True,
     entry_points={
