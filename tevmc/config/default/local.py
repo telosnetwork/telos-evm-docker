@@ -93,7 +93,7 @@ nodeos = {
         'txn_blok_lag': 0,
         'allowed_connection': 'any',
         'http_max_response_time': 100000,
-        'http_max_body_size': 10000000,
+        'http_max_body_size': 100000000,
 
         'enable_stale_production': True,
         
@@ -201,6 +201,14 @@ beats = {
     'data_dir': 'data'
 }
 
+telosevm_indexer = {
+    'name': 'telosevm-indexer',
+    'tag': 'tevm:telosevm-indexer',
+    'docker_path': 'telosevm-indexer',
+    'start_block': 1,
+    'stop_block': 4294967295
+}
+
 default_config = {
     'redis': redis,
     'rabbitmq': rabbitmq,
@@ -208,5 +216,6 @@ default_config = {
     'kibana': kibana,
     'nodeos': nodeos,
     'hyperion': hyperion,
-    'beats': beats
+    'beats': beats,
+    'telosevm-indexer': telosevm_indexer
 }

@@ -384,7 +384,9 @@ class TEVMController:
                 'NODEOS_DATA_DIR': config['data_dir_guest'],
                 'NODEOS_CONFIG': f'/root/config.ini',
                 'NODEOS_LOG_PATH': config['log_path'],
-                'NODEOS_LOGCONF': '/root/logging.json'
+                'NODEOS_LOGCONF': '/root/logging.json',
+                'KEOSD_LOG_PATH': '/root/keosd.log',
+                'KEOSD_CONFIG': '/root/keosd_config.ini'
             }
 
             if not self.is_relaunch:
@@ -433,10 +435,30 @@ class TEVMController:
 
             self.cleos = cleos
 
-            # init wallet
-            cleos.start_keosd(
-                '-c',
-                '/root/keosd_config.ini')
+            # manual start stuff
+
+            # # init wallet
+            # cleos.start_keosd(
+            #     '-c',
+            #     '/root/keosd_config.ini')
+
+            # nodeos_params = {
+            #     'data_dir': config['data_dir_guest'],
+            #     'logfile': config['log_path'],
+            #     'logging_cfg': '/root/logging.json'
+            # }
+
+            # if 'snapshot' in config:
+            #     nodeos_params['snapshot'] = config['snapshot']
+
+            # elif 'genesis' in config:
+            #     nodeos_params['genesis'] = f'/root/genesis/{config["genesis"]}.json'
+
+            # cleos.start_nodeos_from_config(
+            #     '/root/config.ini',
+            #     state_plugin=True,
+            #     **nodeos_params
+            # )
 
             nodeos_params = {
                 'data_dir': config['data_dir_guest'],
@@ -672,11 +694,41 @@ class TEVMController:
                 self.setup_index_patterns(
                     [f'{self.chain_name}-action-*', 'filebeat-*'])
 
+    def start_telosevm_indexer(self):
+        with self.must_keep_running('telosevm-indexer'):
+            config = self.config['telosevm-indexer']
+            config_elastic = self.config['elasticsearch']
+            config_nodeos = self.config['nodeos']
+            config_hyperion = self.config['hyperion']['chain']['telos-evm']
+
+            nodeos_api_port = config_nodeos['ini']['http_addr'].split(':')[1]
+            nodeos_ship_port = config_nodeos['ini']['history_endpoint'].split(':')[1]
+            endpoint = f'http://127.0.0.1:{nodeos_api_port}'
+            ws_endpoint = f'ws://127.0.0.1:{nodeos_ship_port}'
+
+            bc_host = '0.0.0.0'  # config_hyperion['indexerWebsocketHost']
+            bc_port = config_hyperion['indexerWebsocketPort']
+
+            self.containers['telosevm-indexer'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
+                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    environment={
+                        'ELASTIC_USERNAME': config_elastic['user'],
+                        'ELASTIC_PASSWORD': config_elastic['pass'],
+                        'ELASTIC_NODE': f'http://{config_elastic["host"]}',
+                        'TELOS_ENDPOINT': endpoint,
+                        'TELOS_WS_ENDPOINT': ws_endpoint,
+                        'INDEXER_START_BLOCK': config["start_block"],
+                        'INDEXER_STOP_BLOCK': config["stop_block"],
+                        'BROADCAST_HOST': bc_host,
+                        'BROADCAST_PORT': bc_port
+                    }
+                )
+            )
     
     def start(self):
-        with self.must_keep_running('redis'):
-            self.start_redis()
-
+        self.start_redis()
         self.start_rabbitmq()
         self.start_elasticsearch()
 
@@ -686,10 +738,12 @@ class TEVMController:
         self.start_nodeos()
 
         self.setup_hyperion_log_mount()
-        self.start_hyperion_indexer()
 
-        if not self.is_local and self.wait:
-            self.await_full_index()
+        self.start_telosevm_indexer()
+        # self.start_hyperion_indexer()
+
+        # if not self.is_local and self.wait:
+        #     self.await_full_index()
 
         self.start_hyperion_api()
 

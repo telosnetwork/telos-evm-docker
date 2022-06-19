@@ -1,0 +1,3 @@
+[submodule "tevmc/templates/docker/telosevm-indexer/build/telosevm-es-indexer"]
+	path = tevmc/templates/docker/telosevm-indexer/build/telosevm-es-indexer
+	url = git@github.com:telosnetwork/telosevm-es-indexer.git

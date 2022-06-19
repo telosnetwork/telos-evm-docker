@@ -298,7 +298,17 @@ def perform_config_build(target_dir, config):
     beats_conf = config['beats'] 
     beats_dir = docker_dir / beats_conf['docker_path']
     beats_conf_dir = beats_dir / beats_conf['conf_dir']
-    beats_conf = config['beats']
+
+    # telosevm-indexer
+    tevmi_conf = config['telosevm-indexer']
+    tevmi_dir = tevmi_conf['docker_path']
+    tevmi_build_dir = tevmi_dir + '/' + 'build'
+
+    subst = {
+        'broadcast_port':
+            config['hyperion']['chain']['telos-evm']['indexerWebsocketPort'],
+    }
+    write_docker_template(f'{tevmi_build_dir}/Dockerfile', subst)
 
 
 def perform_docker_build(target_dir, config, logger):
