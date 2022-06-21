@@ -259,7 +259,7 @@ class CLEOSEVM(CLEOS):
             to: str,
             value: str,
             data: str,
-            v: int = 0,
+            v: int = 27,
             r: int = 0,
             s: int = 0
         ):

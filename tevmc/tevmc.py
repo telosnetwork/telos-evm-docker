@@ -437,28 +437,28 @@ class TEVMController:
 
             # manual start stuff
 
-            # # init wallet
-            # cleos.start_keosd(
-            #     '-c',
-            #     '/root/keosd_config.ini')
+            # init wallet
+            cleos.start_keosd(
+                '-c',
+                '/root/keosd_config.ini')
 
-            # nodeos_params = {
-            #     'data_dir': config['data_dir_guest'],
-            #     'logfile': config['log_path'],
-            #     'logging_cfg': '/root/logging.json'
-            # }
+            nodeos_params = {
+                'data_dir': config['data_dir_guest'],
+                'logfile': config['log_path'],
+                'logging_cfg': '/root/logging.json'
+            }
 
-            # if 'snapshot' in config:
-            #     nodeos_params['snapshot'] = config['snapshot']
+            if 'snapshot' in config:
+                nodeos_params['snapshot'] = config['snapshot']
 
-            # elif 'genesis' in config:
-            #     nodeos_params['genesis'] = f'/root/genesis/{config["genesis"]}.json'
+            elif 'genesis' in config:
+                nodeos_params['genesis'] = f'/root/genesis/{config["genesis"]}.json'
 
-            # cleos.start_nodeos_from_config(
-            #     '/root/config.ini',
-            #     state_plugin=True,
-            #     **nodeos_params
-            # )
+            cleos.start_nodeos_from_config(
+                '/root/config.ini',
+                state_plugin=True,
+                **nodeos_params
+            )
 
             nodeos_params = {
                 'data_dir': config['data_dir_guest'],
@@ -726,6 +726,13 @@ class TEVMController:
                     }
                 )
             )
+
+            for msg in self.stream_logs(self.containers['telosevm-indexer']):
+                self.logger.info(msg.rstrip())
+                if 'Receiving ABI from ship' in msg:
+                    break
+
+            breakpoint()
     
     def start(self):
         self.start_redis()

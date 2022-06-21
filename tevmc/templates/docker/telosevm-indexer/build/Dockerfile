@@ -4,6 +4,10 @@ RUN npm i pm2 -g
 
 COPY telosevm-es-indexer/ /indexer
 
+RUN rm -rdf /indexer/.git \
+    /indexer/node_modules \
+    /indexer/package-lock.json
+
 RUN mkdir -p /indexer/build
 
 WORKDIR /indexer
