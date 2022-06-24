@@ -732,11 +732,9 @@ class TEVMController:
                 if 'Receiving ABI from ship' in msg:
                     break
 
-            breakpoint()
-    
     def start(self):
         self.start_redis()
-        self.start_rabbitmq()
+        # self.start_rabbitmq()
         self.start_elasticsearch()
 
         if self.full:

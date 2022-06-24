@@ -38,8 +38,9 @@ class CLEOSEVM(CLEOS):
     
     def deploy_evm(
         self,
-        start_bytes: int = 1073741824,
-        target_free: int = 1073741824,
+        start_bytes: int = 2684354560,
+        start_cost: str = '21000.0000 TLOS', 
+        target_free: int = 2684354560,
         min_buy: int = 20000,
         fee_transfer_pct: int = 100,
         gas_per_byte: int = 69
@@ -56,9 +57,9 @@ class CLEOSEVM(CLEOS):
             key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L',
             ram=100000)
 
-        ram_price_post = self.get_ram_price()
+        # ram_price_post = self.get_ram_price()
 
-        start_cost = Asset(ram_price_post.amount * start_bytes, sys_token)
+        # start_cost = Asset(ram_price_post.amount * start_bytes, sys_token)
 
         self.new_account(
             'rpc.evm',

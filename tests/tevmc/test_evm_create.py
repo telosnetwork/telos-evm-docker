@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from py_eosio.sugar import random_string, collect_stdout, Asset
+from py_eosio.sugar import random_string, Asset
 from py_eosio.tokens import sys_token
 
 from tevmc.utils import to_wei

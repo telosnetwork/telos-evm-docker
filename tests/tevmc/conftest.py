@@ -23,9 +23,10 @@ from tevmc.cmdline.cli import get_docker_client
 
 
 @contextmanager
-def bootstrap_test_stack(tmp_path_factory, config, **kwargs):
-    config = randomize_conf_ports(config)
-    config = randomize_conf_creds(config)
+def bootstrap_test_stack(tmp_path_factory, config, randomize=True, **kwargs):
+    if randomize:
+        config = randomize_conf_ports(config)
+        config = randomize_conf_creds(config)
 
     client = get_docker_client()
 
@@ -92,6 +93,13 @@ def tevmc_local(tmp_path_factory):
 
 
 @pytest.fixture(scope='module')
+def tevmc_local_non_rand(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, local.default_config, randomize=False) as tevmc:
+        yield tevmc
+
+
+@pytest.fixture(scope='module')
 def tevmc_testnet(tmp_path_factory):
     with bootstrap_test_stack(
         tmp_path_factory, testnet.default_config) as tevmc:
@@ -117,3 +125,18 @@ def tevmc_mainnet_no_wait(tmp_path_factory):
     with bootstrap_test_stack(
         tmp_path_factory, mainnet.default_config, wait=False) as tevmc:
         yield tevmc
+
+
+from web3 import Web3
+
+
+@pytest.fixture(scope='module')
+def local_w3(tevmc_local):
+    tevmc = tevmc_local
+    hyperion_api_port = tevmc.config["hyperion"]["api"]["server_port"]
+    eth_api_endpoint = f'http://localhost:{hyperion_api_port}/evm'
+
+    w3 = Web3(Web3.HTTPProvider(eth_api_endpoint))
+    assert w3.isConnected()
+
+    yield w3
