@@ -87,22 +87,6 @@ def perform_config_build(target_dir, config):
     write_docker_template(f'{redis_build_dir}/Dockerfile', subst)
     write_docker_template(f'{redis_conf_dir}/redis.conf', subst)
 
-    # rabbitmq
-    rabbit_conf = config['rabbitmq']
-
-    rabbit_dir = rabbit_conf['docker_path']
-    rabbit_build_dir = rabbit_dir + '/' + 'build'
-    rabbit_conf_dir  = rabbit_dir + '/' + rabbit_conf['conf_dir']
-
-    subst = {
-        'rabbitmq_port': rabbit_conf['host'].split(':')[-1],
-        'rabbitmq_api_port': rabbit_conf['api'].split(':')[-1],
-        'rabbitmq_dist_port': rabbit_conf['dist_port'],
-        'rabbitmq_prometheus_port': rabbit_conf['prometheus_port']
-    }
-    write_docker_template(f'{rabbit_build_dir}/Dockerfile', subst)
-    write_docker_template(f'{rabbit_conf_dir}/rabbitmq.conf', subst)
-
     # elasticsearch 
     elastic_conf = config['elasticsearch']
 
@@ -195,7 +179,6 @@ def perform_config_build(target_dir, config):
 
     # connections.json
     redis_conf = jsonize(flatten('redis', config))
-    rabbitmq_conf = jsonize(flatten('rabbitmq', config))
     elasticsearch_conf = jsonize(flatten('elasticsearch', config))
 
     chains = {
@@ -218,7 +201,6 @@ def perform_config_build(target_dir, config):
 
     subst = {}
     subst.update(redis_conf)
-    subst.update(rabbitmq_conf)
     subst.update(elasticsearch_conf)
     subst.update(chains)
 

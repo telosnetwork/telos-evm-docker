@@ -10,22 +10,6 @@ redis = {
     'data_dir': 'data'
 }
 
-rabbitmq = {
-    'name': 'rabbitmq',
-    'docker_path': 'rabbitmq',
-    'tag': 'tevm:rabbitmq',
-    'host': '127.0.0.1:5672',
-    'api': '127.0.0.1:15672',
-    'node_name': 'rabbit@localhost',
-    'dist_port': 25672,
-    'prometheus_port': 15692,
-    'user': 'username',
-    'pass': 'password',
-    'vhost': '/hyperion',
-    'conf_dir': 'config',
-    'data_dir': 'data'
-}
-
 elasticsearch = {
     'name': 'elasticsearch',
     'docker_path': 'elasticsearch',
@@ -203,12 +187,20 @@ beats = {
     'data_dir': 'data'
 }
 
+telosevm_indexer = {
+    'name': 'telosevm-indexer',
+    'tag': 'tevm:telosevm-indexer',
+    'docker_path': 'telosevm-indexer',
+    'start_block': 180698860,
+    'stop_block': 4294967295
+}
+
 default_config = {
     'redis': redis,
-    'rabbitmq': rabbitmq,
     'elasticsearch': elasticsearch,
     'kibana': kibana,
     'nodeos': nodeos,
     'hyperion': hyperion,
-    'beats': beats
+    'beats': beats,
+    'telosevm-indexer': telosevm_indexer
 }

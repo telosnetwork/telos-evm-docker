@@ -220,43 +220,6 @@ class TEVMController:
                 if 'Ready to accept connections' in msg:
                     break
 
-    def start_rabbitmq(self):
-        with self.must_keep_running('rabbitmq'):
-            config = self.config['rabbitmq']
-            docker_dir = self.docker_wd / config['docker_path']
-
-            conf_dir = docker_dir / config['conf_dir']
-            data_dir = docker_dir / config['data_dir']
-
-            data_dir.mkdir(parents=True, exist_ok=True)
-
-            self.mounts['rabbitmq'] = [
-                Mount('/rabbitmq', str(conf_dir.resolve()), 'bind'),
-                Mount('/var/lib/rabbitmq', str(data_dir.resolve()), 'bind')
-            ]
-
-            self.containers['rabbitmq'] = self.exit_stack.enter_context(
-                self.open_container(
-                    f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                    environment={
-                        'RABBITMQ_DEFAULT_USER': config['user'],
-                        'RABBITMQ_DEFAULT_PASS': config['pass'],
-                        'RABBITMQ_DEFAULT_VHOST': config['vhost'],
-                        'RABBITMQ_CONFIG_FILE': '/rabbitmq/rabbitmq.conf',
-                        'RABBITMQ_CONF_ENV_FILE': '/rabbitmq/rabbitmq-env.conf',
-                        'RABBITMQ_DIST_PORT': config['dist_port'],
-                        'RABBITMQ_NODENAME': config['node_name']
-                    },
-                    mounts=self.mounts['rabbitmq']
-                )
-            )
-
-            for msg in self.stream_logs(self.containers['rabbitmq']):
-                self.logger.info(msg.rstrip())
-                if 'Server startup complete' in msg:
-                    break
-
     def start_elasticsearch(self):
         with self.must_keep_running('elasticsearch'):
             config = self.config['elasticsearch']
@@ -396,6 +359,8 @@ class TEVMController:
                 elif 'genesis' in config: 
                     env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
 
+            self.logger.info(f'is relaunch: {self.is_relaunch}')
+
             # open container
             self.containers['nodeos'] = self.exit_stack.enter_context(
                 self.open_container(
@@ -448,11 +413,12 @@ class TEVMController:
                 'logging_cfg': '/root/logging.json'
             }
 
-            if 'snapshot' in config:
-                nodeos_params['snapshot'] = config['snapshot']
+            if not self.is_relaunch:
+                if 'snapshot' in config:
+                    nodeos_params['snapshot'] = config['snapshot']
 
-            elif 'genesis' in config:
-                nodeos_params['genesis'] = f'/root/genesis/{config["genesis"]}.json'
+                elif 'genesis' in config:
+                    nodeos_params['genesis'] = f'/root/genesis/{config["genesis"]}.json'
 
             cleos.start_nodeos_from_config(
                 '/root/config.ini',
@@ -546,22 +512,6 @@ class TEVMController:
                 if now - last_update_time > 3600:
                     remote_head_block = self._get_head_block()
                     last_update_time = now
-    
-    def start_hyperion_indexer(self):
-        with self.must_keep_running('hyperion-indexer'):
-            config = self.config['hyperion']['indexer']
-
-            self.containers['hyperion-indexer'] = self.exit_stack.enter_context(
-                self.open_container(
-                    f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{self.config["hyperion"]["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                    command=[
-                        '/bin/bash', '-c',
-                        f'/root/scripts/run-hyperion.sh {self.chain_name}-indexer'
-                    ],
-                    mounts=self.mounts['hyperion']
-                )
-            )
 
     def start_hyperion_api(self):
         with self.must_keep_running('hyperion-api'):
@@ -712,8 +662,10 @@ class TEVMController:
             self.containers['telosevm-indexer'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    f'{config["tag"]}-{ self.config["hyperion"]["chain"]["name"]}',
                     environment={
+                        'CHAIN_NAME': self.config['hyperion']['chain']['name'],
+                        'CHAIN_ID': self.config['hyperion']['chain']['chain_id'],
                         'ELASTIC_USERNAME': config_elastic['user'],
                         'ELASTIC_PASSWORD': config_elastic['pass'],
                         'ELASTIC_NODE': f'http://{config_elastic["host"]}',
@@ -734,7 +686,6 @@ class TEVMController:
 
     def start(self):
         self.start_redis()
-        # self.start_rabbitmq()
         self.start_elasticsearch()
 
         if self.full:

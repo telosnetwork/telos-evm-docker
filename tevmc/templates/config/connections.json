@@ -1,10 +1,10 @@
 {
     "amqp": {
-        "host": $rabbitmq_host,
-        "api": $rabbitmq_api,
-        "user": $rabbitmq_user,
-        "pass": $rabbitmq_pass,
-        "vhost": $rabbitmq_vhost
+        "host": "",
+        "api": "",
+        "user": "",
+        "pass": "",
+        "vhost": ""
     },
     "elasticsearch": {
         "protocol": $elasticsearch_protocol,

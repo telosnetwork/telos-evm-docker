@@ -10,22 +10,6 @@ redis = {
     'data_dir': 'data'
 }
 
-rabbitmq = {
-    'name': 'rabbitmq',
-    'docker_path': 'rabbitmq',
-    'tag': 'tevm:rabbitmq',
-    'host': '127.0.0.1:5672',
-    'api': '127.0.0.1:15672',
-    'node_name': 'rabbit@localhost',
-    'dist_port': 25672,
-    'prometheus_port': 15692,
-    'user': 'username',
-    'pass': 'password',
-    'vhost': '/hyperion',
-    'conf_dir': 'config',
-    'data_dir': 'data'
-}
-
 elasticsearch = {
     'name': 'elasticsearch',
     'docker_path': 'elasticsearch',
@@ -211,7 +195,6 @@ telosevm_indexer = {
 
 default_config = {
     'redis': redis,
-    'rabbitmq': rabbitmq,
     'elasticsearch': elasticsearch,
     'kibana': kibana,
     'nodeos': nodeos,

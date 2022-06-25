@@ -65,10 +65,10 @@ def touch_node_dir(target_dir, conf, fname):
     help='target')
 @click.option(
     '--random-creds/--default-creds', default=False,
-    help='Randomize elasticsearch and rabbit credentials.')
+    help='Randomize elasticsearch credentials.')
 @click.option(
     '--random-ports/--default-ports', default=False,
-    help='Randomize port and rabbit node name, useful to boot '
+    help='Randomize port and node name, useful to boot '
          'multiple nodes on same host.')
 @click.argument('chain-name')
 def init(config, target_dir, chain_name, random_creds, random_ports):
