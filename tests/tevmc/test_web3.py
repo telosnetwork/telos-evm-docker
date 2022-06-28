@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from web3 import Web3
-
 from py_eosio.sugar import random_string, Asset
 from py_eosio.tokens import sys_token
 

@@ -189,8 +189,12 @@ telosevm_indexer = {
     'name': 'telosevm-indexer',
     'tag': 'tevm:telosevm-indexer',
     'docker_path': 'telosevm-indexer',
-    'start_block': 20,
-    'stop_block': 4294967295
+    'start_block': 'override',
+    'stop_block': 4294967295,
+    'deploy_block': 'override',
+    'prev_hash': '',
+    'evm_delta': 'override',
+    'elastic_dump_size': 1
 }
 
 default_config = {

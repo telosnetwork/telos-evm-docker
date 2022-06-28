@@ -76,7 +76,10 @@ class TEVMController:
             self.logger = logging.getLogger()
             self.logger.setLevel(log_level.upper())
 
-        self.is_local = 'local' in self.chain_name
+        self.is_local = (
+            ('testnet' not in self.chain_name) and
+            ('mainnet' not in self.chain_name)
+        )
         
         if self.is_local:
             self.producer_key = config['nodeos']['ini']['sig_provider'].split(':')[-1]
@@ -399,7 +402,8 @@ class TEVMController:
                 self.containers['nodeos'],
                 logger=self.logger,
                 url=cleos_url,
-                hyperion_api_endpoint=hyperion_api_url)
+                hyperion_api_endpoint=hyperion_api_url,
+                chain_id=self.config['hyperion']['chain']['chain_id'])
 
             self.cleos = cleos
 
@@ -426,6 +430,7 @@ class TEVMController:
             cleos.start_nodeos_from_config(
                 '/root/config.ini',
                 state_plugin=True,
+                is_local=self.is_local,
                 **nodeos_params
             )
 
@@ -452,7 +457,7 @@ class TEVMController:
                 # await for nodeos to produce a block
                 cleos.wait_blocks(4)
 
-                self.is_fresh = 'Initializing fresh blockchain' in output
+                self.is_fresh = 'Initializing new blockchain with genesis state' in output
 
                 if self.is_fresh:
                     cleos.setup_wallet(self.producer_key)
@@ -463,6 +468,17 @@ class TEVMController:
                             verify_hash=False)
 
                         cleos.deploy_evm()
+
+                        evm_deploy_block = cleos.evm_deploy_info['processed']['block_num']
+                        evm_init_block = cleos.evm_init_info['processed']['block_num']
+
+                        self.config['telosevm-indexer']['start_block'] = evm_deploy_block
+                        self.config['telosevm-indexer']['deploy_block'] = evm_deploy_block
+                        self.config['telosevm-indexer']['evm_delta'] = evm_init_block - evm_deploy_block
+
+                        # save evm deploy info for future runs
+                        with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
+                            uni_conf.write(json.dumps(self.config, indent=4))
 
                     except AssertionError:
                         for msg in self.stream_logs(self.containers['nodeos']):
@@ -668,10 +684,14 @@ class TEVMController:
                         'ELASTIC_USERNAME': config_elastic['user'],
                         'ELASTIC_PASSWORD': config_elastic['pass'],
                         'ELASTIC_NODE': f'http://{config_elastic["host"]}',
+                        'ELASTIC_DUMP_SIZE': config['elastic_dump_size'],
                         'TELOS_ENDPOINT': endpoint,
                         'TELOS_WS_ENDPOINT': ws_endpoint,
-                        'INDEXER_START_BLOCK': config["start_block"],
-                        'INDEXER_STOP_BLOCK': config["stop_block"],
+                        'INDEXER_START_BLOCK': config['start_block'],
+                        'INDEXER_STOP_BLOCK': config['stop_block'],
+                        'EVM_DEPLOY_BLOCK': config['deploy_block'],
+                        'EVM_PREV_HASH': config['prev_hash'],
+                        'EVM_DELTA': config['evm_delta'],
                         'BROADCAST_HOST': bc_host,
                         'BROADCAST_PORT': bc_port
                     }

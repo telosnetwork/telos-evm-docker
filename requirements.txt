@@ -1,5 +1,7 @@
+rlp
 tqdm
 click
+py-evm
 pytest
 psutil
 docker
@@ -7,5 +9,4 @@ natsort
 requests
 daemonize
 simplejson
-simple_rlp@git+https://github.com/guilledk/simple-rlp.git
 py_eosio@git+https://github.com/guilledk/py-eosio.git@host_deploy

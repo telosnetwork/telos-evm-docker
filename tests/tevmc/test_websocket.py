@@ -94,7 +94,7 @@ def test_hyperion_websocket_mainnet(tevmc_mainnet_no_wait):
     assert 'id' in msg and msg['id'] == 1
 
     msg = json.loads(ws.recv())
-    tevmc.logger.info(msg)
+    tevmc.logger.info(json.dumps(msg, indent=4))
 
     assert 'difficulty' in msg
     assert 'extraData' in msg
