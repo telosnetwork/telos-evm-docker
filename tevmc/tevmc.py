@@ -450,7 +450,8 @@ class TEVMController:
 
                     try:
                         cleos.boot_sequence(
-                            sys_contracts_mount='/opt/eosio/bin/contracts')
+                            sys_contracts_mount='/opt/eosio/bin/contracts',
+                            verify_hash=False)
 
                         cleos.deploy_evm()
 

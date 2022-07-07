@@ -72,7 +72,8 @@ class CLEOSEVM(CLEOS):
         self.deploy_contract(
             'eosio.evm', contract_path,
             privileged=True,
-            create_account=False)
+            create_account=False,
+            verify_hash=False)
 
         ec, out = self.push_action(
             'eosio.evm',
