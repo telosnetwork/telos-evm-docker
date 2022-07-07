@@ -44,7 +44,7 @@ Or if not found:
 ## Execution
     tevmc init local
     cd local
-    tevnc build
+    tevmc build
     tevmc up
     tevmc stream daemon
 
