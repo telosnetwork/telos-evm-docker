@@ -4,7 +4,7 @@ import time
 import json
 import requests
 
-from typing import Optional, Dict
+from typing import Optional, Union, Dict
 
 import rlp
 
@@ -58,12 +58,12 @@ class CLEOSEVM(CLEOS):
         **kwargs
     ):
         super().__init__(*args, **kwargs)
-        
+
         self.hyperion_api_endpoint = hyperion_api_endpoint
         self.chain_id = chain_id
 
         self.__jsonrpc_id = 0
-    
+
     def deploy_evm(
         self,
         start_bytes: int = 2684354560,
@@ -73,7 +73,7 @@ class CLEOSEVM(CLEOS):
         fee_transfer_pct: int = 100,
         gas_per_byte: int = 69
     ):
-    
+
         # create evm accounts
         self.new_account(
             'eosio.evm',
@@ -131,7 +131,7 @@ class CLEOSEVM(CLEOS):
             key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L')
         self.create_evm_account(name, data)
         quantity = Asset(111000000, sys_token)
-        
+
         self.transfer_token('eosio', name, quantity, ' ')
         self.transfer_token(name, 'eosio.evm', quantity, 'Deposit')
 
@@ -182,7 +182,7 @@ class CLEOSEVM(CLEOS):
             '--key-type', 'name', '--index', '3',
             '--lower', name,
             '--upper', name)
-        
+
         if len(rows) != 1:
             return None
 
@@ -255,7 +255,7 @@ class CLEOSEVM(CLEOS):
             '--key-type', 'sha256', '--index', '2',
             '--lower', addr,
             '--upper', addr)
-        
+
         if len(rows) != 1:
             return None
 
@@ -270,7 +270,7 @@ class CLEOSEVM(CLEOS):
             '--key-type', 'sha256', '--index', '2',
             '--lower', addr,
             '--upper', addr)
-        
+
         if len(rows) != 1:
             return None
 
@@ -279,17 +279,17 @@ class CLEOSEVM(CLEOS):
     def eth_raw_tx(
         self,
         sender: str,
-        data: str | bytes,
+        data: Union[str, bytes],
         gas: str,
         value: int,
-        to: str | bytes
+        to: Union[str, bytes]
     ):
         if isinstance(gas, str):
             gas = to_int(hexstr=gas)
 
         nonce = self.eth_get_transaction_count(sender)
         gas_price = self.eth_gas_price()
-        
+
         if isinstance(data, str):
             data = decode_hex(data)
 
@@ -305,7 +305,7 @@ class CLEOSEVM(CLEOS):
             data=data 
         )
 
-        return tx.encode().hex() 
+        return tx.encode().hex()
 
     def eth_transfer(
         self,
@@ -341,7 +341,7 @@ class CLEOSEVM(CLEOS):
             [account, raw_tx, estimate_gas, sender],
             f'{account}@active'
         )
-    
+
     def eth_withdraw(self,
         account: Name,
         quantity: Asset,

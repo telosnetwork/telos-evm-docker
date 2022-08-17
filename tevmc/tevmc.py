@@ -80,7 +80,7 @@ class TEVMController:
             ('testnet' not in self.chain_name) and
             ('mainnet' not in self.chain_name)
         )
-        
+
         if self.is_local:
             self.producer_key = config['nodeos']['ini']['sig_provider'].split(':')[-1]
 
@@ -96,7 +96,7 @@ class TEVMController:
         *args, **kwargs
     ):
         """Start a new container.
-        
+
         Also waits for container to get ip address.
         """
         container = None
@@ -152,7 +152,7 @@ class TEVMController:
                     config={'max-size': '100m' }),
                 remove=True,
                 labels=DEFAULT_DOCKER_LABEL)
-           
+
             container.reload()
 
             self.logger.info(container.status)
@@ -169,7 +169,7 @@ class TEVMController:
 
             self.logger.info('stopped.')
 
-    
+
     def stream_logs(self, container):
         if container is None:
             self.logger.critical("container is None")
@@ -182,7 +182,7 @@ class TEVMController:
     @contextmanager
     def must_keep_running(self, container: str):
         yield
-        
+
         container = self.containers[container]
         container.reload()
 
@@ -268,7 +268,7 @@ class TEVMController:
                     f'http://{config["host"]}/_xpack/security/user/elastic/_password',
                     auth=('elastic', 'temporal'),
                     json={'password': config['elastic_pass']})
-            
+
                 self.logger.info(resp.text)
                 assert resp.status_code == 200
 
@@ -280,7 +280,7 @@ class TEVMController:
                         'password': config['pass'],
                         'roles': [ 'superuser' ]
                     })
-        
+
                 self.logger.info(resp.text)
                 assert resp.status_code == 200
 
