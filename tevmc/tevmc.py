@@ -427,7 +427,7 @@ class TEVMController:
                 elif 'genesis' in config:
                     nodeos_params['genesis'] = f'/root/genesis/{config["genesis"]}.json'
 
-            cleos.start_nodeos_from_config(
+            output = cleos.start_nodeos_from_config(
                 '/root/config.ini',
                 state_plugin=True,
                 is_local=self.is_local,

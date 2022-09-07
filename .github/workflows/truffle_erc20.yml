@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo pip install --upgrade pip
-          sudo pip install -e .
+          sudo pip install -e . -r requirements.txt
 
       - name: Init local chain
         run: sudo tevmc init local

@@ -18,6 +18,7 @@ setup(
     packages=find_packages(),
     package_data={'': templates},
     install_requires=[
+        'rlp',
         'tqdm',
         'click',
         'pytest',
