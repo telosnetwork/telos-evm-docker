@@ -2,7 +2,7 @@ FROM node:lts-bullseye
 
 RUN npm i pm2 -g
 
-COPY telosevm-es-indexer/ /indexer
+RUN git clone https://github.com/telosnetwork/telosevm-es-indexer.git indexer
 
 RUN rm -rdf /indexer/.git \
     /indexer/node_modules \
