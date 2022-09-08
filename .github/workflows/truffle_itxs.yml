@@ -21,7 +21,7 @@ jobs:
 
       - name: Setup Truffle
         run: npm install -g truffle
-          
+
       - name: Setup Truffle HD Wallet
         working-directory: ./tests/test_itxs
         run: npm install @truffle/hdwallet-provider
@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo pip install --upgrade pip
-          sudo pip install -e .
+          sudo pip install -e . -r requirements.txt
 
       - name: Init local chain
         run: sudo tevmc init local
@@ -46,10 +46,6 @@ jobs:
       - name: Bootstrap
         working-directory: local
         run: sudo tevmc up && sudo tevmc wait-init
-
-      - name: Wait blocks
-        working-directory: local
-        run: sudo tevmc wait-block 60
 
       - name: Run test_itxs
         working-directory: ./tests/test_itxs

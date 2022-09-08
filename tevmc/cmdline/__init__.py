@@ -9,4 +9,4 @@ from .pull import pull
 from .build import build
 from .clean import clean
 from .stream import stream
-from .wait import wait_block, wait_tx
+from .wait import wait_init, wait_tx
