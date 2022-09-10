@@ -52,7 +52,7 @@ kibana = {
 
 nodeos = {
     'name': 'nodeos',
-    'tag': 'tevm:nodeos-2.1.0-evm',
+    'tag': 'tevm:nodeos-3.1.0-evm',
     'docker_path': 'eosio',
     'data_dir_guest': '/mnt/dev/data',
     'data_dir_host': 'data',
@@ -66,7 +66,6 @@ nodeos = {
         'vm_oc_enable': True,
 
         'chain_state_size': 65536,
-        'reversible_blocks_size': 4096,
         'abi_serializer_max_time': 2000000,
         'account_queries': True,
 
@@ -122,7 +121,7 @@ hyperion = {
     'conf_dir': 'config',
     'logs_dir': 'logs',
     'chain': {
-        'name': 'telos-local-testnet',
+        'name': 'telos-local',
         'long_name': 'Telos Local Testnet',
         'chain_hash': '1eaa0824707c8c16bd25145493bf062aecddfeb56c736f6ba6397f3195f33c9f',
         'chain_id': 41,

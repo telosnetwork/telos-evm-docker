@@ -27,13 +27,15 @@ RUN wget https://telos-snapshots.s3.amazonaws.com/mainnet/telos-mainet-20211026-
 
 WORKDIR /root
 
-RUN wget https://github.com/EOSIO/eos/releases/download/v2.1.0/eosio_2.1.0-1-ubuntu-18.04_amd64.deb && \
-    apt-get install -y ./eosio_2.1.0-1-ubuntu-18.04_amd64.deb && \
+RUN wget https://github.com/AntelopeIO/leap/releases/download/v3.1.0/leap-3.1.0-ubuntu20.04-x86_64.deb && \
+    apt-get install -y ./leap-3.1.0-ubuntu20.04-x86_64.deb && \
     rm -rf *.deb
 
 EXPOSE $nodeos_port
 EXPOSE $nodeos_history_port
 
-COPY entrypoint.sh /opt/entrypoint.sh
+CMD ["/bin/bash", "-c", "while true; do sleep 3; done;"]
 
-ENTRYPOINT ["/bin/bash", "/opt/entrypoint.sh"] 
+# COPY entrypoint.sh /opt/entrypoint.sh
+
+# ENTRYPOINT ["/bin/bash", "/opt/entrypoint.sh"] 

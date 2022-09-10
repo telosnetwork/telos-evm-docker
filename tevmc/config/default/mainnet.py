@@ -52,7 +52,7 @@ kibana = {
 
 nodeos = {
     'name': 'nodeos',
-    'tag': 'tevm:nodeos-2.1.0-evm',
+    'tag': 'tevm:nodeos-3.1.0-evm',
     'docker_path': 'eosio',
     'data_dir_guest': '/mnt/dev/data',
     'data_dir_host': 'data',
@@ -67,7 +67,6 @@ nodeos = {
         'vm_oc_enable': True,
 
         'chain_state_size': 65536,
-        'reversible_blocks_size': 4096,
         'account_queries': True,
 
         'http_addr': '0.0.0.0:8888',
