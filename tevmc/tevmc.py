@@ -404,13 +404,13 @@ class TEVMController:
                 )
             )
 
-            for msg in self.stream_logs(self.containers['nodeos']):
-                self.logger.info(msg.rstrip())
-                if 'configured http to listen on' in msg:
-                    break
+            # for msg in self.stream_logs(self.containers['nodeos']):
+            #     self.logger.info(msg.rstrip())
+            #     if 'configured http to listen on' in msg:
+            #         break
 
-                elif 'Incorrect plugin configuration' in msg:
-                    raise TEVMCException('Nodeos bootstrap error.')
+            #     elif 'Incorrect plugin configuration' in msg:
+            #         raise TEVMCException('Nodeos bootstrap error.')
 
             exec_id, exec_stream = docker_open_process(
                 self.client, self.containers['nodeos'],
@@ -436,11 +436,29 @@ class TEVMController:
             # init wallet
             cleos.start_keosd(
                 '-c',
-                '/root/keosd_config.ini') 
+                '/root/keosd_config.ini')
 
+            nodeos_params = {
+                'data_dir': config['data_dir_guest'],
+                'logfile': config['log_path'],
+                'logging_cfg': '/root/logging.json'
+            }
+
+            if not self.is_relaunch:
+                if 'snapshot' in config:
+                    nodeos_params['snapshot'] = config['snapshot']
+
+                elif 'genesis' in config:
+                    nodeos_params['genesis'] = f'/root/genesis/{config["genesis"]}.json'
+
+            output = cleos.start_nodeos_from_config(
+                '/root/config.ini',
+                state_plugin=True,
+                is_local=self.is_local,
+                **nodeos_params
+            )
             if self.is_local:
                 # await for nodeos to produce a block
-                output = cleos.wait_produced()
                 cleos.wait_blocks(4)
 
                 self.is_fresh = 'Initializing fresh blockchain' in output
@@ -654,25 +672,12 @@ class TEVMController:
             self.cleos.create_test_evm_account()
 
     def stop(self):
-        # gracefull nodeos exit
-        exec_id, exec_stream = docker_open_process(
-            self.client,
-            self.containers['nodeos'],
-            ['pkill', 'nodeos'])
+        self.cleos.stop_nodeos(
+            from_file=self.config['nodeos']['log_path'])
 
-        ec, out = docker_wait_process(self.client, exec_id, exec_stream)
-        self.logger.info(f'pkill nodeos: {ec}')
-        self.logger.info('await gracefull nodeos exit...')
-
-        for msg in self.stream_logs(self.containers['nodeos']):
-            if 'nodeos successfully exiting' in msg:
-                break
-
-        self.logger.info('nodeos exit.')
-        
         self.exit_stack.pop_all().close()
 
-    
+
     def __enter__(self):
         self.start()
         return self

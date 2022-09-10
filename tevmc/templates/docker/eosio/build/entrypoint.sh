@@ -22,14 +22,5 @@ fi
 
 cmds="$cmds --disable-replay-opts"
 
-echo "nodeos -e -p eosio ${cmds[@]} 2>&1" | tee -a ${NODEOS_LOG_PATH}
-
-mkfifo stream
-
-nodeos -e -p eosio ${cmds[@]} 2>&1 > stream &
-nodeos_pid="$!"
-
-echo $nodeos_pid
-while read line <stream; do
-    echo "$line" | tee -a ${NODEOS_LOG_PATH}
-done
+nodeos -e -p eosio ${cmds[@]} >> "${NODEOS_LOG_PATH}" 2>&1 &
+sleep 9999999
