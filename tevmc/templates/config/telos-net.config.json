@@ -37,7 +37,7 @@
         "preview": false,
         "chain": $name,
         "eosio_alias": "eosio",
-        "parser": "2.1",
+        "parser": "1.8",
         "auto_stop": $hyperion_indexer_auto_stop,
         "index_version": "v1",
         "debug": true,
@@ -52,7 +52,7 @@
         "hot_warm_policy": false,
         "custom_policy": "",
         "bypass_index_map": false,
-        "ship_request_rev": "v1",
+        "ship_request_rev": "v0",
         "index_partition_size": 10000000
     },
     "blacklists": $hyperion_indexer_blacklists,

@@ -17,7 +17,7 @@ RUN apt-get install -y nodejs && \
     npm install pm2 -g && \
     git clone https://github.com/eosrio/hyperion-history-api.git && \
     cd hyperion-history-api && \
-    git checkout v3.3.5 
+    git checkout v3.3.5
 
 WORKDIR /hyperion-history-api
 
