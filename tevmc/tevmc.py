@@ -478,10 +478,6 @@ class TEVMController:
                             self.logger.critical(msg.rstrip()) 
                         sys.exit(1)
 
-            else:
-                # await for nodeos to receive a block from peers
-                cleos.wait_received()
-
             self.logger.info(cleos.get_info())
 
     def setup_hyperion_log_mount(self):
