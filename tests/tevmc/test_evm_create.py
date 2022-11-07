@@ -14,7 +14,7 @@ def test_cleos_evm_create(tevmc_local, local_w3):
     tevmc = tevmc_local
 
     account = tevmc.cleos.new_account()
-    
+
     ec, out = tevmc.cleos.create_evm_account(
         account, random_string())
     assert ec == 0

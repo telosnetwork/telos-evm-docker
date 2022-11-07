@@ -11,7 +11,7 @@ def test_connect(local_w3):
 def test_gas_price(tevmc_local, local_w3):
     gas_price = local_w3.eth.gas_price
     tevmc_local.logger.info(gas_price)
-    assert gas_price <= 120000000000 
+    assert gas_price <= 120000000000
 
 
 def test_chain_id(tevmc_local, local_w3):
@@ -28,7 +28,7 @@ def test_transaction_count(tevmc_local, local_w3):
     tevmc = tevmc_local
 
     account = tevmc.cleos.new_account()
-    
+
     ec, out = tevmc.cleos.create_evm_account(
         account, random_string())
     assert ec == 0

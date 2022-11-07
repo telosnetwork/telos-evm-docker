@@ -1,4 +1,3 @@
-rlp
 tqdm
 click
 py-evm

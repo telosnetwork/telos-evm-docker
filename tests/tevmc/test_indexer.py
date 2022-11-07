@@ -10,7 +10,7 @@ def test_indexer_restart(tevmc_local):
 
     tevmc.stop()
     tevmc.is_relaunch = True
-    
+
     tevmc.start()
 
     for msg in tevmc.stream_logs(

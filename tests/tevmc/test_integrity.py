@@ -65,7 +65,7 @@ def test_integrity(tevmc_local, local_w3):
             balance_hex -= to_int(hexstr=transfer['_source']['@raw']['value'])
             total_payed_in_gas += transfer[
                 '_source']['@raw']['gasused'] * transfer['_source']['@raw']['charged_gas_price']
-            
+
         total_payed_in_gas = from_wei(total_payed_in_gas, 'ether')
         balance_hex = from_wei(balance_hex, 'ether')
 
@@ -128,7 +128,7 @@ def test_integrity(tevmc_local, local_w3):
     for addr, deposit in zip(native_eth_addrs, initial_deposit_assets):
         assert tevmc.cleos.eth_get_balance(addr) == to_wei(deposit.amount, 'ether')
         assert float(get_elastic_balance(addr)) == deposit.amount
-    
+
     # transfer to native evm accounts
     for account, native_eth_addr, eth_addr, init_deposit_asset in zip(
         accounts,
