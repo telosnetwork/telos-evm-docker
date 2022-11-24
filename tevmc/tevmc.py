@@ -63,11 +63,17 @@ class TEVMController:
 
         self.docker_wd = self.root_pwd / 'docker'
 
-        self.is_relaunch = (
+        self.is_nodeos_relaunch = (
             self.docker_wd / 
             config['nodeos']['docker_path'] / 
             config['nodeos']['data_dir_host'] /
             'blocks').is_dir()
+
+        self.is_elastic_relaunch = (
+            self.docker_wd /
+            config['elasticsearch']['docker_path'] / 
+            config['elasticsearch']['data_dir'] /
+            'nodes').is_dir()
 
         self.chain_name = config['hyperion']['chain']['name']
         self.logger = logger
@@ -262,7 +268,7 @@ class TEVMController:
                 if ' indices into cluster_state' in msg:
                     break
 
-            if not self.is_relaunch:
+            if not self.is_elastic_relaunch:
                 # setup password for elastic user
                 resp = requests.put(
                     f'http://{config["host"]}/_xpack/security/user/elastic/_password',
@@ -358,14 +364,14 @@ class TEVMController:
                 'KEOSD_CONFIG': '/root/keosd_config.ini'
             }
 
-            if not self.is_relaunch:
+            if not self.is_nodeos_relaunch:
                 if 'snapshot' in config:
                     env['NODEOS_SNAPSHOT'] = config['snapshot']
 
                 elif 'genesis' in config: 
                     env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
 
-            self.logger.info(f'is relaunch: {self.is_relaunch}')
+            self.logger.info(f'is relaunch: {self.is_nodeos_relaunch}')
 
             # open container
             self.containers['nodeos'] = self.exit_stack.enter_context(
@@ -420,7 +426,7 @@ class TEVMController:
                 'logging_cfg': '/root/logging.json'
             }
 
-            if not self.is_relaunch:
+            if not self.is_nodeos_relaunch:
                 if 'snapshot' in config:
                     nodeos_params['snapshot'] = config['snapshot']
 
@@ -440,7 +446,7 @@ class TEVMController:
                 'logging_cfg': '/root/logging.json'
             }
 
-            if not self.is_relaunch:
+            if not self.is_nodeos_relaunch:
                 if 'snapshot' in config:
                     nodeos_params['snapshot'] = config['snapshot']
 

@@ -80,9 +80,9 @@ nodeos = {
         'http_max_body_size': 100000000,
 
         'enable_stale_production': True,
-        
+
         'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
-    
+
         'disable_subjective_billing': True,
         'max_transaction_time': 500,
 
@@ -192,7 +192,7 @@ telosevm_indexer = {
     'start_block': 'override',
     'stop_block': 4294967295,
     'deploy_block': 'override',
-    'prev_hash': '',
+    'prev_hash': '56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
     'evm_delta': 'override',
     'elastic_dump_size': 1
 }

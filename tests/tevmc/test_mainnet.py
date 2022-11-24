@@ -9,7 +9,8 @@ def test_restart(tevmc_mainnet_no_wait):
     tevmc = tevmc_mainnet_no_wait
 
     tevmc.stop()
-    tevmc.is_relaunch = True
+    tevmc.is_nodeos_relaunch = True
+    tevmc.is_elastic_relaunch = True
 
     assert (tevmc.docker_wd /
         'eosio/data/blocks/blocks.log').is_file() 

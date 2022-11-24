@@ -81,7 +81,7 @@ nodeos = {
         'http_max_body_size': 10000000,
 
         'enable_stale_production': False,
-        
+
         'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',    
 
         'disable_subjective_billing': True,

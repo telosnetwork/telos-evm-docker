@@ -1,20 +1,23 @@
-FROM node:16-bullseye
+from node:16-bullseye
 
-RUN npm i pm2 -g
+run npm i pm2 -g
 
-RUN git clone https://github.com/telosnetwork/telosevm-es-indexer.git indexer --branch jesse_refactor
+workdir /root
 
-RUN rm -rdf /indexer/.git \
-    /indexer/node_modules \
-    /indexer/package-lock.json
+run git clone git@github.com:telosnetwork/telosevm-es-indexer.git indexer --branch jesse_refactor
 
-RUN mkdir -p /indexer/build
+run rm -rdf indexer/.git
 
-WORKDIR /indexer
+workdir /root/indexer
 
-RUN npm i
-RUN npx tsc
-# CMD ["pm2-runtime", "start", "build/main.js"]
-CMD ["node", "build/main.js"]
+run npm install -g npm@9.1.1
+run yarn install
+run npx tsc
 
-EXPOSE $broadcast_port
+run npm i why-is-node-running -g
+
+env LOG_LEVEL debug
+
+cmd ["why-is-node-running", "build/main.js"] 
+
+expose $broadcast_port
