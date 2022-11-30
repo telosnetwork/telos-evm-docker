@@ -14,7 +14,7 @@ templates = package_files('tevmc/templates')
 
 setup(
     name='tevmc',
-    version='0.1a2',
+    version='0.1a3',
     packages=find_packages(),
     package_data={'': templates},
     install_requires=[
