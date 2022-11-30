@@ -25,7 +25,7 @@
     "process-nextick-args": "1.0.7",
     "promise.allsettled": "1.0.4",
     "to-regex-range": "5.0.1",
-    "truffle": "5.3.13",
+    "truffle": "5.6.7",
     "url-to-options": "1.0.1",
     "whatwg-fetch": "2.0.4",
     "yocto-queue": "0.1.0"
