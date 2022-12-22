@@ -11,12 +11,12 @@ RUN apt-get install -y \
         netcat \
         build-essential
 
-RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_18.x | bash -
 RUN apt-get install -y nodejs && \
     npm install pm2 -g && \
     git clone https://github.com/eosrio/hyperion-history-api.git && \
     cd hyperion-history-api && \
-    git checkout v3.3.5
+    git checkout v3.3.6
 
 WORKDIR /hyperion-history-api
 

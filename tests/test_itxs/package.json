@@ -7,7 +7,7 @@
   "dependencies": {
     "@graphql-tools/batch-execute": "7.1.2",
     "@multiformats/base-x": "4.0.1",
-    "@truffle/hdwallet-provider": "1.4.1",
+    "@truffle/hdwallet-provider": "^2.1.4",
     "deprecated-decorator": "0.1.6",
     "emoji-regex": "8.0.0",
     "fast-future": "1.0.2",
@@ -15,7 +15,7 @@
     "has-ansi": "2.0.0",
     "is-retry-allowed": "1.2.0",
     "isurl": "1.0.0",
-    "jsdom": "7.2.2",
+    "jsdom": "^20.0.3",
     "level-concat-iterator": "2.0.1",
     "lodash.assigninwith": "4.2.0",
     "lodash.rest": "4.0.5",
@@ -25,7 +25,7 @@
     "process-nextick-args": "1.0.7",
     "promise.allsettled": "1.0.4",
     "to-regex-range": "5.0.1",
-    "truffle": "5.3.13",
+    "truffle": "^5.7.1",
     "url-to-options": "1.0.1",
     "whatwg-fetch": "2.0.4",
     "yocto-queue": "0.1.0"

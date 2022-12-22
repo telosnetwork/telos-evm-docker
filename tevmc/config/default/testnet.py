@@ -155,6 +155,7 @@ hyperion = {
                 'main': 'eosio.evm' 
             },
             'debug': True,
+            'nodeos_read': 'http://localhost:8888',
             'indexerWebsocketHost': '0.0.0.0',
             'indexerWebsocketPort': '7300',
             'indexerWebsocketUri': 'ws://127.0.0.1:7300/evm',
