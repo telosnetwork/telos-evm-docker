@@ -142,6 +142,9 @@ def randomize_conf_ports(config: Dict) -> Dict:
     idx_ws_port = get_free_port()
 
     ret['hyperion']['chain']['telos-evm'][
+        'nodeos_read'] = f'http://localhost:{nodeos_http_port}'
+
+    ret['hyperion']['chain']['telos-evm'][
         'indexerWebsocketPort'] = idx_ws_port
 
     ret['hyperion']['chain']['telos-evm'][
