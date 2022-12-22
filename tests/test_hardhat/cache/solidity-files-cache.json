@@ -1,8 +1,8 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "/home/fuzzy/projects/telos-evm-docker/test_hardhat/contracts/Token.sol": {
-      "lastModificationDate": 1623218783668,
+    "/home/guille/Documents/telos-evm-docker/tests/test_hardhat/contracts/Token.sol": {
+      "lastModificationDate": 1650462338228,
       "contentHash": "d79976957cf241fcec9c77cb80daa701",
       "sourceName": "contracts/Token.sol",
       "solcConfig": {
@@ -18,7 +18,8 @@
                 "abi",
                 "evm.bytecode",
                 "evm.deployedBytecode",
-                "evm.methodIdentifiers"
+                "evm.methodIdentifiers",
+                "metadata"
               ],
               "": [
                 "ast"
