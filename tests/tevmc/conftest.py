@@ -43,7 +43,6 @@ def bootstrap_test_stack(tmp_path_factory, config, **kwargs):
         with TEVMController(
             config,
             root_pwd=tmp_path,
-            full=False,
             **kwargs
         ) as _tevmc:
             yield _tevmc

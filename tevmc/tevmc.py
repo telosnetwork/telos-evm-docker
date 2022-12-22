@@ -634,6 +634,29 @@ class TEVMController:
             exec_id, exec_stream = docker_open_process(
                 self.client,
                 self.containers['beats'],
+                ['chown', '-R', '0:0', '/etc/filebeat/filebeat.yml'])
+
+            ec, out = docker_wait_process(self.client, exec_id, exec_stream)
+            assert ec == 0
+
+            exec_id, exec_stream = docker_open_process(
+                self.client,
+                self.containers['beats'],
+                ['chmod', '600', '/etc/filebeat/filebeat.yml'])
+
+            ec, out = docker_wait_process(self.client, exec_id, exec_stream)
+            assert ec == 0
+
+            exec_id, exec_stream = docker_open_process(
+                self.client,
+                self.containers['beats'],
+                ['filebeat', '-e'])
+
+            time.sleep(3)
+
+            exec_id, exec_stream = docker_open_process(
+                self.client,
+                self.containers['beats'],
                 ['filebeat', 'setup', '--pipelines'])
 
             ec, out = docker_wait_process(self.client, exec_id, exec_stream)

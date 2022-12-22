@@ -14,5 +14,6 @@ RUN wget https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.15.1-a
     dpkg -i filebeat-7.15.1-amd64.deb
 
 RUN mkdir /root/logs/
+RUN mkdir /root/config
 
-CMD filebeat -e
+CMD ["/bin/bash", "-c", "while true; do sleep 3; done;"]
