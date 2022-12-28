@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import shutil
+import signal
 import logging
 
 from signal import SIGINT
@@ -236,10 +237,6 @@ class TEVMController:
                 Mount('/home/elasticsearch/data', str(data_dir.resolve()), 'bind')
             ]
 
-            # clean elasticsearch data
-            for d in data_dir.iterdir():
-                shutil.rmtree(d) 
-
             self.containers['elasticsearch'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
@@ -251,9 +248,7 @@ class TEVMController:
                         'bootstrap.memory_lock': 'true',
                         'xpack.security.enabled': 'true',
                         'ES_JAVA_OPTS': '-Xms2g -Xmx2g',
-                        'ES_NETWORK_HOST': '0.0.0.0',
-                        #'ELASTIC_USERNAME': config['user'],
-                        #'ELASTIC_PASSWORD': config['pass']
+                        'ES_NETWORK_HOST': '0.0.0.0'
                     },
                     mounts=self.mounts['elasticsearch']
                 )
@@ -264,26 +259,34 @@ class TEVMController:
                 if ' indices into cluster_state' in msg:
                     break
 
-            # setup password for elastic user
-            resp = requests.put(
-                f'http://{config["host"]}/_xpack/security/user/elastic/_password',
-                auth=('elastic', 'temporal'),
-                json={'password': config['elastic_pass']})
-        
-            self.logger.info(resp.text)
-            assert resp.status_code == 200
+            if not self.is_relaunch:
+                # setup password for elastic user
+                resp = requests.put(
+                    f'http://{config["host"]}/_xpack/security/user/elastic/_password',
+                    auth=('elastic', 'temporal'),
+                    json={'password': config['elastic_pass']})
+            
+                self.logger.info(resp.text)
+                assert resp.status_code == 200
 
-            # setup user
-            resp = requests.put(
-                f'http://{config["host"]}/_xpack/security/user/{config["user"]}',
-                auth=('elastic', config['elastic_pass']),
-                json={
-                    'password': config['pass'],
-                    'roles': [ 'superuser' ]
-                })
-    
-            self.logger.info(resp.text)
-            assert resp.status_code == 200 
+                # setup user
+                resp = requests.put(
+                    f'http://{config["host"]}/_xpack/security/user/{config["user"]}',
+                    auth=('elastic', config['elastic_pass']),
+                    json={
+                        'password': config['pass'],
+                        'roles': [ 'superuser' ]
+                    })
+        
+                self.logger.info(resp.text)
+                assert resp.status_code == 200
+
+    def stop_elasticsearch(self):
+        self.containers['elasticsearch'].kill(signal.SIGTERM)
+
+        for msg in self.stream_logs(
+            self.containers['elasticsearch']):
+            continue
 
     def start_kibana(self):
         with self.must_keep_running('kibana'):
@@ -490,7 +493,6 @@ class TEVMController:
         return resp['head_block_num']
 
     def await_full_index(self):
-
         last_indexed_block = 0
         remote_head_block = self._get_head_block()
         last_update_time = time.time()
@@ -557,9 +559,6 @@ class TEVMController:
 
                 except requests.exceptions.ConnectionError:
                     self.logger.warning('can\'t reach kibana, retry in 3 sec...')
-
-                #except requests.exceptions.JSONDecodeError:
-                #    self.logger.info('kibana server not ready, retry in 3 sec...')
 
                 except simplejson.errors.JSONDecodeError:
                     self.logger.info('kibana server not ready, retry in 3 sec...')
@@ -656,7 +655,7 @@ class TEVMController:
             endpoint = f'http://127.0.0.1:{nodeos_api_port}'
             ws_endpoint = f'ws://127.0.0.1:{nodeos_ship_port}'
 
-            bc_host = '0.0.0.0'  # config_hyperion['indexerWebsocketHost']
+            bc_host = config_hyperion['indexerWebsocketHost']
             bc_port = config_hyperion['indexerWebsocketPort']
 
             self.containers['telosevm-indexer'] = self.exit_stack.enter_context(
@@ -696,7 +695,6 @@ class TEVMController:
         self.setup_hyperion_log_mount()
 
         self.start_telosevm_indexer()
-        # self.start_hyperion_indexer()
 
         # if not self.is_local and self.wait:
         #     self.await_full_index()
@@ -712,6 +710,8 @@ class TEVMController:
     def stop(self):
         self.cleos.stop_nodeos(
             from_file=self.config['nodeos']['log_path'])
+
+        self.stop_elasticsearch()
 
         self.exit_stack.pop_all().close()
 
