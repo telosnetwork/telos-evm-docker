@@ -492,29 +492,38 @@ class TEVMController:
             Mount('/root/.pm2/logs', str(logs_dir.resolve()), 'bind')
         ]
 
-    def await_full_index(self):
+    def _get_head_block(self):
         if 'testnet' in self.chain_name:
-            endpoint = 'https://testnet.telos.caleos.io' 
+            endpoint = 'https://testnet.telos.net'
         else:
-            endpoint = 'https://telos.caleos.io'
-        
+            endpoint = 'https://mainnet.telos.net'
+
         resp = requests.get(f'{endpoint}/v1/chain/get_info').json()
-        remote_head_block = resp['head_block_num']
+        return resp['head_block_num']
+
+    def await_full_index(self):
 
         last_indexed_block = 0
+        remote_head_block = self._get_head_block()
+        last_update_time = time.time()
         for line in self.stream_logs(self.containers['hyperion-indexer']):
             if 'continuous_reader' in line:
                 self.logger.info(line.rstrip())
                 m = re.findall(r'block_num: ([0-9]+)', line)
                 if len(m) == 1:
                     last_indexed_block = int(m[0])
-                
+
                 delta = remote_head_block - last_indexed_block
 
                 self.logger.info(f'waiting on indexer... delta: {delta}')
 
                 if delta < 100:
                     break
+
+                now = time.time()
+                if now - last_update_time > 3600:
+                    remote_head_block = self._get_head_block()
+                    last_update_time = now
     
     def start_hyperion_indexer(self):
         with self.must_keep_running('hyperion-indexer'):
