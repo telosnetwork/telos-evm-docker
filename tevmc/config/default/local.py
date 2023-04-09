@@ -36,8 +36,8 @@ kibana = {
 
 nodeos = {
     'name': 'nodeos',
-    'tag': 'tevm:nodeos-3.1.0-evm',
-    'docker_path': 'eosio',
+    'tag': 'tevm:nodeos-4.1.0-evm',
+    'docker_path': 'leap',
     'data_dir_guest': '/mnt/dev/data',
     'data_dir_host': 'data',
     'conf_dir': 'config',
@@ -45,7 +45,7 @@ nodeos = {
     'genesis': 'local',
     'log_path': '/root/nodeos.log',
     'ini': {
-        'wasm_runtime': 'eos-vm-jit', 
+        'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
         'vm_oc_enable': True,
 
@@ -64,7 +64,7 @@ nodeos = {
         'agent_name': 'Telos Local Testnet',
 
 
-        'history_endpoint': '0.0.0.0:29999', 
+        'history_endpoint': '0.0.0.0:29999',
         'trace_history': True,
         'chain_history': True,
         'history_debug_mode': True,
@@ -74,7 +74,6 @@ nodeos = {
 
         'max_clients': 250,
         'cleanup_period': 30,
-        'txn_blok_lag': 0,
         'allowed_connection': 'any',
         'http_max_response_time': 100000,
         'http_max_body_size': 100000000,
@@ -126,7 +125,7 @@ hyperion = {
             'signer_permission': 'active',
             'signer_key': '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
             'contracts': {
-                'main': 'eosio.evm' 
+                'main': 'eosio.evm'
             },
             'debug': True,
             'nodeos_read': 'http://127.0.0.1:8888',
@@ -193,7 +192,6 @@ telosevm_indexer = {
     'stop_block': 4294967295,
     'deploy_block': 'override',
     'prev_hash': '56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-    'evm_delta': 'override',
     'elastic_dump_size': 1
 }
 

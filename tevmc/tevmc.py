@@ -439,26 +439,6 @@ class TEVMController:
                 is_local=self.is_local,
                 **nodeos_params
             )
-
-            nodeos_params = {
-                'data_dir': config['data_dir_guest'],
-                'logfile': config['log_path'],
-                'logging_cfg': '/root/logging.json'
-            }
-
-            if not self.is_nodeos_relaunch:
-                if 'snapshot' in config:
-                    nodeos_params['snapshot'] = config['snapshot']
-
-                elif 'genesis' in config:
-                    nodeos_params['genesis'] = f'/root/genesis/{config["genesis"]}.json'
-
-            output = cleos.start_nodeos_from_config(
-                '/root/config.ini',
-                state_plugin=True,
-                is_local=self.is_local,
-                **nodeos_params
-            )
             if self.is_local:
                 # await for nodeos to produce a block
                 cleos.wait_blocks(4)
@@ -476,11 +456,9 @@ class TEVMController:
                         cleos.deploy_evm()
 
                         evm_deploy_block = cleos.evm_deploy_info['processed']['block_num']
-                        evm_init_block = cleos.evm_init_info['processed']['block_num']
 
                         self.config['telosevm-indexer']['start_block'] = evm_deploy_block
                         self.config['telosevm-indexer']['deploy_block'] = evm_deploy_block
-                        self.config['telosevm-indexer']['evm_delta'] = evm_init_block - evm_deploy_block
 
                         # save evm deploy info for future runs
                         with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
@@ -491,13 +469,15 @@ class TEVMController:
                             self.logger.critical(msg.rstrip()) 
                         sys.exit(1)
 
-            self.logger.info(cleos.get_info())
+            genesis_block = self.config['telosevm-indexer']['start_block'] - 1
+            self.logger.info(f'nodeos has started, waiting until blocks.log contains evm genesis block number {genesis_block}')
+            cleos.wait_blocks(
+                genesis_block - cleos.get_info()['head_block_num'], sleep_time=10)
 
     def setup_hyperion_log_mount(self):
         docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
         logs_dir = docker_dir / self.config['hyperion']['logs_dir']
         conf_dir = docker_dir / self.config['hyperion']['conf_dir']
-
         logs_dir.mkdir(parents=True, exist_ok=True)
 
         self.mounts['hyperion'] = [
@@ -697,7 +677,6 @@ class TEVMController:
                         'INDEXER_STOP_BLOCK': config['stop_block'],
                         'EVM_DEPLOY_BLOCK': config['deploy_block'],
                         'EVM_PREV_HASH': config['prev_hash'],
-                        'EVM_DELTA': config['evm_delta'],
                         'BROADCAST_HOST': bc_host,
                         'BROADCAST_PORT': bc_port
                     }
@@ -706,7 +685,7 @@ class TEVMController:
 
             for msg in self.stream_logs(self.containers['telosevm-indexer']):
                 self.logger.info(msg.rstrip())
-                if 'Receiving ABI from ship' in msg:
+                if 'drained' in msg:
                     break
 
     def start(self):

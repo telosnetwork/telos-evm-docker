@@ -111,6 +111,6 @@
         "block": 100,
         "index": 500
     },
-    "plugins": $plugins 
+    "plugins": $plugins
 }
 

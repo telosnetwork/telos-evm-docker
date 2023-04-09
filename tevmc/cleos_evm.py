@@ -104,7 +104,7 @@ class CLEOSEVM(CLEOS):
             create_account=False,
             verify_hash=False)
 
-        ec, out = self.push_action(
+        ec, self.evm_init_info = self.push_action(
             'eosio.evm',
             'init',
             [
@@ -116,8 +116,6 @@ class CLEOSEVM(CLEOS):
                 gas_per_byte
             ], 'eosio.evm@active')
         assert ec == 0
-
-        self.evm_init_info = out
 
 
     def create_test_evm_account(

@@ -13,6 +13,6 @@ def test_restart(tevmc_testnet_no_wait):
     tevmc.is_elastic_relaunch = True
 
     assert (tevmc.docker_wd /
-        'eosio/data/blocks/blocks.log').is_file() 
+        'leap/data/blocks/blocks.log').is_file()
 
     tevmc.start()
