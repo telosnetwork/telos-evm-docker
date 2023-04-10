@@ -42,4 +42,4 @@ def test_transaction_count(tevmc_local, local_w3):
     tevmc.cleos.transfer_token(account, 'eosio.evm', quantity, 'Deposit')
 
     assert local_w3.eth.get_transaction_count(
-        Web3.toChecksumAddress(eth_addr)) == 1 
+        Web3.to_checksum_address(eth_addr)) == 1 

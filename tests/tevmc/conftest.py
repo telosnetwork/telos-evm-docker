@@ -137,6 +137,6 @@ def local_w3(tevmc_local):
     eth_api_endpoint = f'http://localhost:{hyperion_api_port}/evm'
 
     w3 = Web3(Web3.HTTPProvider(eth_api_endpoint))
-    assert w3.isConnected()
+    assert w3.is_connected()
 
     yield w3

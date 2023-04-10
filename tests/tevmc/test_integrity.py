@@ -191,7 +191,7 @@ def test_integrity(tevmc_local, local_w3):
 
     # now withdraw back to native
     for account, addr in zip(accounts, native_eth_addrs):
-        addr = local_w3.toChecksumAddress(addr)
+        addr = local_w3.to_checksum_address(addr)
         ec, out = tevmc.cleos.eth_withdraw(
             account,
             Asset(

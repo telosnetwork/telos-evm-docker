@@ -526,8 +526,7 @@ class TEVMController:
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{self.config["hyperion"]["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     command=[
-                        '/bin/bash', '-c',
-                        f'/root/scripts/run-hyperion.sh {self.chain_name}-api'
+                        '/bin/bash', '-c', f'/root/scripts/run-hyperion.sh {self.chain_name}-api'
                     ],
                     mounts=self.mounts['hyperion']
                 )

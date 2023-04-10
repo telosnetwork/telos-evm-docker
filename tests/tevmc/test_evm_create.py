@@ -34,6 +34,6 @@ def test_cleos_evm_create(tevmc_local, local_w3):
 
     # get balance by hitting evm rpc api
     rpc_balance = local_w3.eth.get_balance(
-        local_w3.toChecksumAddress(eth_addr))
+        local_w3.to_checksum_address(eth_addr))
 
-    assert balance == rpc_balance 
+    assert balance == rpc_balance
