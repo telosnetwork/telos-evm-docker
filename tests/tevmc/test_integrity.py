@@ -174,7 +174,7 @@ def test_integrity(tevmc_local, local_w3):
     for i in range(amount):
         from_addr = internal_eth_addrs[i]
         to_addr = decode_hex(native_eth_addrs[i])
-        quantity = local_w3.eth.get_balance(from_addr.address) - to_wei(1, 'ether') 
+        quantity = local_w3.eth.get_balance(from_addr.address) - to_wei(1, 'ether')
 
         signed_tx = Account.sign_transaction({
             'from': from_addr.address,
@@ -209,7 +209,7 @@ def test_integrity(tevmc_local, local_w3):
         assert float(get_elastic_balance(addr)) < 0.0001
 
     # make sure elastic balance for real evm addresses matches up with evm
-    # contract table 
+    # contract table
     for addr in internal_eth_addrs:
         assert get_elastic_balance(addr.address) == from_wei(
             tevmc.cleos.eth_get_balance(addr.address), 'ether')

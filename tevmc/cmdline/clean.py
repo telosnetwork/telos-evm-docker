@@ -7,7 +7,7 @@ import docker
 import psutil
 import requests
 
-from ..config import * 
+from ..config import *
 from .cli import cli, get_docker_client
 
 

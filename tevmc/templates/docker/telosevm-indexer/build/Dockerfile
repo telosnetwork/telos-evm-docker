@@ -18,6 +18,6 @@ run npm i why-is-node-running -g
 
 env LOG_LEVEL debug
 
-cmd ["why-is-node-running", "build/main.js"] 
+cmd ["why-is-node-running", "build/main.js"]
 
 expose $broadcast_port

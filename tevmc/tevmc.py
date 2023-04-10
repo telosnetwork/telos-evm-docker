@@ -29,7 +29,7 @@ from py_eosio.sugar import (
     docker_wait_process
 )
 
-from .config import * 
+from .config import *
 from .cleos_evm import CLEOSEVM
 
 
@@ -47,14 +47,14 @@ class TEVMController:
         log_level: str = 'info',
         root_pwd: Optional[Path] = None,
         wait: bool = True,
-        full: bool = True 
+        full: bool = True
     ):
         self.pid = os.getpid()
         self.config = config
         self.client = docker.from_env()
         self.exit_stack = ExitStack()
         self.wait = wait
-        self.full = full 
+        self.full = full
 
         if not root_pwd:
             self.root_pwd = Path().resolve()
@@ -64,14 +64,14 @@ class TEVMController:
         self.docker_wd = self.root_pwd / 'docker'
 
         self.is_nodeos_relaunch = (
-            self.docker_wd / 
-            config['nodeos']['docker_path'] / 
+            self.docker_wd /
+            config['nodeos']['docker_path'] /
             config['nodeos']['data_dir_host'] /
             'blocks').is_dir()
 
         self.is_elastic_relaunch = (
             self.docker_wd /
-            config['elasticsearch']['docker_path'] / 
+            config['elasticsearch']['docker_path'] /
             config['elasticsearch']['data_dir'] /
             'nodes').is_dir()
 
@@ -91,11 +91,11 @@ class TEVMController:
             self.producer_key = config['nodeos']['ini']['sig_provider'].split(':')[-1]
 
         self.containers = {}
-        self.mounts = {} 
+        self.mounts = {}
 
     @contextmanager
     def open_container(
-        self, 
+        self,
         name: str,
         image: str,
         net: str = 'host',
@@ -128,7 +128,7 @@ class TEVMController:
                     repo, tag = splt_image
                 else:
                     raise ValueError(
-                        f'Expected \'{image}\' to have \'repo:tag\' format.') 
+                        f'Expected \'{image}\' to have \'repo:tag\' format.')
 
                 try:
                     updates = {}
@@ -222,7 +222,7 @@ class TEVMController:
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     mounts=self.mounts['redis']
-                ) 
+                )
             )
 
             for msg in self.stream_logs(self.containers['redis']):
@@ -368,7 +368,7 @@ class TEVMController:
                 if 'snapshot' in config:
                     env['NODEOS_SNAPSHOT'] = config['snapshot']
 
-                elif 'genesis' in config: 
+                elif 'genesis' in config:
                     env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
 
             self.logger.info(f'is relaunch: {self.is_nodeos_relaunch}')
@@ -393,7 +393,7 @@ class TEVMController:
 
             exec_id, exec_stream = docker_open_process(
                 self.client, self.containers['nodeos'],
-                ['/bin/bash', '-c', 
+                ['/bin/bash', '-c',
                     'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
 
             nodeos_api_port = config['ini']['http_addr'].split(':')[1]
@@ -466,7 +466,7 @@ class TEVMController:
 
                     except AssertionError:
                         for msg in self.stream_logs(self.containers['nodeos']):
-                            self.logger.critical(msg.rstrip()) 
+                            self.logger.critical(msg.rstrip())
                         sys.exit(1)
 
             genesis_block = self.config['telosevm-indexer']['start_block'] - 1

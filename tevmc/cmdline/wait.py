@@ -42,7 +42,7 @@ def wait_tx(tx_id):
             print(resp)
 
         except requests.exceptions.ConnectionError as e:
-            print('connect error retrying in 3 seconds...') 
+            print('connect error retrying in 3 seconds...')
 
         if 'signatures' in resp:
             print('transaction found!')

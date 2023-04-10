@@ -52,7 +52,7 @@ class CLEOSEVM(CLEOS):
 
     def __init__(
         self,
-        *args, 
+        *args,
         hyperion_api_endpoint: str = 'http://127.0.0.1:7000',
         chain_id: int = 41,
         **kwargs
@@ -67,7 +67,7 @@ class CLEOSEVM(CLEOS):
     def deploy_evm(
         self,
         start_bytes: int = 2684354560,
-        start_cost: str = '21000.0000 TLOS', 
+        start_cost: str = '21000.0000 TLOS',
         target_free: int = 2684354560,
         min_buy: int = 20000,
         fee_transfer_pct: int = 100,
@@ -134,7 +134,7 @@ class CLEOSEVM(CLEOS):
         self.transfer_token(name, 'eosio.evm', quantity, 'Deposit')
 
         eth_addr = self.eth_account_from_name(name)
-        assert eth_addr 
+        assert eth_addr
 
         self.logger.info(f'{name}: {eth_addr}')
 
@@ -300,7 +300,7 @@ class CLEOSEVM(CLEOS):
             gas=gas,
             to=to,
             value=value,
-            data=data 
+            data=data
         )
 
         return tx.encode().hex()

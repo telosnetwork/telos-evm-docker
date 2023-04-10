@@ -82,7 +82,7 @@ nodeos = {
 
         'enable_stale_production': False,
 
-        'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',    
+        'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
 
         'disable_subjective_billing': True,
         'max_transaction_time': 500,
@@ -150,7 +150,7 @@ hyperion = {
     'chain': {
         'name': 'telos-testnet',
         'long_name': 'Telos Testnet',
-        'chain_hash': '1eaa0824707c8c16bd25145493bf062aecddfeb56c736f6ba6397f3195f33c9f', 
+        'chain_hash': '1eaa0824707c8c16bd25145493bf062aecddfeb56c736f6ba6397f3195f33c9f',
         'chain_id': 41,
         'http': 'http://127.0.0.1:8888',
         'ship': 'ws://127.0.0.1:29999',

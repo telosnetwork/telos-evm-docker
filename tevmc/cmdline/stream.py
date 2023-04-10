@@ -10,7 +10,7 @@ from py_eosio.sugar import (
     docker_open_process
 )
 
-from .cli import cli, get_docker_client 
+from .cli import cli, get_docker_client
 
 
 @cli.command()

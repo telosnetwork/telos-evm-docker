@@ -82,7 +82,7 @@ def init(config, target_dir, chain_name, random_creds, random_ports):
     if not target_dir.is_dir():
         print('Target directory not found.')
         sys.exit(1)
-    
+
     conf = {}
     if 'local' in chain_name:
         conf = local.default_config
@@ -95,7 +95,7 @@ def init(config, target_dir, chain_name, random_creds, random_ports):
 
     if random_ports:
         conf = randomize_conf_ports(conf)
-   
+
     if random_creds:
         conf = randomize_conf_creds(conf)
 

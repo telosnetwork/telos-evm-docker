@@ -38,4 +38,4 @@ CMD ["/bin/bash", "-c", "while true; do sleep 3; done;"]
 
 # COPY entrypoint.sh /opt/entrypoint.sh
 
-# ENTRYPOINT ["/bin/bash", "/opt/entrypoint.sh"] 
+# ENTRYPOINT ["/bin/bash", "/opt/entrypoint.sh"]

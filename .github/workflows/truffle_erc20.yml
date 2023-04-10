@@ -1,4 +1,4 @@
-name: Truffle ERC20 Tests 
+name: Truffle ERC20 Tests
 
 on:
   # Allows you to run this workflow manually from the Actions tab

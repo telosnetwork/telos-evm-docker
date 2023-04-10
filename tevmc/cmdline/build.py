@@ -8,7 +8,7 @@ import click
 import docker
 
 from typing import Dict, Any
-from hashlib import sha1 
+from hashlib import sha1
 from pathlib import Path
 from datetime import datetime
 
@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from .cli import cli, get_docker_client
 from .init import load_config_templates, load_docker_templates
-from ..config import * 
+from ..config import *
 
 
 
@@ -83,11 +83,11 @@ def perform_config_build(target_dir, config):
     redis_build_dir = redis_dir + '/' + 'build'
     redis_conf_dir = redis_dir + '/' +  redis_conf['conf_dir']
 
-    subst = flatten('redis', config)   
+    subst = flatten('redis', config)
     write_docker_template(f'{redis_build_dir}/Dockerfile', subst)
     write_docker_template(f'{redis_conf_dir}/redis.conf', subst)
 
-    # elasticsearch 
+    # elasticsearch
     elastic_conf = config['elasticsearch']
 
     elastic_dir = elastic_conf['docker_path']
@@ -101,7 +101,7 @@ def perform_config_build(target_dir, config):
 
     host_dir = (docker_dir / elastic_data_dir)
     host_dir.mkdir(parents=True, exist_ok=True)
-    
+
     os.chown(host_dir, uid=1000, gid=1000)
 
     # kibana
@@ -111,7 +111,7 @@ def perform_config_build(target_dir, config):
     kibana_build_dir = kibana_dir + '/' + 'build'
     kibana_conf_dir  = kibana_dir + '/' + kibana_conf['conf_dir']
 
-    subst = flatten('kibana', config) 
+    subst = flatten('kibana', config)
     write_docker_template(f'{kibana_build_dir}/Dockerfile', subst)
     write_docker_template(f'{kibana_conf_dir}/kibana.yml', subst)
 
@@ -150,7 +150,7 @@ def perform_config_build(target_dir, config):
 
     if 'local' in chain_name:
         conf_str += templates['nodeos.local.config.ini'].substitute(**subst) + '\n'
-   
+
     for plugin in subst['plugins']:
         conf_str += f'plugin = {plugin}\n'
 
@@ -277,7 +277,7 @@ def perform_config_build(target_dir, config):
             templates['telos-net.config.json'].substitute(**subst))
 
     # beats
-    beats_conf = config['beats'] 
+    beats_conf = config['beats']
     beats_dir = docker_dir / beats_conf['docker_path']
     beats_conf_dir = beats_dir / beats_conf['conf_dir']
 
@@ -321,14 +321,14 @@ def perform_docker_build(target_dir, config, logger):
 
             # sometimes several json packets are sent per chunk
             splt_str = _str.split('\n')
-            
+
             for packet in splt_str:
                 msg = json.loads(packet)
                 status = msg.get('status', None)
                 status = msg.get('stream', None)
                 if status:
                     stream += status
-    
+
         try:
             client.images.get(build_args['tag'])
 
@@ -378,7 +378,7 @@ class BuildInProgress:
             total = int(step_info[1])
 
             update = update.rstrip()
-            
+
             if total != self.current_total:
                 self.prev_total = self.current_total
                 self.bar.reset(total=total)
@@ -389,7 +389,7 @@ class BuildInProgress:
                 self.bar.update(n=progress)
                 self.curent_progress = progress
 
-            self.set_status(update) 
+            self.set_status(update)
 
     def close(self):
         self.bar.close()
@@ -418,7 +418,7 @@ def build(headless, always_conf, target_dir, config):
     except FileNotFoundError:
         print('Config not found.')
         sys.exit(1)
-    
+
     target_dir = Path(target_dir).resolve()
 
     rebuild_conf = False
@@ -475,7 +475,7 @@ def build(headless, always_conf, target_dir, config):
 
             # sometimes several json packets are sent per chunk
             splt_str = _str.split('\n')
-            
+
             for packet in splt_str:
                 msg = json.loads(packet)
                 status = msg.get('status', None)
@@ -487,7 +487,7 @@ def build(headless, always_conf, target_dir, config):
                     else:
                         stream += status
                         bar.update(status)
-    
+
         if not headless:
             bar.set_status(f'built {build_args["tag"]}')
             bar.close()
