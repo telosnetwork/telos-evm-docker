@@ -38,7 +38,7 @@
         "chain": $name,
         "eosio_alias": "eosio",
         "parser": "1.8",
-        "auto_stop": $hyperion_indexer_auto_stop,
+        "auto_stop": 0,
         "index_version": "v1",
         "debug": true,
         "bp_logs": false,
@@ -55,8 +55,8 @@
         "ship_request_rev": "v0",
         "index_partition_size": 10000000
     },
-    "blacklists": $hyperion_indexer_blacklists,
-    "whitelists": $hyperion_indexer_whitelists,
+    "blacklists": [],
+    "whitelists": [],
     "scaling": {
         "readers": 1,
         "ds_queues": 3,
@@ -74,11 +74,11 @@
         "polling_interval": 10000
     },
     "indexer": {
-        "start_on": $hyperion_indexer_start_on,
-        "stop_on": $hyperion_indexer_end_on,
-        "rewrite": $hyperion_indexer_rewrite,
+        "start_on": 0,
+        "stop_on": 0,
+        "rewrite": false,
         "purge_queues": false,
-        "live_reader": $hyperion_indexer_live_reader,
+        "live_reader": false,
         "live_only_mode": false,
         "abi_scan_mode": false,
         "fetch_block": true,

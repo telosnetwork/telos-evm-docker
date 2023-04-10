@@ -219,37 +219,6 @@ def perform_config_build(target_dir, config):
         'hyperion',
         {'k': flatten('api', config['hyperion'])}, 'k'))
 
-    # append chainname to actions, and deltas
-    indexer_conf = flatten('indexer', config['hyperion'])
-
-    blacklist_actions = []
-    for act in indexer_conf['indexer_blacklists']['actions']:
-        blacklist_actions.append(f'{chain_name}::{act}')
-
-    indexer_conf['indexer_blacklists']['actions'] = blacklist_actions
-
-    whitelist_actions = []
-    for act in indexer_conf['indexer_whitelists']['actions']:
-        whitelist_actions.append(f'{chain_name}::{act}')
-
-    indexer_conf['indexer_whitelists']['actions'] = whitelist_actions
-
-    blacklist_deltas = []
-    for dlt in indexer_conf['indexer_blacklists']['deltas']:
-        blacklist_deltas.append(f'{chain_name}::{dlt}')
-
-    indexer_conf['indexer_blacklists']['deltas'] = blacklist_deltas
-
-    whitelist_deltas = []
-    for dlt in indexer_conf['indexer_whitelists']['deltas']:
-        whitelist_deltas.append(f'{chain_name}::{dlt}')
-
-    indexer_conf['indexer_whitelists']['deltas'] = whitelist_deltas
-
-    hyperion_indexer_conf = jsonize(flatten(
-        'hyperion',
-        {'k': indexer_conf}, 'k'))
-
     telos_evm = get_config('hyperion.chain.telos-evm', config)
     telos_evm['chainId'] = get_config('hyperion.chain.chain_id', config)
 
@@ -269,7 +238,6 @@ def perform_config_build(target_dir, config):
 
     subst = {}
     subst.update(hyperion_api_conf)
-    subst.update(hyperion_indexer_conf)
     subst.update(plugins)
     subst.update(other)
     with open(chains_path / f'{chain_name}.config.json', 'w+') as target_file:

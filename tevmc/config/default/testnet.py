@@ -144,6 +144,7 @@ nodeos = {
 
 hyperion = {
     'tag': 'tevm:hyperion',
+    'name': 'hyperion-api',
     'docker_path': 'hyperion',
     'conf_dir': 'config',
     'logs_dir': 'logs',
@@ -178,36 +179,6 @@ hyperion = {
             'indexerWebsocketUri': 'ws://127.0.0.1:7300/evm',
             'rpcWebsocketHost': '0.0.0.0',
             'rpcWebsocketPort': '7400'
-        }
-    },
-    'indexer': {
-        'name': 'hyperion-indexer',
-        'start_on': 136229794,
-        'end_on': 0,
-        'auto_stop': 0,
-        'rewrite': False,
-        'live_reader': True,
-        'blacklists': {
-            'actions': [],
-            'deltas': []
-        },
-        'whitelists': {
-            'actions': [
-                'eosio.evm::call',
-                'eosio.evm::create',
-                'eosio.evm::doresources',
-                'eosio.evm::init',
-                'eosio.evm::openwallet',
-                'eosio.evm::raw',
-                'eosio.evm::receipt',
-                'eosio.evm::setresources',
-                'eosio.evm::withdraw'
-            ],
-            'deltas': [
-                'eosio::global'
-            ],
-            'max_depth': 10,
-            'root_only': False
         }
     },
     'api': {
