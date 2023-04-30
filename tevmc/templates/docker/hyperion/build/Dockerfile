@@ -20,14 +20,10 @@ RUN apt-get install -y nodejs && \
 
 WORKDIR /hyperion-history-api
 
-COPY home/.ssh /root/.ssh
-RUN chmod -R 600 "/root/.ssh/config"
-RUN chmod -R 600 "/root/.ssh/evm_plugin"
-
 RUN npm i
 RUN npm i @fastify/autoload
 
-RUN ./hpm install -r git@github.com:telosnetwork/hyperion-telos-evm-plugin.git telos-evm
+RUN ./hpm install -r https://github.com/telosnetwork/hyperion-telos-evm-plugin.git telos-evm
 RUN ./hpm enable telos-evm
 
 RUN ./hpm install -r https://github.com/eosrio/hyperion-explorer-plugin explorer
