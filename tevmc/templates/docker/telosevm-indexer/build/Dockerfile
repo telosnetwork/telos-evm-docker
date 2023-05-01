@@ -4,7 +4,7 @@ run npm i pm2 -g
 
 workdir /root
 
-run git clone git@github.com:telosnetwork/telosevm-es-indexer.git indexer --branch default_conf
+run git clone https://github.com/telosnetwork/telosevm-es-indexer.git indexer --branch default_conf
 
 run rm -rdf indexer/.git
 

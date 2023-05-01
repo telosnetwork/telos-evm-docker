@@ -46,14 +46,15 @@ def stream(pid, logpath, target_dir, config, source):
     if source in ['hyp', 'rpc']:
         source = 'hyperion'
 
-    chain_name = config["hyperion"]["chain"]["name"]
-    src_config = config[source]
-
     try:
         if source == 'daemon':
             subprocess.run(['tail', '-f', logpath])
+            return
 
-        elif source == 'nodeos':
+        chain_name = config["hyperion"]["chain"]["name"]
+        src_config = config[source]
+
+        if source == 'nodeos':
             nos_docker = src_config['docker_path']
             nos_config = src_config['conf_dir']
             filename = Path(src_config['log_path']).name

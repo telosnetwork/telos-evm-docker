@@ -295,6 +295,9 @@ def perform_docker_build(target_dir, config, logger):
                 status = msg.get('status', None)
                 status = msg.get('stream', None)
                 if status:
+                    strp_status = status.rstrip()
+                    if strp_status:
+                        logger.info(strp_status)
                     stream += status
 
         try:
@@ -311,62 +314,7 @@ def perform_docker_build(target_dir, config, logger):
         logger.info('building complete.')
 
 
-class BuildInProgress:
-    """ Helper class to manage build progress bar
-    """
-
-    def __init__(self):
-        self.prev_progress = 0
-        self.prev_total = 0
-        self.current_progress = 0
-        self.current_total = 0
-        self.status = ''
-        self.bar = tqdm(bar_format='{l_bar}{bar}')
-
-    def set_status(self, status: str):
-        new_status = format(
-            f'{status[:MAX_STATUS_SIZE]}', f' <{MAX_STATUS_SIZE}')
-
-        new_status = new_status.replace('\n', '')
-        new_status = new_status.replace('\r', '')
-
-        if new_status != self.status:
-            self.status = new_status
-            self.bar.set_description(desc=new_status)
-
-    def update(self, update):
-        if update.startswith('Step'):
-            """Docker sends build updates with format
-                'Step progress/total'
-            Use it to update the progress bar.
-            """
-            step_info = update.split(' ')[1]
-            step_info = step_info.split('/')
-            progress = int(step_info[0])
-            total = int(step_info[1])
-
-            update = update.rstrip()
-
-            if total != self.current_total:
-                self.prev_total = self.current_total
-                self.bar.reset(total=total)
-                self.current_total = total
-
-            if progress != self.current_progress:
-                self.prev_progress = self.current_progress
-                self.bar.update(n=progress)
-                self.curent_progress = progress
-
-            self.set_status(update)
-
-    def close(self):
-        self.bar.close()
-
-
 @cli.command()
-@click.option(
-    '--headless/--interactive', default=False,
-    help='Display pretty output or just stream logs.')
 @click.option(
     '--always-conf/--smart-conf', default=False,
     help='Force configuration files rebuild from templates.')
@@ -376,7 +324,7 @@ class BuildInProgress:
 @click.option(
     '--config', default='tevmc.json',
     help='Unified config file name.')
-def build(headless, always_conf, target_dir, config):
+def build(always_conf, target_dir, config):
     """Build in-repo docker containers.
     """
     config_fname = config
@@ -431,11 +379,6 @@ def build(headless, always_conf, target_dir, config):
 
 
     for build_args in builds:
-        if not headless:
-            stream = ''
-            msg = f'building {build_args["tag"]}'
-            bar = BuildInProgress()
-            bar.set_status(msg)
 
         for chunk in client.api.build(**build_args):
             update = None
@@ -450,15 +393,7 @@ def build(headless, always_conf, target_dir, config):
                 status = msg.get('stream', None)
 
                 if status:
-                    if headless:
-                        print(status, end='')
-                    else:
-                        stream += status
-                        bar.update(status)
-
-        if not headless:
-            bar.set_status(f'built {build_args["tag"]}')
-            bar.close()
+                    print(status, end='')
 
         try:
             client.images.get(build_args['tag'])
@@ -467,7 +402,4 @@ def build(headless, always_conf, target_dir, config):
             print(
                 f'couldn\'t build container {build_args["tag"]} at '
                 f'{build_args["path"]}')
-            if not headless:
-                print('build log:')
-                print(stream)
             sys.exit(1)

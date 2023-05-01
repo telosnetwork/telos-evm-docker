@@ -5,7 +5,7 @@ from py_eosio.tokens import sys_token
 
 
 def test_connect(local_w3):
-    assert local_w3.isConnected()
+    assert local_w3.is_connected()
 
 
 def test_gas_price(tevmc_local, local_w3):
@@ -42,4 +42,4 @@ def test_transaction_count(tevmc_local, local_w3):
     tevmc.cleos.transfer_token(account, 'eosio.evm', quantity, 'Deposit')
 
     assert local_w3.eth.get_transaction_count(
-        Web3.to_checksum_address(eth_addr)) == 1
+        local_w3.to_checksum_address(eth_addr)) == 1

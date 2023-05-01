@@ -1,6 +1,6 @@
 {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
-    "version": "eosio::abi/1.1",
+    "version": "eosio::abi/1.2",
     "types": [],
     "structs": [
         {
@@ -25,7 +25,7 @@
                 },
                 {
                     "name": "code",
-                    "type": "uint8[]"
+                    "type": "bytes"
                 },
                 {
                     "name": "balance",
@@ -146,7 +146,7 @@
             "fields": [
                 {
                     "name": "callType",
-                    "type": "uint8[]"
+                    "type": "bytes"
                 },
                 {
                     "name": "from",
@@ -154,27 +154,27 @@
                 },
                 {
                     "name": "gas",
-                    "type": "uint8[]"
+                    "type": "bytes"
                 },
                 {
                     "name": "input",
-                    "type": "uint8[]"
+                    "type": "bytes"
                 },
                 {
                     "name": "to",
-                    "type": "uint8[]"
+                    "type": "bytes"
                 },
                 {
                     "name": "value",
-                    "type": "uint8[]"
+                    "type": "bytes"
                 },
                 {
                     "name": "gasUsed",
-                    "type": "uint8[]"
+                    "type": "bytes"
                 },
                 {
                     "name": "output",
-                    "type": "uint8[]"
+                    "type": "bytes"
                 },
                 {
                     "name": "subtraces",
@@ -182,7 +182,7 @@
                 },
                 {
                     "name": "traceAddress",
-                    "type": "uint8[]"
+                    "type": "bytes"
                 },
                 {
                     "name": "type",
@@ -385,12 +385,12 @@
         {
             "name": "call",
             "type": "call",
-            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: CALL\nsummary: 'call'\nicon:\n---"
+            "ricardian_contract": ""
         },
         {
             "name": "create",
             "type": "create",
-            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: CREATE\nsummary: 'Create'\nicon:\n---"
+            "ricardian_contract": ""
         },
         {
             "name": "doresources",
@@ -410,7 +410,7 @@
         {
             "name": "raw",
             "type": "raw",
-            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: RAW\nsummary: 'Raw'\nicon:\n---"
+            "ricardian_contract": ""
         },
         {
             "name": "receipt",
@@ -425,7 +425,7 @@
         {
             "name": "withdraw",
             "type": "withdraw",
-            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: WITHDRAW\nsummary: 'Withdraw'\nicon:\n---"
+            "ricardian_contract": ""
         }
     ],
     "tables": [
@@ -458,6 +458,8 @@
             "key_types": []
         }
     ],
+    "kv_tables": {},
     "ricardian_clauses": [],
-    "variants": []
+    "variants": [],
+    "action_results": []
 }

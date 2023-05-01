@@ -22,6 +22,9 @@ from tevmc.cmdline.clean import clean
 from tevmc.cmdline.cli import get_docker_client
 
 
+TEST_SERVICES = ['redis', 'elastic', 'nodeos', 'indexer', 'rpc']
+
+
 @contextmanager
 def bootstrap_test_stack(tmp_path_factory, config, randomize=True, **kwargs):
     if randomize:
@@ -40,48 +43,42 @@ def bootstrap_test_stack(tmp_path_factory, config, randomize=True, **kwargs):
     perform_docker_build(
         tmp_path, config, logging)
 
+    containers = None
+
     try:
         with TEVMController(
             config,
             root_pwd=tmp_path,
+            services=TEST_SERVICES,
             **kwargs
         ) as _tevmc:
             yield _tevmc
+            containers = _tevmc.containers
 
     except BaseException:
-        pid = os.getpid()
+        if containers:
+            pid = os.getpid()
 
-        client = get_docker_client(timeout=10)
+            client = get_docker_client(timeout=10)
 
-        containers = []
-        for name, conf in config.items():
-            if 'name' in conf:
-                containers.append(f'{conf["name"]}-{pid}')
+            for val in containers:
+                while True:
+                    try:
+                        container = client.containers.get(val)
+                        container.stop()
 
+                    except docker.errors.APIError as err:
+                        if 'already in progress' in str(err):
+                            time.sleep(0.1)
+                            continue
 
-        containers.append(
-            f'{local.default_config["hyperion"]["indexer"]["name"]}-{pid}')
-        containers.append(
-            f'{local.default_config["hyperion"]["api"]["name"]}-{pid}')
+                    except requests.exceptions.ReadTimeout:
+                        print('timeout!')
 
-        for val in containers:
-            while True:
-                try:
-                    container = client.containers.get(val)
-                    container.stop()
+                    except docker.errors.NotFound:
+                        print(f'{val} not found!')
 
-                except docker.errors.APIError as err:
-                    if 'already in progress' in str(err):
-                        time.sleep(0.1)
-                        continue
-
-                except requests.exceptions.ReadTimeout:
-                    print('timeout!')
-
-                except docker.errors.NotFound:
-                    print(f'{val} not found!')
-
-                break
+                    break
         raise
 
 

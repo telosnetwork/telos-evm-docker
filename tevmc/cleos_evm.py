@@ -96,7 +96,7 @@ class CLEOSEVM(CLEOS):
             net='10000.0000 TLOS',
             ram=100000)
 
-        contract_path = '/opt/eosio/bin/contracts/eosio.evm'
+        contract_path = '/opt/eosio/bin/contracts/eosio.evm/receiptless'
 
         self.evm_deploy_info = self.deploy_contract(
             'eosio.evm', contract_path,

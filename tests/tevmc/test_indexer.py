@@ -6,11 +6,7 @@ import time
 def test_indexer_restart(tevmc_local):
     tevmc = tevmc_local
 
-    time.sleep(1)
-
     tevmc.stop()
-    tevmc.is_relaunch = True
-
     tevmc.start()
 
     for msg in tevmc.stream_logs(

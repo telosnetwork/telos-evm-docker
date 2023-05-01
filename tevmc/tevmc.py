@@ -47,14 +47,22 @@ class TEVMController:
         log_level: str = 'info',
         root_pwd: Optional[Path] = None,
         wait: bool = True,
-        full: bool = True
+        services: List[str] = [
+            'redis',
+            'elastic',
+            'kibana',
+            'nodeos',
+            'indexer',
+            'rpc',
+            'beats'
+        ]
     ):
         self.pid = os.getpid()
         self.config = config
         self.client = docker.from_env()
         self.exit_stack = ExitStack()
         self.wait = wait
-        self.full = full
+        self.services = services
 
         if not root_pwd:
             self.root_pwd = Path().resolve()
@@ -498,24 +506,26 @@ class TEVMController:
         last_indexed_block = 0
         remote_head_block = self._get_head_block()
         last_update_time = time.time()
-        for line in self.stream_logs(self.containers['hyperion-indexer']):
-            if 'continuous_reader' in line:
-                self.logger.info(line.rstrip())
-                m = re.findall(r'block_num: ([0-9]+)', line)
-                if len(m) == 1:
-                    last_indexed_block = int(m[0])
+        delta = remote_head_block - self.cleos.get_info()['head_block_num']
 
-                delta = remote_head_block - last_indexed_block
+        for line in self.stream_logs(self.containers['telosevm-indexer']):
+            if '] pushed, at ' in line:
+                m = re.findall(r'(?<=: \[)(.*?)(?=\|)', line)
+                if len(m) == 1 and m[0] != 'NaN':
+                    last_indexed_block = int(m[0].replace(',', ''))
 
-                self.logger.info(f'waiting on indexer... delta: {delta}')
+                    delta = remote_head_block - last_indexed_block
 
-                if delta < 100:
-                    break
+            self.logger.info(f'waiting on indexer... delta: {delta}')
 
-                now = time.time()
-                if now - last_update_time > 3600:
-                    remote_head_block = self._get_head_block()
-                    last_update_time = now
+            if delta < 100:
+                break
+
+            now = time.time()
+            if now - last_update_time > 3600:
+                remote_head_block = self._get_head_block()
+                last_update_time = now
+
 
     def start_hyperion_api(self):
         with self.must_keep_running('hyperion-api'):
@@ -688,24 +698,33 @@ class TEVMController:
                     break
 
     def start(self):
-        self.start_redis()
-        self.start_elasticsearch()
+        if 'redis' in self.services:
+            self.start_redis()
 
-        if self.full:
+        if 'elastic' in self.services:
+            self.start_elasticsearch()
+
+        if 'kibana' in self.services:
             self.start_kibana()
 
-        self.start_nodeos()
+        if 'nodeos' in self.services:
+            self.start_nodeos()
 
-        self.setup_hyperion_log_mount()
+        if 'rpc' in self.services:
+            self.setup_hyperion_log_mount()
+            self.start_hyperion_api()
 
-        self.start_telosevm_indexer()
+        if 'indexer' in self.services:
+            self.start_telosevm_indexer()
 
-        # if not self.is_local and self.wait:
-        #     self.await_full_index()
+            if not self.is_local and self.wait:
+                self.await_full_index()
 
-        self.start_hyperion_api()
+        else:
+            if self.wait:
+                self.logger.warning('--wait passed but no indexer launched, ignoring...')
 
-        if self.full:
+        if 'beats' in self.services:
             self.start_beats()
 
         if self.is_local and self.is_fresh:
@@ -714,8 +733,10 @@ class TEVMController:
     def stop(self):
         self.cleos.stop_nodeos(
             from_file=self.config['nodeos']['log_path'])
+        self.is_nodeos_relaunch = True
 
         self.stop_elasticsearch()
+        self.is_elastic_relaunch = True
 
         self.exit_stack.pop_all().close()
 

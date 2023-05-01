@@ -63,8 +63,8 @@ def test_integrity(tevmc_local, local_w3):
         total_payed_in_gas = 0
         for transfer in outgoing:
             balance_hex -= to_int(hexstr=transfer['_source']['@raw']['value'])
-            total_payed_in_gas += transfer[
-                '_source']['@raw']['gasused'] * transfer['_source']['@raw']['charged_gas_price']
+            total_payed_in_gas += int(transfer[
+                '_source']['@raw']['gasused']) * int(transfer['_source']['@raw']['charged_gas_price'])
 
         total_payed_in_gas = from_wei(total_payed_in_gas, 'ether')
         balance_hex = from_wei(balance_hex, 'ether')

@@ -1,0 +1,465 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "Account",
+            "base": "",
+            "fields": [
+                {
+                    "name": "index",
+                    "type": "uint64"
+                },
+                {
+                    "name": "address",
+                    "type": "checksum160"
+                },
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "nonce",
+                    "type": "uint64"
+                },
+                {
+                    "name": "code",
+                    "type": "bytes"
+                },
+                {
+                    "name": "balance",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "AccountState",
+            "base": "",
+            "fields": [
+                {
+                    "name": "index",
+                    "type": "uint64"
+                },
+                {
+                    "name": "key",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "value",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "call",
+            "base": "",
+            "fields": [
+                {
+                    "name": "ram_payer",
+                    "type": "name"
+                },
+                {
+                    "name": "tx",
+                    "type": "bytes"
+                },
+                {
+                    "name": "sender",
+                    "type": "checksum160?"
+                }
+            ]
+        },
+        {
+            "name": "config",
+            "base": "",
+            "fields": [
+                {
+                    "name": "trx_index",
+                    "type": "uint32"
+                },
+                {
+                    "name": "last_block",
+                    "type": "uint32"
+                },
+                {
+                    "name": "gas_used_block",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "gas_price",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "create",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "data",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "doresources",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "init",
+            "base": "",
+            "fields": [
+                {
+                    "name": "start_bytes",
+                    "type": "uint64"
+                },
+                {
+                    "name": "start_cost",
+                    "type": "asset"
+                },
+                {
+                    "name": "target_free",
+                    "type": "uint64"
+                },
+                {
+                    "name": "min_buy",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fee_transfer_pct",
+                    "type": "uint16"
+                },
+                {
+                    "name": "gas_per_byte",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "itx_data",
+            "base": "",
+            "fields": [
+                {
+                    "name": "callType",
+                    "type": "bytes"
+                },
+                {
+                    "name": "from",
+                    "type": "checksum160"
+                },
+                {
+                    "name": "gas",
+                    "type": "bytes"
+                },
+                {
+                    "name": "input",
+                    "type": "bytes"
+                },
+                {
+                    "name": "to",
+                    "type": "bytes"
+                },
+                {
+                    "name": "value",
+                    "type": "bytes"
+                },
+                {
+                    "name": "gasUsed",
+                    "type": "bytes"
+                },
+                {
+                    "name": "output",
+                    "type": "bytes"
+                },
+                {
+                    "name": "subtraces",
+                    "type": "uint8"
+                },
+                {
+                    "name": "traceAddress",
+                    "type": "bytes"
+                },
+                {
+                    "name": "type",
+                    "type": "string"
+                },
+                {
+                    "name": "depth",
+                    "type": "string"
+                },
+                {
+                    "name": "extra",
+                    "type": "pair_string_string[]"
+                }
+            ]
+        },
+        {
+            "name": "openwallet",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "address",
+                    "type": "checksum160"
+                }
+            ]
+        },
+        {
+            "name": "pair_string_string",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "string"
+                },
+                {
+                    "name": "value",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "raw",
+            "base": "",
+            "fields": [
+                {
+                    "name": "ram_payer",
+                    "type": "name"
+                },
+                {
+                    "name": "tx",
+                    "type": "bytes"
+                },
+                {
+                    "name": "estimate_gas",
+                    "type": "bool"
+                },
+                {
+                    "name": "sender",
+                    "type": "checksum160?"
+                }
+            ]
+        },
+        {
+            "name": "receipt",
+            "base": "",
+            "fields": [
+                {
+                    "name": "tx",
+                    "type": "bytes"
+                },
+                {
+                    "name": "trx_index",
+                    "type": "uint32"
+                },
+                {
+                    "name": "block",
+                    "type": "uint64"
+                },
+                {
+                    "name": "from",
+                    "type": "string"
+                },
+                {
+                    "name": "status",
+                    "type": "uint8"
+                },
+                {
+                    "name": "epoch",
+                    "type": "uint32"
+                },
+                {
+                    "name": "createdaddr",
+                    "type": "string"
+                },
+                {
+                    "name": "gasused",
+                    "type": "string"
+                },
+                {
+                    "name": "gasusedblock",
+                    "type": "string"
+                },
+                {
+                    "name": "logs",
+                    "type": "string"
+                },
+                {
+                    "name": "output",
+                    "type": "string"
+                },
+                {
+                    "name": "errors",
+                    "type": "string"
+                },
+                {
+                    "name": "itxs",
+                    "type": "itx_data[]"
+                }
+            ]
+        },
+        {
+            "name": "resources",
+            "base": "",
+            "fields": [
+                {
+                    "name": "gas_per_byte",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "byte_cost",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "bytes_used",
+                    "type": "uint64"
+                },
+                {
+                    "name": "bytes_bought",
+                    "type": "uint64"
+                },
+                {
+                    "name": "target_bytes_free",
+                    "type": "uint64"
+                },
+                {
+                    "name": "min_byte_buy",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fee_balance",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "fee_transfer_pct",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "setresources",
+            "base": "",
+            "fields": [
+                {
+                    "name": "gas_per_byte",
+                    "type": "uint64"
+                },
+                {
+                    "name": "target_free",
+                    "type": "uint64"
+                },
+                {
+                    "name": "min_buy",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fee_transfer_pct",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "withdraw",
+            "base": "",
+            "fields": [
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "call",
+            "type": "call",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "create",
+            "type": "create",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "doresources",
+            "type": "doresources",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "init",
+            "type": "init",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "openwallet",
+            "type": "openwallet",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "raw",
+            "type": "raw",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "receipt",
+            "type": "receipt",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setresources",
+            "type": "setresources",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "withdraw",
+            "type": "withdraw",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "account",
+            "type": "Account",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "accountstate",
+            "type": "AccountState",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "config",
+            "type": "config",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "resources",
+            "type": "resources",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "kv_tables": {},
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+}
