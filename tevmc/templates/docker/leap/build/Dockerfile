@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -28,20 +28,9 @@ RUN wget https://telos-snapshots.s3.amazonaws.com/mainnet/telos-mainet-20211026-
 
 WORKDIR /root
 
-# RUN wget https://github.com/telosnetwork/leap/releases/download/v4.1.0-1.0.0-dev/leap_4.0.0-rc3-1-0-0-ubuntu22.04_amd64.deb && \
-#     apt-get install -y ./leap_4.0.0-rc3-1-0-0-ubuntu22.04_amd64.deb && \
-#     rm -rf *.deb
-
-RUN git clone https://github.com/telosnetwork/leap.git --branch swap_in_place
-
-WORKDIR /root/leap
-
-RUN git submodule update --init --recursive
-RUN scripts/install_deps.sh
-RUN scripts/pinned_build.sh deps build 6
-RUN apt-get install -y ./build/leap_4.0.0-rc3-1-0-0-ubuntu22.04_amd64.deb
-
-WORKDIR /root
+RUN wget https://github.com/telosnetwork/leap/releases/download/v4.0.0-rc3-1.0.0-dev/leap_4.0.0-rc3-1-0-0-ubuntu20.04_amd64.deb && \
+    apt-get install -y -f ./leap_4.0.0-rc3-1-0-0-ubuntu20.04_amd64.deb && \
+    rm -rf *.deb
 
 EXPOSE $nodeos_port
 EXPOSE $nodeos_history_port

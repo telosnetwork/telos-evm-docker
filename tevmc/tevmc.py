@@ -663,7 +663,10 @@ class TEVMController:
 
             nodeos_api_port = config_nodeos['ini']['http_addr'].split(':')[1]
             nodeos_ship_port = config_nodeos['ini']['history_endpoint'].split(':')[1]
-            endpoint = f'http://127.0.0.1:{nodeos_api_port}'
+            if 'testnet' in self.chain_name:
+                endpoint = 'https://testnet.telos.net'
+            else:
+                endpoint = 'https://mainnet.telos.net'
             ws_endpoint = f'ws://127.0.0.1:{nodeos_ship_port}'
 
             bc_host = config_hyperion['indexerWebsocketHost']
