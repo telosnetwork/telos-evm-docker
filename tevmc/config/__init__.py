@@ -83,7 +83,7 @@ def randomize_conf_ports(config: Dict) -> Dict:
         _min = 10000
         _max = 60000
         found = False
-        
+
         for i in range(tries):
             port_num = random.randint(_min, _max)
 
@@ -101,7 +101,7 @@ def randomize_conf_ports(config: Dict) -> Dict:
                 return port_num
 
     def get_free_local_addr():
-        return f'localhost:{get_free_port()}'
+        return f'127.0.0.1:{get_free_port()}'
 
     def get_free_remote_addr():
         return f'0.0.0.0:{get_free_port()}'
@@ -133,16 +133,16 @@ def randomize_conf_ports(config: Dict) -> Dict:
     ret['nodeos']['ini']['history_endpoint'] = f'0.0.0.0:{state_history_port}'
 
     # hyperion
-    ret['hyperion']['chain']['http'] = f'http://localhost:{nodeos_http_port}'
-    ret['hyperion']['chain']['ship'] = f'ws://localhost:{state_history_port}'
-    
+    ret['hyperion']['chain']['http'] = f'http://127.0.0.1:{nodeos_http_port}'
+    ret['hyperion']['chain']['ship'] = f'ws://127.0.0.1:{state_history_port}'
+
     hyperion_api_port = get_free_port()
     ret['hyperion']['chain']['router_port'] = get_free_port()
 
     idx_ws_port = get_free_port()
 
     ret['hyperion']['chain']['telos-evm'][
-        'nodeos_read'] = f'http://localhost:{nodeos_http_port}'
+        'nodeos_read'] = f'http://127.0.0.1:{nodeos_http_port}'
 
     ret['hyperion']['chain']['telos-evm'][
         'indexerWebsocketPort'] = idx_ws_port

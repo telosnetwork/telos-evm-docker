@@ -4,7 +4,7 @@ redis = {
     'name': 'redis',
     'docker_path': 'redis',
     'tag': 'tevm:redis',
-    'host': 'localhost',
+    'host': '127.0.0.1',
     'port': 6379,
     'conf_dir': 'config',
     'data_dir': 'data'
@@ -14,8 +14,8 @@ rabbitmq = {
     'name': 'rabbitmq',
     'docker_path': 'rabbitmq',
     'tag': 'tevm:rabbitmq',
-    'host': 'localhost:5672',
-    'api': 'localhost:15672',
+    'host': '127.0.0.1:5672',
+    'api': '127.0.0.1:15672',
     'node_name': 'rabbit@localhost',
     'dist_port': 25672,
     'prometheus_port': 15692,
@@ -31,8 +31,8 @@ elasticsearch = {
     'docker_path': 'elasticsearch',
     'tag': 'tevm:elasticsearch',
     'protocol':  'http',
-    'host': 'localhost:9200',
-    'ingest_nodes': ['localhost:9200'],
+    'host': '127.0.0.1:9200',
+    'ingest_nodes': ['127.0.0.1:9200'],
     'elastic_pass': 'password',
     'user': 'hyper',
     'pass': 'password',
@@ -125,15 +125,15 @@ hyperion = {
         'long_name': 'Telos Local Testnet',
         'chain_hash': '1eaa0824707c8c16bd25145493bf062aecddfeb56c736f6ba6397f3195f33c9f',
         'chain_id': 41,
-        'http': 'http://localhost:8888',
-        'ship': 'ws://localhost:29999',
+        'http': 'http://127.0.0.1:8888',
+        'ship': 'ws://127.0.0.1:29999',
         'router_host': '127.0.0.1',
         'router_port': 7120,
 
         'explorer': {
             'enabled': True,
             'chain_logo_url': 'http://raw.githubusercontent.com/telosnetwork/images/master/chain_icons/telos-logo-light.png',
-            'server_name': 'localhost:7000'
+            'server_name': '127.0.0.1:7000'
         },
 
         'telos-evm': {
@@ -145,7 +145,7 @@ hyperion = {
                 'main': 'eosio.evm' 
             },
             'debug': True,
-            'nodeos_read': 'http://localhost:8888',
+            'nodeos_read': 'http://127.0.0.1:8888',
             'indexerWebsocketHost': '0.0.0.0',
             'indexerWebsocketPort': '7300',
             'indexerWebsocketUri': 'ws://127.0.0.1:7300/evm',
