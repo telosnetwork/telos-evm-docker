@@ -663,10 +663,15 @@ class TEVMController:
 
             nodeos_api_port = config_nodeos['ini']['http_addr'].split(':')[1]
             nodeos_ship_port = config_nodeos['ini']['history_endpoint'].split(':')[1]
+            endpoint = f'http://127.0.0.1:{nodeos_api_port}'
+
             if 'testnet' in self.chain_name:
-                endpoint = 'https://testnet.telos.net'
+                remote_endpoint = 'https://testnet.telos.net'
+            elif 'mainnet' in self.chain_name:
+                remote_endpoint = 'https://mainnet.telos.net'
             else:
-                endpoint = 'https://mainnet.telos.net'
+                remote_endpoint = endpoint
+
             ws_endpoint = f'ws://127.0.0.1:{nodeos_ship_port}'
 
             bc_host = config_hyperion['indexerWebsocketHost']
@@ -684,6 +689,7 @@ class TEVMController:
                         'ELASTIC_NODE': f'http://{config_elastic["host"]}',
                         'ELASTIC_DUMP_SIZE': config['elastic_dump_size'],
                         'TELOS_ENDPOINT': endpoint,
+                        'TELOS_REMOTE_ENDPOINT': remote_endpoint,
                         'TELOS_WS_ENDPOINT': ws_endpoint,
                         'INDEXER_START_BLOCK': config['start_block'],
                         'INDEXER_STOP_BLOCK': config['stop_block'],
