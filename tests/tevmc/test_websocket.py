@@ -17,7 +17,7 @@ def test_hyperion_websocket_local(tevmc_local):
     for i in range(3):
         try:
             ws = create_connection(
-                f'ws://localhost:{rpc_ws_port}/evm')#, timeout=15)
+                f'ws://127.0.0.1:{rpc_ws_port}/evm')#, timeout=15)
             connected = True
             break
 
@@ -70,7 +70,7 @@ def test_hyperion_websocket_mainnet(tevmc_mainnet_no_wait):
     for i in range(3):
         try:
             ws = create_connection(
-                f'ws://localhost:{rpc_ws_port}/evm')#, timeout=15)
+                f'ws://127.0.0.1:{rpc_ws_port}/evm')#, timeout=15)
             connected = True
             break
 

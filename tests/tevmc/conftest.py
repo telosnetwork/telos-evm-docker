@@ -22,11 +22,15 @@ from tevmc.cmdline.clean import clean
 from tevmc.cmdline.cli import get_docker_client
 
 
-TEST_SERVICES = ['redis', 'elastic', 'nodeos', 'indexer', 'rpc']
+TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
 
 
 @contextmanager
-def bootstrap_test_stack(tmp_path_factory, config, randomize=True, **kwargs):
+def bootstrap_test_stack(
+    tmp_path_factory, config,
+    randomize=False, services=TEST_SERVICES,
+    **kwargs
+):
     if randomize:
         config = randomize_conf_ports(config)
         config = randomize_conf_creds(config)
@@ -49,7 +53,7 @@ def bootstrap_test_stack(tmp_path_factory, config, randomize=True, **kwargs):
         with TEVMController(
             config,
             root_pwd=tmp_path,
-            services=TEST_SERVICES,
+            services=services,
             **kwargs
         ) as _tevmc:
             yield _tevmc

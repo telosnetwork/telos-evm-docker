@@ -296,8 +296,6 @@ def perform_docker_build(target_dir, config, logger):
                 status = msg.get('stream', None)
                 if status:
                     strp_status = status.rstrip()
-                    if strp_status:
-                        logger.info(strp_status)
                     stream += status
 
         try:

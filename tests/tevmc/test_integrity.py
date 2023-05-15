@@ -5,6 +5,9 @@ import json
 import random
 
 from datetime import datetime
+
+import web3
+
 from eth_account import Account
 from elasticsearch import Elasticsearch
 
@@ -31,10 +34,15 @@ def test_integrity(tevmc_local, local_w3):
         )
     )
 
-    def get_elastic_balance(addr: str):
+    def get_elastic_balance(addr: str | Account):
         """Query all elasticsearch transactions to and from `addr`, then tally
         up balance and return
         """
+        if hasattr(addr, 'address'):
+            addr = addr.address
+
+        addr = addr.lower()
+
         result = es.search(
             index=index,
             query={
@@ -69,7 +77,7 @@ def test_integrity(tevmc_local, local_w3):
         total_payed_in_gas = from_wei(total_payed_in_gas, 'ether')
         balance_hex = from_wei(balance_hex, 'ether')
 
-        return balance_hex - total_payed_in_gas
+        return to_wei(float(balance_hex - total_payed_in_gas), 'ether')
 
     # create $amount native telos accounts and register
     # evm addr for each of them, then generate $amount
@@ -122,12 +130,12 @@ def test_integrity(tevmc_local, local_w3):
             'Deposit'
         )
 
-    time.sleep(1)
+    time.sleep(2)
 
     # check acording to eosio.evm table and elastic
     for addr, deposit in zip(native_eth_addrs, initial_deposit_assets):
         assert tevmc.cleos.eth_get_balance(addr) == to_wei(deposit.amount, 'ether')
-        assert float(get_elastic_balance(addr)) == deposit.amount
+        assert get_elastic_balance(addr) == to_wei(deposit.amount, 'ether')
 
     # transfer to native evm accounts
     for account, native_eth_addr, eth_addr, init_deposit_asset in zip(
@@ -145,7 +153,9 @@ def test_integrity(tevmc_local, local_w3):
         assert ec == 0
 
     for addr, deposit in zip(internal_eth_addrs, initial_deposit_assets):
-        assert tevmc.cleos.eth_get_balance(addr.address) == to_wei(deposit.amount - 1, 'ether')
+        on_chain_balance = tevmc.cleos.eth_get_balance(addr.address)
+        assert on_chain_balance == to_wei(deposit.amount - 1, 'ether')
+        assert on_chain_balance == get_elastic_balance(addr)
 
     # transfer between native evm accounts
     txs = []
@@ -206,13 +216,12 @@ def test_integrity(tevmc_local, local_w3):
     # check elastic balances of linked address and make sure is less than
     # minimun telos representable
     for addr in native_eth_addrs:
-        assert float(get_elastic_balance(addr)) < 0.0001
+        assert float(from_wei(get_elastic_balance(addr), 'ether')) < 0.0001
 
     # make sure elastic balance for real evm addresses matches up with evm
     # contract table
     for addr in internal_eth_addrs:
-        assert get_elastic_balance(addr.address) == from_wei(
-            tevmc.cleos.eth_get_balance(addr.address), 'ether')
+        assert get_elastic_balance(addr) == tevmc.cleos.eth_get_balance(addr.address)
 
     # make sure balances are inverted on the native side
     for i, account in enumerate(accounts):
