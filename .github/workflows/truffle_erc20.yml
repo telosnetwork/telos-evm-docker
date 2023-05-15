@@ -41,7 +41,7 @@ jobs:
 
       - name: Build containers
         working-directory: local
-        run: sudo tevmc build --headless
+        run: sudo tevmc build
 
       - name: Bootstrap
         working-directory: local
@@ -49,4 +49,4 @@ jobs:
 
       - name: Run test_erc20
         working-directory: ./tests/test_erc20
-        run: truffle --network private test
+        run: truffle test
