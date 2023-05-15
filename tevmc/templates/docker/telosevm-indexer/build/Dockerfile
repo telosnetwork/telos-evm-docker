@@ -2,7 +2,7 @@ from node:18-bullseye
 
 workdir /root
 
-run git clone https://github.com/telosnetwork/telosevm-es-indexer.git indexer --branch default_conf
+run git clone https://github.com/telosnetwork/telosevm-es-indexer.git indexer
 
 run rm -rdf indexer/.git indexer/yarn.lock
 
