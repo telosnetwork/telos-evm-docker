@@ -25,8 +25,8 @@ It's good practice to not modify the python envoirment that comes with the syste
 A good practice is to use a virtual envoirment:
 
     1. linux: https://mothergeo-py.readthedocs.io/en/latest/development/how-to/venv.html
-    2. windows:https://mothergeo-py.readthedocs.io/en/latest/development/how-to/venv-win.html 
-    
+    2. windows:https://mothergeo-py.readthedocs.io/en/latest/development/how-to/venv-win.html
+
 
 To install python dependencies:
 

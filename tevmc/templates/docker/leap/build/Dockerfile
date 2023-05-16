@@ -6,7 +6,9 @@ RUN apt-get update && \
     apt-get install \
         -y \
         --no-install-recommends \
+        git \
         wget \
+        zstd \
         logrotate \
         ca-certificates
 
@@ -27,9 +29,10 @@ RUN wget https://telos-snapshots.s3.amazonaws.com/mainnet/telos-mainet-20211026-
 
 WORKDIR /root
 
-RUN wget https://github.com/AntelopeIO/leap/releases/download/v3.1.0/leap-3.1.0-ubuntu20.04-x86_64.deb && \
-    apt-get install -y ./leap-3.1.0-ubuntu20.04-x86_64.deb && \
+RUN wget https://github.com/telosnetwork/leap/releases/download/v4.0.0-rc3-1.0.0-dev/leap_4.0.0-rc3-1-0-0-ubuntu20.04_amd64.deb && \
+    apt-get install -y -f ./leap_4.0.0-rc3-1-0-0-ubuntu20.04_amd64.deb && \
     rm -rf *.deb
+
 
 EXPOSE $nodeos_port
 EXPOSE $nodeos_history_port
@@ -38,4 +41,4 @@ CMD ["/bin/bash", "-c", "while true; do sleep 3; done;"]
 
 # COPY entrypoint.sh /opt/entrypoint.sh
 
-# ENTRYPOINT ["/bin/bash", "/opt/entrypoint.sh"] 
+# ENTRYPOINT ["/bin/bash", "/opt/entrypoint.sh"]

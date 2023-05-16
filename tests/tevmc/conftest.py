@@ -22,10 +22,18 @@ from tevmc.cmdline.clean import clean
 from tevmc.cmdline.cli import get_docker_client
 
 
+TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
+
+
 @contextmanager
-def bootstrap_test_stack(tmp_path_factory, config, **kwargs):
-    config = randomize_conf_ports(config)
-    config = randomize_conf_creds(config)
+def bootstrap_test_stack(
+    tmp_path_factory, config,
+    randomize=False, services=TEST_SERVICES,
+    **kwargs
+):
+    if randomize:
+        config = randomize_conf_ports(config)
+        config = randomize_conf_creds(config)
 
     client = get_docker_client()
 
@@ -39,48 +47,42 @@ def bootstrap_test_stack(tmp_path_factory, config, **kwargs):
     perform_docker_build(
         tmp_path, config, logging)
 
+    containers = None
+
     try:
         with TEVMController(
             config,
             root_pwd=tmp_path,
+            services=services,
             **kwargs
         ) as _tevmc:
             yield _tevmc
+            containers = _tevmc.containers
 
     except BaseException:
-        pid = os.getpid()
+        if containers:
+            pid = os.getpid()
 
-        client = get_docker_client(timeout=10)
+            client = get_docker_client(timeout=10)
 
-        containers = []
-        for name, conf in config.items():
-            if 'name' in conf:
-                containers.append(f'{conf["name"]}-{pid}')
+            for val in containers:
+                while True:
+                    try:
+                        container = client.containers.get(val)
+                        container.stop()
 
+                    except docker.errors.APIError as err:
+                        if 'already in progress' in str(err):
+                            time.sleep(0.1)
+                            continue
 
-        containers.append(
-            f'{local.default_config["hyperion"]["indexer"]["name"]}-{pid}')
-        containers.append(
-            f'{local.default_config["hyperion"]["api"]["name"]}-{pid}')
+                    except requests.exceptions.ReadTimeout:
+                        print('timeout!')
 
-        for val in containers:
-            while True:
-                try:
-                    container = client.containers.get(val)
-                    container.stop()
+                    except docker.errors.NotFound:
+                        print(f'{val} not found!')
 
-                except docker.errors.APIError as err:
-                    if 'already in progress' in str(err):
-                        time.sleep(0.1)
-                        continue
-
-                except requests.exceptions.ReadTimeout:
-                    print('timeout!')
-
-                except docker.errors.NotFound:
-                    print(f'{val} not found!')
-
-                break
+                    break
         raise
 
 
@@ -88,6 +90,13 @@ def bootstrap_test_stack(tmp_path_factory, config, **kwargs):
 def tevmc_local(tmp_path_factory):
     with bootstrap_test_stack(
         tmp_path_factory, local.default_config) as tevmc:
+        yield tevmc
+
+
+@pytest.fixture(scope='module')
+def tevmc_local_non_rand(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, local.default_config, randomize=False) as tevmc:
         yield tevmc
 
 
@@ -117,3 +126,18 @@ def tevmc_mainnet_no_wait(tmp_path_factory):
     with bootstrap_test_stack(
         tmp_path_factory, mainnet.default_config, wait=False) as tevmc:
         yield tevmc
+
+
+from web3 import Web3
+
+
+@pytest.fixture(scope='module')
+def local_w3(tevmc_local):
+    tevmc = tevmc_local
+    hyperion_api_port = tevmc.config["hyperion"]["api"]["server_port"]
+    eth_api_endpoint = f'http://localhost:{hyperion_api_port}/evm'
+
+    w3 = Web3(Web3.HTTPProvider(eth_api_endpoint))
+    assert w3.is_connected()
+
+    yield w3

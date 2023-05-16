@@ -14,7 +14,7 @@ def cli():
 def get_docker_client(timeout=60):
     try:
         return docker.from_env(timeout=timeout)
-    
+
     except docker.errors.DockerException as err:
         msg = getattr(err, 'message', repr(err))
         print(f'Docker exception: {msg}')

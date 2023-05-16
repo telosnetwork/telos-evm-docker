@@ -24,44 +24,6 @@ def wait_init(logpath):
             else:
                 time.sleep(1)
 
-
-@cli.command()
-@click.argument('block-num')
-@click.option(
-    '--endpoint', default='http://127.0.0.1:7000',
-    help='Hyperion endpoint.')
-def wait_block(
-    block_num,
-    endpoint
-):
-    """Await for block indexing.
-    """
-    stop = False
-
-    while not stop:
-        try:
-            report = requests.get(
-                f'{endpoint}/v2/health').json()
-
-        except requests.exceptions.ConnectionError:
-            print('Conection error, retry in 5 sec...')
-            time.sleep(5)
-            continue
-
-        for info in report['health']:
-            if info['service'] == 'Elasticsearch':
-                if 'service_data' in info:
-                    last_indexed = info['service_data']['last_indexed_block']
-                    print(last_indexed)
-                    if last_indexed >= int(block_num):
-                        stop = True
-                        break
-                else:
-                    print(info)
-
-        time.sleep(1)
-
-
 @cli.command()
 @click.argument('tx-id')
 def wait_tx(tx_id):
@@ -80,10 +42,10 @@ def wait_tx(tx_id):
             print(resp)
 
         except requests.exceptions.ConnectionError as e:
-            print('connect error retrying in 3 seconds...') 
+            print('connect error retrying in 3 seconds...')
 
         if 'signatures' in resp:
             print('transaction found!')
             break
-    
+
         time.sleep(3)

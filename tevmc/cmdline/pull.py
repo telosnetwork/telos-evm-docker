@@ -9,7 +9,7 @@ import docker
 from tqdm import tqdm
 
 from .cli import cli, get_docker_client
-from ..config import * 
+from ..config import *
 
 
 class DownloadInProgress:
@@ -38,7 +38,7 @@ class DownloadInProgress:
 
             progress = detail['current']
             total = detail['total']
-            
+
             if total != self.current_total:
                 self.prev_total = self.current_total
                 self.bar.reset(total=total)
@@ -106,7 +106,7 @@ def pull(headless, target_dir, config):
             if headless:
                 print(f'{_id}: {status} {detail}')
                 continue
-        
+
             if ('Pulling from library' in status or
                 'id' not in update):
                 continue

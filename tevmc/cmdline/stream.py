@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 
-import sys
+import subprocess
+
+from pathlib import Path
 
 import click
-import docker
 
-from py_eosio.sugar import (
-    docker_wait_process,
-    docker_open_process
-)
-
-from .cli import cli, get_docker_client 
+from .cli import cli
+from ..config import load_config
 
 
 @cli.command()
@@ -30,7 +27,7 @@ from .cli import cli, get_docker_client
 def stream(pid, logpath, target_dir, config, source):
     """Stream logs from either the tevmc daemon or a container.
     """
-    client = get_docker_client()
+    config = load_config(target_dir, config)
 
     try:
         with open(pid, 'r') as pidfile:
@@ -39,30 +36,40 @@ def stream(pid, logpath, target_dir, config, source):
     except FileNotFoundError:
         print('daemon not running.')
 
+    # abreviations
+    if source in ['elastic', 'es']:
+        source = 'elasticsearch'
+
+    if source in ['indexer', 'evm']:
+        source = 'telosevm-indexer'
+
+    if source in ['hyp', 'rpc']:
+        source = 'hyperion'
 
     try:
         if source == 'daemon':
-            with open(logpath, 'r') as logfile:
-                line = ''
-                while True:
-                    try:
-                        line = logfile.readline()
-                        print(line, end='', flush=True)
+            subprocess.run(['tail', '-f', logpath])
+            return
 
-                    except UnicodeDecodeError:
-                        pass
+        chain_name = config["hyperion"]["chain"]["name"]
+        src_config = config[source]
+
+        if source == 'nodeos':
+            nos_docker = src_config['docker_path']
+            nos_config = src_config['conf_dir']
+            filename = Path(src_config['log_path']).name
+            nodeos_log_file = target_dir
+            nodeos_log_file += f'/docker/{nos_docker}/{nos_config}/{filename}'
+            subprocess.run(
+                ['tail', '-f', nodeos_log_file])
+
+        elif source in config:
+            container_name = f'{src_config["name"]}-{pid}-{chain_name}'
+            subprocess.run(
+                ['docker', 'logs', '-f', container_name])
 
         else:
-            try:
-                container = client.containers.get(f'{source}-{pid}')
-
-            except docker.errors.NotFound:
-                print(f'Container \"{source}\" not found!')
-                sys.exit(1)
-
-            for chunk in container.logs(stream=True):
-                msg = chunk.decode('utf-8')
-                print(msg, end='', flush=True)
+            print(f'Can\'t stream from source \"{source}\"')
 
     except KeyboardInterrupt:
         print('Interrupted.')

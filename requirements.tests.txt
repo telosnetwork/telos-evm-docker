@@ -1,0 +1,2 @@
+web3>=5.31.0
+elasticsearch

@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import shutil
+import signal
 import logging
 
 from signal import SIGINT
@@ -28,7 +29,7 @@ from py_eosio.sugar import (
     docker_wait_process
 )
 
-from .config import * 
+from .config import *
 from .cleos_evm import CLEOSEVM
 
 
@@ -46,14 +47,22 @@ class TEVMController:
         log_level: str = 'info',
         root_pwd: Optional[Path] = None,
         wait: bool = True,
-        full: bool = True 
+        services: List[str] = [
+            'redis',
+            'elastic',
+            'kibana',
+            'nodeos',
+            'indexer',
+            'rpc',
+            'beats'
+        ]
     ):
         self.pid = os.getpid()
         self.config = config
         self.client = docker.from_env()
         self.exit_stack = ExitStack()
         self.wait = wait
-        self.full = full 
+        self.services = services
 
         if not root_pwd:
             self.root_pwd = Path().resolve()
@@ -62,11 +71,17 @@ class TEVMController:
 
         self.docker_wd = self.root_pwd / 'docker'
 
-        self.is_relaunch = (
-            self.docker_wd / 
-            config['nodeos']['docker_path'] / 
+        self.is_nodeos_relaunch = (
+            self.docker_wd /
+            config['nodeos']['docker_path'] /
             config['nodeos']['data_dir_host'] /
             'blocks').is_dir()
+
+        self.is_elastic_relaunch = (
+            self.docker_wd /
+            config['elasticsearch']['docker_path'] /
+            config['elasticsearch']['data_dir'] /
+            'nodes').is_dir()
 
         self.chain_name = config['hyperion']['chain']['name']
         self.logger = logger
@@ -75,24 +90,27 @@ class TEVMController:
             self.logger = logging.getLogger()
             self.logger.setLevel(log_level.upper())
 
-        self.is_local = 'local' in self.chain_name
-        
+        self.is_local = (
+            ('testnet' not in self.chain_name) and
+            ('mainnet' not in self.chain_name)
+        )
+
         if self.is_local:
             self.producer_key = config['nodeos']['ini']['sig_provider'].split(':')[-1]
 
         self.containers = {}
-        self.mounts = {} 
+        self.mounts = {}
 
     @contextmanager
     def open_container(
-        self, 
+        self,
         name: str,
         image: str,
         net: str = 'host',
         *args, **kwargs
     ):
         """Start a new container.
-        
+
         Also waits for container to get ip address.
         """
         container = None
@@ -118,7 +136,7 @@ class TEVMController:
                     repo, tag = splt_image
                 else:
                     raise ValueError(
-                        f'Expected \'{image}\' to have \'repo:tag\' format.') 
+                        f'Expected \'{image}\' to have \'repo:tag\' format.')
 
                 try:
                     updates = {}
@@ -148,7 +166,7 @@ class TEVMController:
                     config={'max-size': '100m' }),
                 remove=True,
                 labels=DEFAULT_DOCKER_LABEL)
-           
+
             container.reload()
 
             self.logger.info(container.status)
@@ -165,7 +183,7 @@ class TEVMController:
 
             self.logger.info('stopped.')
 
-    
+
     def stream_logs(self, container):
         if container is None:
             self.logger.critical("container is None")
@@ -178,7 +196,7 @@ class TEVMController:
     @contextmanager
     def must_keep_running(self, container: str):
         yield
-        
+
         container = self.containers[container]
         container.reload()
 
@@ -212,49 +230,12 @@ class TEVMController:
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     mounts=self.mounts['redis']
-                ) 
+                )
             )
 
             for msg in self.stream_logs(self.containers['redis']):
                 self.logger.info(msg.rstrip())
                 if 'Ready to accept connections' in msg:
-                    break
-
-    def start_rabbitmq(self):
-        with self.must_keep_running('rabbitmq'):
-            config = self.config['rabbitmq']
-            docker_dir = self.docker_wd / config['docker_path']
-
-            conf_dir = docker_dir / config['conf_dir']
-            data_dir = docker_dir / config['data_dir']
-
-            data_dir.mkdir(parents=True, exist_ok=True)
-
-            self.mounts['rabbitmq'] = [
-                Mount('/rabbitmq', str(conf_dir.resolve()), 'bind'),
-                Mount('/var/lib/rabbitmq', str(data_dir.resolve()), 'bind')
-            ]
-
-            self.containers['rabbitmq'] = self.exit_stack.enter_context(
-                self.open_container(
-                    f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                    environment={
-                        'RABBITMQ_DEFAULT_USER': config['user'],
-                        'RABBITMQ_DEFAULT_PASS': config['pass'],
-                        'RABBITMQ_DEFAULT_VHOST': config['vhost'],
-                        'RABBITMQ_CONFIG_FILE': '/rabbitmq/rabbitmq.conf',
-                        'RABBITMQ_CONF_ENV_FILE': '/rabbitmq/rabbitmq-env.conf',
-                        'RABBITMQ_DIST_PORT': config['dist_port'],
-                        'RABBITMQ_NODENAME': config['node_name']
-                    },
-                    mounts=self.mounts['rabbitmq']
-                )
-            )
-
-            for msg in self.stream_logs(self.containers['rabbitmq']):
-                self.logger.info(msg.rstrip())
-                if 'Server startup complete' in msg:
                     break
 
     def start_elasticsearch(self):
@@ -273,10 +254,6 @@ class TEVMController:
                 Mount('/home/elasticsearch/data', str(data_dir.resolve()), 'bind')
             ]
 
-            # clean elasticsearch data
-            for d in data_dir.iterdir():
-                shutil.rmtree(d) 
-
             self.containers['elasticsearch'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
@@ -288,9 +265,7 @@ class TEVMController:
                         'bootstrap.memory_lock': 'true',
                         'xpack.security.enabled': 'true',
                         'ES_JAVA_OPTS': '-Xms2g -Xmx2g',
-                        'ES_NETWORK_HOST': '0.0.0.0',
-                        #'ELASTIC_USERNAME': config['user'],
-                        #'ELASTIC_PASSWORD': config['pass']
+                        'ES_NETWORK_HOST': '0.0.0.0'
                     },
                     mounts=self.mounts['elasticsearch']
                 )
@@ -301,26 +276,34 @@ class TEVMController:
                 if ' indices into cluster_state' in msg:
                     break
 
-            # setup password for elastic user
-            resp = requests.put(
-                f'http://{config["host"]}/_xpack/security/user/elastic/_password',
-                auth=('elastic', 'temporal'),
-                json={'password': config['elastic_pass']})
-        
-            self.logger.info(resp.text)
-            assert resp.status_code == 200
+            if not self.is_elastic_relaunch:
+                # setup password for elastic user
+                resp = requests.put(
+                    f'http://{config["host"]}/_xpack/security/user/elastic/_password',
+                    auth=('elastic', 'temporal'),
+                    json={'password': config['elastic_pass']})
 
-            # setup user
-            resp = requests.put(
-                f'http://{config["host"]}/_xpack/security/user/{config["user"]}',
-                auth=('elastic', config['elastic_pass']),
-                json={
-                    'password': config['pass'],
-                    'roles': [ 'superuser' ]
-                })
-    
-            self.logger.info(resp.text)
-            assert resp.status_code == 200 
+                self.logger.info(resp.text)
+                assert resp.status_code == 200
+
+                # setup user
+                resp = requests.put(
+                    f'http://{config["host"]}/_xpack/security/user/{config["user"]}',
+                    auth=('elastic', config['elastic_pass']),
+                    json={
+                        'password': config['pass'],
+                        'roles': [ 'superuser' ]
+                    })
+
+                self.logger.info(resp.text)
+                assert resp.status_code == 200
+
+    def stop_elasticsearch(self):
+        self.containers['elasticsearch'].kill(signal.SIGTERM)
+
+        for msg in self.stream_logs(
+            self.containers['elasticsearch']):
+            continue
 
     def start_kibana(self):
         with self.must_keep_running('kibana'):
@@ -384,15 +367,19 @@ class TEVMController:
                 'NODEOS_DATA_DIR': config['data_dir_guest'],
                 'NODEOS_CONFIG': f'/root/config.ini',
                 'NODEOS_LOG_PATH': config['log_path'],
-                'NODEOS_LOGCONF': '/root/logging.json'
+                'NODEOS_LOGCONF': '/root/logging.json',
+                'KEOSD_LOG_PATH': '/root/keosd.log',
+                'KEOSD_CONFIG': '/root/keosd_config.ini'
             }
 
-            if not self.is_relaunch:
+            if not self.is_nodeos_relaunch:
                 if 'snapshot' in config:
                     env['NODEOS_SNAPSHOT'] = config['snapshot']
 
-                elif 'genesis' in config: 
+                elif 'genesis' in config:
                     env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
+
+            self.logger.info(f'is relaunch: {self.is_nodeos_relaunch}')
 
             # open container
             self.containers['nodeos'] = self.exit_stack.enter_context(
@@ -414,7 +401,7 @@ class TEVMController:
 
             exec_id, exec_stream = docker_open_process(
                 self.client, self.containers['nodeos'],
-                ['/bin/bash', '-c', 
+                ['/bin/bash', '-c',
                     'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
 
             nodeos_api_port = config['ini']['http_addr'].split(':')[1]
@@ -429,9 +416,12 @@ class TEVMController:
                 self.containers['nodeos'],
                 logger=self.logger,
                 url=cleos_url,
-                hyperion_api_endpoint=hyperion_api_url)
+                hyperion_api_endpoint=hyperion_api_url,
+                chain_id=self.config['hyperion']['chain']['chain_id'])
 
             self.cleos = cleos
+
+            # manual start stuff
 
             # init wallet
             cleos.start_keosd(
@@ -444,7 +434,7 @@ class TEVMController:
                 'logging_cfg': '/root/logging.json'
             }
 
-            if not self.is_relaunch:
+            if not self.is_nodeos_relaunch:
                 if 'snapshot' in config:
                     nodeos_params['snapshot'] = config['snapshot']
 
@@ -461,7 +451,7 @@ class TEVMController:
                 # await for nodeos to produce a block
                 cleos.wait_blocks(4)
 
-                self.is_fresh = 'Initializing fresh blockchain' in output
+                self.is_fresh = 'Initializing new blockchain with genesis state' in output
 
                 if self.is_fresh:
                     cleos.setup_wallet(self.producer_key)
@@ -473,18 +463,29 @@ class TEVMController:
 
                         cleos.deploy_evm()
 
+                        evm_deploy_block = cleos.evm_deploy_info['processed']['block_num']
+
+                        self.config['telosevm-indexer']['start_block'] = evm_deploy_block
+                        self.config['telosevm-indexer']['deploy_block'] = evm_deploy_block
+
+                        # save evm deploy info for future runs
+                        with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
+                            uni_conf.write(json.dumps(self.config, indent=4))
+
                     except AssertionError:
                         for msg in self.stream_logs(self.containers['nodeos']):
-                            self.logger.critical(msg.rstrip()) 
+                            self.logger.critical(msg.rstrip())
                         sys.exit(1)
 
-            self.logger.info(cleos.get_info())
+            genesis_block = self.config['telosevm-indexer']['start_block'] - 1
+            self.logger.info(f'nodeos has started, waiting until blocks.log contains evm genesis block number {genesis_block}')
+            cleos.wait_blocks(
+                genesis_block - cleos.get_info()['head_block_num'], sleep_time=10)
 
     def setup_hyperion_log_mount(self):
         docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
         logs_dir = docker_dir / self.config['hyperion']['logs_dir']
         conf_dir = docker_dir / self.config['hyperion']['conf_dir']
-
         logs_dir.mkdir(parents=True, exist_ok=True)
 
         self.mounts['hyperion'] = [
@@ -502,44 +503,29 @@ class TEVMController:
         return resp['head_block_num']
 
     def await_full_index(self):
-
         last_indexed_block = 0
         remote_head_block = self._get_head_block()
         last_update_time = time.time()
-        for line in self.stream_logs(self.containers['hyperion-indexer']):
-            if 'continuous_reader' in line:
-                self.logger.info(line.rstrip())
-                m = re.findall(r'block_num: ([0-9]+)', line)
-                if len(m) == 1:
-                    last_indexed_block = int(m[0])
+        delta = remote_head_block - self.cleos.get_info()['head_block_num']
 
-                delta = remote_head_block - last_indexed_block
+        for line in self.stream_logs(self.containers['telosevm-indexer']):
+            if '] pushed, at ' in line:
+                m = re.findall(r'(?<=: \[)(.*?)(?=\|)', line)
+                if len(m) == 1 and m[0] != 'NaN':
+                    last_indexed_block = int(m[0].replace(',', ''))
 
-                self.logger.info(f'waiting on indexer... delta: {delta}')
+                    delta = remote_head_block - last_indexed_block
 
-                if delta < 100:
-                    break
+            self.logger.info(f'waiting on indexer... delta: {delta}')
 
-                now = time.time()
-                if now - last_update_time > 3600:
-                    remote_head_block = self._get_head_block()
-                    last_update_time = now
-    
-    def start_hyperion_indexer(self):
-        with self.must_keep_running('hyperion-indexer'):
-            config = self.config['hyperion']['indexer']
+            if delta < 100:
+                break
 
-            self.containers['hyperion-indexer'] = self.exit_stack.enter_context(
-                self.open_container(
-                    f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{self.config["hyperion"]["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                    command=[
-                        '/bin/bash', '-c',
-                        f'/root/scripts/run-hyperion.sh {self.chain_name}-indexer'
-                    ],
-                    mounts=self.mounts['hyperion']
-                )
-            )
+            now = time.time()
+            if now - last_update_time > 3600:
+                remote_head_block = self._get_head_block()
+                last_update_time = now
+
 
     def start_hyperion_api(self):
         with self.must_keep_running('hyperion-api'):
@@ -550,8 +536,7 @@ class TEVMController:
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{self.config["hyperion"]["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
                     command=[
-                        '/bin/bash', '-c',
-                        f'/root/scripts/run-hyperion.sh {self.chain_name}-api'
+                        '/bin/bash', '-c', f'/root/scripts/run-hyperion.sh {self.chain_name}-api'
                     ],
                     mounts=self.mounts['hyperion']
                 )
@@ -585,9 +570,6 @@ class TEVMController:
 
                 except requests.exceptions.ConnectionError:
                     self.logger.warning('can\'t reach kibana, retry in 3 sec...')
-
-                #except requests.exceptions.JSONDecodeError:
-                #    self.logger.info('kibana server not ready, retry in 3 sec...')
 
                 except simplejson.errors.JSONDecodeError:
                     self.logger.info('kibana server not ready, retry in 3 sec...')
@@ -672,28 +654,86 @@ class TEVMController:
                 self.setup_index_patterns(
                     [f'{self.chain_name}-action-*', 'filebeat-*'])
 
-    
+    def start_telosevm_indexer(self):
+        with self.must_keep_running('telosevm-indexer'):
+            config = self.config['telosevm-indexer']
+            config_elastic = self.config['elasticsearch']
+            config_nodeos = self.config['nodeos']
+            config_hyperion = self.config['hyperion']['chain']['telos-evm']
+
+            nodeos_api_port = config_nodeos['ini']['http_addr'].split(':')[1]
+            nodeos_ship_port = config_nodeos['ini']['history_endpoint'].split(':')[1]
+            endpoint = f'http://127.0.0.1:{nodeos_api_port}'
+
+            if 'testnet' in self.chain_name:
+                remote_endpoint = 'https://testnet.telos.net'
+            elif 'mainnet' in self.chain_name:
+                remote_endpoint = 'https://mainnet.telos.net'
+            else:
+                remote_endpoint = endpoint
+
+            ws_endpoint = f'ws://127.0.0.1:{nodeos_ship_port}'
+
+            bc_host = config_hyperion['indexerWebsocketHost']
+            bc_port = config_hyperion['indexerWebsocketPort']
+
+            self.containers['telosevm-indexer'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
+                    f'{config["tag"]}-{ self.config["hyperion"]["chain"]["name"]}',
+                    environment={
+                        'CHAIN_NAME': self.config['hyperion']['chain']['name'],
+                        'CHAIN_ID': self.config['hyperion']['chain']['chain_id'],
+                        'ELASTIC_USERNAME': config_elastic['user'],
+                        'ELASTIC_PASSWORD': config_elastic['pass'],
+                        'ELASTIC_NODE': f'http://{config_elastic["host"]}',
+                        'ELASTIC_DUMP_SIZE': config['elastic_dump_size'],
+                        'TELOS_ENDPOINT': endpoint,
+                        'TELOS_REMOTE_ENDPOINT': remote_endpoint,
+                        'TELOS_WS_ENDPOINT': ws_endpoint,
+                        'INDEXER_START_BLOCK': config['start_block'],
+                        'INDEXER_STOP_BLOCK': config['stop_block'],
+                        'EVM_DEPLOY_BLOCK': config['deploy_block'],
+                        'EVM_PREV_HASH': config['prev_hash'],
+                        'BROADCAST_HOST': bc_host,
+                        'BROADCAST_PORT': bc_port
+                    }
+                )
+            )
+
+            for msg in self.stream_logs(self.containers['telosevm-indexer']):
+                self.logger.info(msg.rstrip())
+                if 'drained' in msg:
+                    break
+
     def start(self):
-        with self.must_keep_running('redis'):
+        if 'redis' in self.services:
             self.start_redis()
 
-        self.start_rabbitmq()
-        self.start_elasticsearch()
+        if 'elastic' in self.services:
+            self.start_elasticsearch()
 
-        if self.full:
+        if 'kibana' in self.services:
             self.start_kibana()
 
-        self.start_nodeos()
+        if 'nodeos' in self.services:
+            self.start_nodeos()
 
-        self.setup_hyperion_log_mount()
-        self.start_hyperion_indexer()
+        if 'rpc' in self.services:
+            self.setup_hyperion_log_mount()
+            self.start_hyperion_api()
 
-        if not self.is_local and self.wait:
-            self.await_full_index()
+        if 'indexer' in self.services:
+            self.start_telosevm_indexer()
 
-        self.start_hyperion_api()
+            if not self.is_local and self.wait:
+                self.await_full_index()
 
-        if self.full:
+        else:
+            if self.wait:
+                self.logger.warning('--wait passed but no indexer launched, ignoring...')
+
+        if 'beats' in self.services:
             self.start_beats()
 
         if self.is_local and self.is_fresh:
@@ -702,6 +742,10 @@ class TEVMController:
     def stop(self):
         self.cleos.stop_nodeos(
             from_file=self.config['nodeos']['log_path'])
+        self.is_nodeos_relaunch = True
+
+        self.stop_elasticsearch()
+        self.is_elastic_relaunch = True
 
         self.exit_stack.pop_all().close()
 

@@ -25,8 +25,17 @@ from .cli import cli, get_docker_client
     '--pid', default='tevmc.pid',
     help='Path to lock file for daemon')
 @click.option(
-    '--full/--minimal', default=True,
-    help='Minimal launch disables kibana and beats containers.')
+    '--services',
+    default=[
+        'redis',
+        'elastic',
+        'kibana',
+        'nodeos',
+        'indexer',
+        'rpc',
+        'beats'
+    ],
+    help='Services to launch')
 @click.option(
     '--wait/--no-wait', default=True,
     help='Wait until caught up to sync before launching RPC api.')
@@ -47,7 +56,7 @@ from .cli import cli, get_docker_client
     help='Docker client command timeout.')
 def up(
     pid,
-    full,
+    services,
     wait,
     config,
     logpath,
@@ -119,7 +128,7 @@ def up(
                 config,
                 logger=logger,
                 wait=wait,
-                full=full
+                services=services
             ) as tevm:
                 logger.critical('control point reached')
                 try:

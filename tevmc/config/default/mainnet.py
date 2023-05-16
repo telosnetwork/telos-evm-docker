@@ -10,22 +10,6 @@ redis = {
     'data_dir': 'data'
 }
 
-rabbitmq = {
-    'name': 'rabbitmq',
-    'docker_path': 'rabbitmq',
-    'tag': 'tevm:rabbitmq',
-    'host': '127.0.0.1:5672',
-    'api': '127.0.0.1:15672',
-    'node_name': 'rabbit@localhost',
-    'dist_port': 25672,
-    'prometheus_port': 15692,
-    'user': 'username',
-    'pass': 'password',
-    'vhost': '/hyperion',
-    'conf_dir': 'config',
-    'data_dir': 'data'
-}
-
 elasticsearch = {
     'name': 'elasticsearch',
     'docker_path': 'elasticsearch',
@@ -52,8 +36,8 @@ kibana = {
 
 nodeos = {
     'name': 'nodeos',
-    'tag': 'tevm:nodeos-3.1.0-evm',
-    'docker_path': 'eosio',
+    'tag': 'tevm:nodeos-4.0.0-evm',
+    'docker_path': 'leap',
     'data_dir_guest': '/mnt/dev/data',
     'data_dir_host': 'data',
     'conf_dir': 'config',
@@ -62,7 +46,7 @@ nodeos = {
     'snapshot': '/snapshot-mainnet-20211026-blk-180635436.bin',
     'log_path': '/root/nodeos.log',
     'ini': {
-        'wasm_runtime': 'eos-vm-jit', 
+        'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
         'vm_oc_enable': True,
 
@@ -79,7 +63,7 @@ nodeos = {
 
         'agent_name': 'Telos Mainnet',
 
-        'history_endpoint': '0.0.0.0:29999', 
+        'history_endpoint': '0.0.0.0:29999',
         'trace_history': True,
         'chain_history': True,
         'history_debug_mode': True,
@@ -88,9 +72,9 @@ nodeos = {
         'sync_fetch_span': 2000,
 
         'max_clients': 250,
-        
-        'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',    
-        
+
+        'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
+
         'disable_subjective_billing': True,
         'max_transaction_time': 500,
 
@@ -103,22 +87,68 @@ nodeos = {
             'eosio::state_history_plugin'
         ],
         'peers': [
+            'telosp2p.actifit.io:9876',
             'telos.eu.eosamsterdam.net:9120',
             'p2p.telos.eosargentina.io:9879',
-            'p2p.telos.eosdetroit.io:1337',
+            'telos.p2p.boid.animus.is:5151',
+            'telos.p2p.boid.animus.is:5252',
+            'p2p.telos.y-knot.io:9877',
+            'telos.caleos.io:9880',
+            'p2p.creativblock.org:9876',
+            'p2p.telos.cryptobloks.io:9876',
+            'telos.cryptolions.io:9871',
+            'p2p.dailytelos.net:9876',
+            'p2p.telos.detroitledger.tech:1337',
+            'node-telos.eosauthority.com:10311',
+            'telosp2p.eos.barcelona:2095',
+            'peer1-telos.eosphere.io:9876',
             'peer2-telos.eosphere.io:9876',
+            'telos.eosrio.io:8092',
+            'api.telos.cryptotribe.io:7876',
+            'telos.p2p.eosusa.io:9876',
+            'telos.eosvenezuela.io:9871',
+            'p2p.fortisbp.io:9876',
+            'mainnet.telos.goodblock.io:9879',
+            'seed-telos.infinitybloc.io:9877',
+            'p2p.kainosbp.com:9876',
+            'kandaweather-mainnet.ddns.net:9876',
+            'tlos-p2p.katalyo.com:11877',
+            'telos.seed.eosnation.io:9876',
+            'p2p.telos.nodenode.org:9876',
+            'p2p.telos.pandabloks.com:9876',
+            'mainnet.persiantelos.com:8880',
+            'telosp2p.sentnl.io:4242',
             'p2p.telos.africa:9877',
             'telos.eossweden.eu:8012',
-            'p2p.telosuk.io:9876',
-            'seed.telosmadrid.io:9876',
+            'telos.greymass.com:19871',
+            'peers.teleology.one:9876',
+            'telos.teleology.one:9876',
+            'p2p.telosarabia.net:9876',
+            'sslapi.teloscentral.com:9876',
+            'testnet.telosculture.com:9874',
+            'p2p.telosgermany.genereos.io:9876',
+            'node1.us-east.telosglobal.io:9876',
+            'node1.us-west.telosglobal.io:9876',
+            'p2p2.telos.telosgreen.com:9877',
+            'p2p.telos.blocksindia.com:9876',
+            'api.telos.kitchen:9876',
             'seed.teloskorea.com:9876',
-            'p2p2.telos.telosgreen.com:9877'
+            'seed.telosmadrid.io:9877',
+            'p2p.telosuk.io:9876',
+            'p2p.telosunlimited.io:9876',
+            'telosyouth.io:9876',
+            'p2p.theteloscope.io:9876',
+            'mainnet.teloscrew.com:18876',
+            '136.243.90.53:9876',
+            'p2p.telos.dutcheos.io:9876',
+            'p2p.telos.zenblocks.io:9876'
         ]
     }
 }
 
 hyperion = {
     'tag': 'tevm:hyperion',
+    'name': 'hyperion-api',
     'docker_path': 'hyperion',
     'conf_dir': 'config',
     'logs_dir': 'logs',
@@ -144,7 +174,7 @@ hyperion = {
             'signer_permission': 'rpc',
             'signer_key': '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
             'contracts': {
-                'main': 'eosio.evm' 
+                'main': 'eosio.evm'
             },
             'debug': False,
             'nodeos_read': 'http://127.0.0.1:8888',
@@ -153,36 +183,6 @@ hyperion = {
             'indexerWebsocketUri': 'ws://127.0.0.1:7300/evm',
             'rpcWebsocketHost': '0.0.0.0',
             'rpcWebsocketPort': '7400'
-        }
-    },
-    'indexer': {
-        'name': 'hyperion-indexer',
-        'start_on': 180635436,
-        'end_on': 0,
-        'auto_stop': 0,
-        'rewrite': False,
-        'live_reader': True,
-        'blacklists': {
-            'actions': [],
-            'deltas': []
-        },
-        'whitelists': {
-            'actions': [
-                'eosio.evm::call',
-                'eosio.evm::create',
-                'eosio.evm::doresources',
-                'eosio.evm::init',
-                'eosio.evm::openwallet',
-                'eosio.evm::raw',
-                'eosio.evm::receipt',
-                'eosio.evm::setresources',
-                'eosio.evm::withdraw'
-            ],
-            'deltas': [
-                'eosio::global'
-            ],
-            'max_depth': 10,
-            'root_only': False
         }
     },
     'api': {
@@ -203,12 +203,23 @@ beats = {
     'data_dir': 'data'
 }
 
+telosevm_indexer = {
+    'name': 'telosevm-indexer',
+    'tag': 'tevm:telosevm-indexer',
+    'docker_path': 'telosevm-indexer',
+    'start_block': 180698860,
+    'stop_block': 4294967295,
+    'deploy_block': 180698860,
+    'prev_hash': '',
+    'elastic_dump_size': 4096
+}
+
 default_config = {
     'redis': redis,
-    'rabbitmq': rabbitmq,
     'elasticsearch': elasticsearch,
     'kibana': kibana,
     'nodeos': nodeos,
     'hyperion': hyperion,
-    'beats': beats
+    'beats': beats,
+    'telosevm-indexer': telosevm_indexer
 }

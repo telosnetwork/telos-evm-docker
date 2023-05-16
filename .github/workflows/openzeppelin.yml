@@ -1,4 +1,4 @@
-name: Open Zeppelin Suite 
+name: Open Zeppelin Suite
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ jobs:
   truffle_test:
     name: Open Zeppelin Suite
     runs-on: ubuntu-latest
-    timeout-minutes: 3600 
+    timeout-minutes: 3600
     steps:
       - uses: actions/checkout@v2
         with:
@@ -18,10 +18,10 @@ jobs:
         with:
           node-version: '16'
 
-      - name: Setup openzeppelin 
+      - name: Setup openzeppelin
         working-directory: tests/test_openzeppelin/openzeppelin-contracts
         run: npm install
- 
+
       - name: Set up Python
         uses: actions/setup-python@v2
         with:

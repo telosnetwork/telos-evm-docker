@@ -1,6 +1,6 @@
 #!/bin/bash
 
-_term() { 
+_term() {
   kill -TERM "$child" 2>/dev/null
   pm2 stop "$app_name"
 }
@@ -14,5 +14,5 @@ pm2 logs --raw &
 
 app_name=$1
 
-child=$! 
+child=$!
 wait "$child"

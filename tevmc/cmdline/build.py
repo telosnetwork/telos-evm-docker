@@ -8,7 +8,7 @@ import click
 import docker
 
 from typing import Dict, Any
-from hashlib import sha1 
+from hashlib import sha1
 from pathlib import Path
 from datetime import datetime
 
@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from .cli import cli, get_docker_client
 from .init import load_config_templates, load_docker_templates
-from ..config import * 
+from ..config import *
 
 
 
@@ -83,27 +83,11 @@ def perform_config_build(target_dir, config):
     redis_build_dir = redis_dir + '/' + 'build'
     redis_conf_dir = redis_dir + '/' +  redis_conf['conf_dir']
 
-    subst = flatten('redis', config)   
+    subst = flatten('redis', config)
     write_docker_template(f'{redis_build_dir}/Dockerfile', subst)
     write_docker_template(f'{redis_conf_dir}/redis.conf', subst)
 
-    # rabbitmq
-    rabbit_conf = config['rabbitmq']
-
-    rabbit_dir = rabbit_conf['docker_path']
-    rabbit_build_dir = rabbit_dir + '/' + 'build'
-    rabbit_conf_dir  = rabbit_dir + '/' + rabbit_conf['conf_dir']
-
-    subst = {
-        'rabbitmq_port': rabbit_conf['host'].split(':')[-1],
-        'rabbitmq_api_port': rabbit_conf['api'].split(':')[-1],
-        'rabbitmq_dist_port': rabbit_conf['dist_port'],
-        'rabbitmq_prometheus_port': rabbit_conf['prometheus_port']
-    }
-    write_docker_template(f'{rabbit_build_dir}/Dockerfile', subst)
-    write_docker_template(f'{rabbit_conf_dir}/rabbitmq.conf', subst)
-
-    # elasticsearch 
+    # elasticsearch
     elastic_conf = config['elasticsearch']
 
     elastic_dir = elastic_conf['docker_path']
@@ -117,7 +101,7 @@ def perform_config_build(target_dir, config):
 
     host_dir = (docker_dir / elastic_data_dir)
     host_dir.mkdir(parents=True, exist_ok=True)
-    
+
     os.chown(host_dir, uid=1000, gid=1000)
 
     # kibana
@@ -127,7 +111,7 @@ def perform_config_build(target_dir, config):
     kibana_build_dir = kibana_dir + '/' + 'build'
     kibana_conf_dir  = kibana_dir + '/' + kibana_conf['conf_dir']
 
-    subst = flatten('kibana', config) 
+    subst = flatten('kibana', config)
     write_docker_template(f'{kibana_build_dir}/Dockerfile', subst)
     write_docker_template(f'{kibana_conf_dir}/kibana.yml', subst)
 
@@ -166,7 +150,7 @@ def perform_config_build(target_dir, config):
 
     if 'local' in chain_name:
         conf_str += templates['nodeos.local.config.ini'].substitute(**subst) + '\n'
-   
+
     for plugin in subst['plugins']:
         conf_str += f'plugin = {plugin}\n'
 
@@ -195,7 +179,6 @@ def perform_config_build(target_dir, config):
 
     # connections.json
     redis_conf = jsonize(flatten('redis', config))
-    rabbitmq_conf = jsonize(flatten('rabbitmq', config))
     elasticsearch_conf = jsonize(flatten('elasticsearch', config))
 
     chains = {
@@ -218,7 +201,6 @@ def perform_config_build(target_dir, config):
 
     subst = {}
     subst.update(redis_conf)
-    subst.update(rabbitmq_conf)
     subst.update(elasticsearch_conf)
     subst.update(chains)
 
@@ -236,37 +218,6 @@ def perform_config_build(target_dir, config):
     hyperion_api_conf = jsonize(flatten(
         'hyperion',
         {'k': flatten('api', config['hyperion'])}, 'k'))
-
-    # append chainname to actions, and deltas
-    indexer_conf = flatten('indexer', config['hyperion'])
-
-    blacklist_actions = []
-    for act in indexer_conf['indexer_blacklists']['actions']:
-        blacklist_actions.append(f'{chain_name}::{act}')
-
-    indexer_conf['indexer_blacklists']['actions'] = blacklist_actions
-
-    whitelist_actions = []
-    for act in indexer_conf['indexer_whitelists']['actions']:
-        whitelist_actions.append(f'{chain_name}::{act}')
-
-    indexer_conf['indexer_whitelists']['actions'] = whitelist_actions
-
-    blacklist_deltas = []
-    for dlt in indexer_conf['indexer_blacklists']['deltas']:
-        blacklist_deltas.append(f'{chain_name}::{dlt}')
-
-    indexer_conf['indexer_blacklists']['deltas'] = blacklist_deltas
-
-    whitelist_deltas = []
-    for dlt in indexer_conf['indexer_whitelists']['deltas']:
-        whitelist_deltas.append(f'{chain_name}::{dlt}')
-
-    indexer_conf['indexer_whitelists']['deltas'] = whitelist_deltas
-
-    hyperion_indexer_conf = jsonize(flatten(
-        'hyperion',
-        {'k': indexer_conf}, 'k'))
 
     telos_evm = get_config('hyperion.chain.telos-evm', config)
     telos_evm['chainId'] = get_config('hyperion.chain.chain_id', config)
@@ -287,7 +238,6 @@ def perform_config_build(target_dir, config):
 
     subst = {}
     subst.update(hyperion_api_conf)
-    subst.update(hyperion_indexer_conf)
     subst.update(plugins)
     subst.update(other)
     with open(chains_path / f'{chain_name}.config.json', 'w+') as target_file:
@@ -295,10 +245,20 @@ def perform_config_build(target_dir, config):
             templates['telos-net.config.json'].substitute(**subst))
 
     # beats
-    beats_conf = config['beats'] 
+    beats_conf = config['beats']
     beats_dir = docker_dir / beats_conf['docker_path']
     beats_conf_dir = beats_dir / beats_conf['conf_dir']
-    beats_conf = config['beats']
+
+    # telosevm-indexer
+    tevmi_conf = config['telosevm-indexer']
+    tevmi_dir = tevmi_conf['docker_path']
+    tevmi_build_dir = tevmi_dir + '/' + 'build'
+
+    subst = {
+        'broadcast_port':
+            config['hyperion']['chain']['telos-evm']['indexerWebsocketPort'],
+    }
+    write_docker_template(f'{tevmi_build_dir}/Dockerfile', subst)
 
 
 def perform_docker_build(target_dir, config, logger):
@@ -329,14 +289,15 @@ def perform_docker_build(target_dir, config, logger):
 
             # sometimes several json packets are sent per chunk
             splt_str = _str.split('\n')
-            
+
             for packet in splt_str:
                 msg = json.loads(packet)
                 status = msg.get('status', None)
                 status = msg.get('stream', None)
                 if status:
+                    strp_status = status.rstrip()
                     stream += status
-    
+
         try:
             client.images.get(build_args['tag'])
 
@@ -351,62 +312,7 @@ def perform_docker_build(target_dir, config, logger):
         logger.info('building complete.')
 
 
-class BuildInProgress:
-    """ Helper class to manage build progress bar
-    """
-
-    def __init__(self):
-        self.prev_progress = 0
-        self.prev_total = 0
-        self.current_progress = 0
-        self.current_total = 0
-        self.status = ''
-        self.bar = tqdm(bar_format='{l_bar}{bar}')
-
-    def set_status(self, status: str):
-        new_status = format(
-            f'{status[:MAX_STATUS_SIZE]}', f' <{MAX_STATUS_SIZE}')
-
-        new_status = new_status.replace('\n', '')
-        new_status = new_status.replace('\r', '')
-
-        if new_status != self.status:
-            self.status = new_status
-            self.bar.set_description(desc=new_status)
-
-    def update(self, update):
-        if update.startswith('Step'):
-            """Docker sends build updates with format
-                'Step progress/total'
-            Use it to update the progress bar.
-            """
-            step_info = update.split(' ')[1]
-            step_info = step_info.split('/')
-            progress = int(step_info[0])
-            total = int(step_info[1])
-
-            update = update.rstrip()
-            
-            if total != self.current_total:
-                self.prev_total = self.current_total
-                self.bar.reset(total=total)
-                self.current_total = total
-
-            if progress != self.current_progress:
-                self.prev_progress = self.current_progress
-                self.bar.update(n=progress)
-                self.curent_progress = progress
-
-            self.set_status(update) 
-
-    def close(self):
-        self.bar.close()
-
-
 @cli.command()
-@click.option(
-    '--headless/--interactive', default=False,
-    help='Display pretty output or just stream logs.')
 @click.option(
     '--always-conf/--smart-conf', default=False,
     help='Force configuration files rebuild from templates.')
@@ -416,7 +322,7 @@ class BuildInProgress:
 @click.option(
     '--config', default='tevmc.json',
     help='Unified config file name.')
-def build(headless, always_conf, target_dir, config):
+def build(always_conf, target_dir, config):
     """Build in-repo docker containers.
     """
     config_fname = config
@@ -426,7 +332,7 @@ def build(headless, always_conf, target_dir, config):
     except FileNotFoundError:
         print('Config not found.')
         sys.exit(1)
-    
+
     target_dir = Path(target_dir).resolve()
 
     rebuild_conf = False
@@ -471,11 +377,6 @@ def build(headless, always_conf, target_dir, config):
 
 
     for build_args in builds:
-        if not headless:
-            stream = ''
-            msg = f'building {build_args["tag"]}'
-            bar = BuildInProgress()
-            bar.set_status(msg)
 
         for chunk in client.api.build(**build_args):
             update = None
@@ -483,22 +384,14 @@ def build(headless, always_conf, target_dir, config):
 
             # sometimes several json packets are sent per chunk
             splt_str = _str.split('\n')
-            
+
             for packet in splt_str:
                 msg = json.loads(packet)
                 status = msg.get('status', None)
                 status = msg.get('stream', None)
 
                 if status:
-                    if headless:
-                        print(status, end='')
-                    else:
-                        stream += status
-                        bar.update(status)
-    
-        if not headless:
-            bar.set_status(f'built {build_args["tag"]}')
-            bar.close()
+                    print(status, end='')
 
         try:
             client.images.get(build_args['tag'])
@@ -507,7 +400,4 @@ def build(headless, always_conf, target_dir, config):
             print(
                 f'couldn\'t build container {build_args["tag"]} at '
                 f'{build_args["path"]}')
-            if not headless:
-                print('build log:')
-                print(stream)
             sys.exit(1)

@@ -109,14 +109,6 @@ def randomize_conf_ports(config: Dict) -> Dict:
     # redis
     ret['redis']['port'] = get_free_port()
 
-    # rabbitmq
-    ret['rabbitmq']['node_name'] = f'{random_string(size=20)}@localhost'
-
-    ret['rabbitmq']['host'] = get_free_local_addr()
-    ret['rabbitmq']['api'] = get_free_local_addr()
-    ret['rabbitmq']['dist_port'] = get_free_port() 
-    ret['rabbitmq']['prometheus_port'] = get_free_port()
-
     # elasticsearch
     elastic_addr = get_free_local_addr()
     ret['elasticsearch']['host'] = elastic_addr
@@ -159,10 +151,6 @@ def randomize_conf_ports(config: Dict) -> Dict:
 
 def randomize_conf_creds(config: Dict) -> Dict:
     ret = config.copy()
-
-    # random credentials
-    ret['rabbitmq']['user'] = random_string(size=16)
-    ret['rabbitmq']['pass'] = random_string(size=32)
 
     ret['elasticsearch']['user'] = random_string(size=16)
     ret['elasticsearch']['elastic_pass'] = random_string(size=32)

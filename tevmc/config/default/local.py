@@ -10,22 +10,6 @@ redis = {
     'data_dir': 'data'
 }
 
-rabbitmq = {
-    'name': 'rabbitmq',
-    'docker_path': 'rabbitmq',
-    'tag': 'tevm:rabbitmq',
-    'host': '127.0.0.1:5672',
-    'api': '127.0.0.1:15672',
-    'node_name': 'rabbit@localhost',
-    'dist_port': 25672,
-    'prometheus_port': 15692,
-    'user': 'username',
-    'pass': 'password',
-    'vhost': '/hyperion',
-    'conf_dir': 'config',
-    'data_dir': 'data'
-}
-
 elasticsearch = {
     'name': 'elasticsearch',
     'docker_path': 'elasticsearch',
@@ -52,8 +36,8 @@ kibana = {
 
 nodeos = {
     'name': 'nodeos',
-    'tag': 'tevm:nodeos-3.1.0-evm',
-    'docker_path': 'eosio',
+    'tag': 'tevm:nodeos-4.0.0-evm',
+    'docker_path': 'leap',
     'data_dir_guest': '/mnt/dev/data',
     'data_dir_host': 'data',
     'conf_dir': 'config',
@@ -61,7 +45,7 @@ nodeos = {
     'genesis': 'local',
     'log_path': '/root/nodeos.log',
     'ini': {
-        'wasm_runtime': 'eos-vm-jit', 
+        'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
         'vm_oc_enable': True,
 
@@ -80,7 +64,7 @@ nodeos = {
         'agent_name': 'Telos Local Testnet',
 
 
-        'history_endpoint': '0.0.0.0:29999', 
+        'history_endpoint': '0.0.0.0:29999',
         'trace_history': True,
         'chain_history': True,
         'history_debug_mode': True,
@@ -90,15 +74,14 @@ nodeos = {
 
         'max_clients': 250,
         'cleanup_period': 30,
-        'txn_blok_lag': 0,
         'allowed_connection': 'any',
         'http_max_response_time': 100000,
-        'http_max_body_size': 10000000,
+        'http_max_body_size': 100000000,
 
         'enable_stale_production': True,
-        
+
         'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
-    
+
         'disable_subjective_billing': True,
         'max_transaction_time': 500,
 
@@ -117,6 +100,7 @@ nodeos = {
 
 hyperion = {
     'tag': 'tevm:hyperion',
+    'name': 'hyperion-api',
     'docker_path': 'hyperion',
     'conf_dir': 'config',
     'logs_dir': 'logs',
@@ -142,7 +126,7 @@ hyperion = {
             'signer_permission': 'active',
             'signer_key': '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
             'contracts': {
-                'main': 'eosio.evm' 
+                'main': 'eosio.evm'
             },
             'debug': True,
             'nodeos_read': 'http://127.0.0.1:8888',
@@ -151,36 +135,6 @@ hyperion = {
             'indexerWebsocketUri': 'ws://127.0.0.1:7300/evm',
             'rpcWebsocketHost': '0.0.0.0',
             'rpcWebsocketPort': '7400'
-        }
-    },
-    'indexer': {
-        'name': 'hyperion-indexer',
-        'start_on': 1,
-        'end_on': 0,
-        'rewrite': False,
-        'live_reader': True,
-        'auto_stop': 0,
-        'blacklists': {
-            'actions': [],
-            'deltas': []
-        },
-        'whitelists': {
-            'actions': [
-                'eosio.evm::call',
-                'eosio.evm::create',
-                'eosio.evm::doresources',
-                'eosio.evm::init',
-                'eosio.evm::openwallet',
-                'eosio.evm::raw',
-                'eosio.evm::receipt',
-                'eosio.evm::setresources',
-                'eosio.evm::withdraw'
-            ],
-            'deltas': [
-                'eosio::global'
-            ],
-            'max_depth': 10,
-            'root_only': False
         }
     },
     'api': {
@@ -201,12 +155,23 @@ beats = {
     'data_dir': 'data'
 }
 
+telosevm_indexer = {
+    'name': 'telosevm-indexer',
+    'tag': 'tevm:telosevm-indexer',
+    'docker_path': 'telosevm-indexer',
+    'start_block': 'override',
+    'stop_block': 4294967295,
+    'deploy_block': 'override',
+    'prev_hash': '56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+    'elastic_dump_size': 1
+}
+
 default_config = {
     'redis': redis,
-    'rabbitmq': rabbitmq,
     'elasticsearch': elasticsearch,
     'kibana': kibana,
     'nodeos': nodeos,
     'hyperion': hyperion,
-    'beats': beats
+    'beats': beats,
+    'telosevm-indexer': telosevm_indexer
 }
