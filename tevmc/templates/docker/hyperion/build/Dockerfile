@@ -21,7 +21,7 @@ WORKDIR /hyperion-history-api
 RUN npm i
 # RUN npm i @fastify/autoload
 
-RUN ./hpm install -r https://github.com/telosnetwork/hyperion-telos-evm-plugin.git -b evm_upgrade telos-evm
+RUN ./hpm install -r https://github.com/telosnetwork/hyperion-telos-evm-plugin.git --branch v1.5.0 telos-evm
 RUN ./hpm enable telos-evm
 
 RUN ./hpm install -r https://github.com/eosrio/hyperion-explorer-plugin explorer
