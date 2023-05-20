@@ -465,8 +465,8 @@ class TEVMController:
 
                         evm_deploy_block = cleos.evm_deploy_info['processed']['block_num']
 
-                        self.config['telosevm-indexer']['start_block'] = evm_deploy_block
-                        self.config['telosevm-indexer']['deploy_block'] = evm_deploy_block
+                        self.config['telosevm-translator']['start_block'] = evm_deploy_block
+                        self.config['telosevm-translator']['deploy_block'] = evm_deploy_block
 
                         # save evm deploy info for future runs
                         with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
@@ -477,7 +477,7 @@ class TEVMController:
                             self.logger.critical(msg.rstrip())
                         sys.exit(1)
 
-            genesis_block = self.config['telosevm-indexer']['start_block'] - 1
+            genesis_block = self.config['telosevm-translator']['start_block'] - 1
             self.logger.info(f'nodeos has started, waiting until blocks.log contains evm genesis block number {genesis_block}')
             cleos.wait_blocks(
                 genesis_block - cleos.get_info()['head_block_num'], sleep_time=10)
@@ -508,7 +508,7 @@ class TEVMController:
         last_update_time = time.time()
         delta = remote_head_block - self.cleos.get_info()['head_block_num']
 
-        for line in self.stream_logs(self.containers['telosevm-indexer']):
+        for line in self.stream_logs(self.containers['telosevm-translator']):
             if '] pushed, at ' in line:
                 m = re.findall(r'(?<=: \[)(.*?)(?=\|)', line)
                 if len(m) == 1 and m[0] != 'NaN':
@@ -654,9 +654,9 @@ class TEVMController:
                 self.setup_index_patterns(
                     [f'{self.chain_name}-action-*', 'filebeat-*'])
 
-    def start_telosevm_indexer(self):
-        with self.must_keep_running('telosevm-indexer'):
-            config = self.config['telosevm-indexer']
+    def start_telosevm_translator(self):
+        with self.must_keep_running('telosevm-translator'):
+            config = self.config['telosevm-translator']
             config_elastic = self.config['elasticsearch']
             config_nodeos = self.config['nodeos']
             config_hyperion = self.config['hyperion']['chain']['telos-evm']
@@ -677,7 +677,7 @@ class TEVMController:
             bc_host = config_hyperion['indexerWebsocketHost']
             bc_port = config_hyperion['indexerWebsocketPort']
 
-            self.containers['telosevm-indexer'] = self.exit_stack.enter_context(
+            self.containers['telosevm-translator'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{ self.config["hyperion"]["chain"]["name"]}',
@@ -701,7 +701,7 @@ class TEVMController:
                 )
             )
 
-            for msg in self.stream_logs(self.containers['telosevm-indexer']):
+            for msg in self.stream_logs(self.containers['telosevm-translator']):
                 self.logger.info(msg.rstrip())
                 if 'drained' in msg:
                     break
@@ -724,7 +724,7 @@ class TEVMController:
             self.start_hyperion_api()
 
         if 'indexer' in self.services:
-            self.start_telosevm_indexer()
+            self.start_telosevm_translator()
 
             if not self.is_local and self.wait:
                 self.await_full_index()
