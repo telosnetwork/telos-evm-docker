@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from py_eosio.sugar import random_string, Asset
-from py_eosio.tokens import sys_token
+from leap.sugar import random_string, Asset
+from leap.tokens import sys_token
 
 
 def test_connect(local_w3):
@@ -15,7 +15,7 @@ def test_gas_price(tevmc_local, local_w3):
 
 
 def test_chain_id(tevmc_local, local_w3):
-    chain_id = tevmc_local.config['hyperion']['chain']['chain_id']
+    chain_id = tevmc_local.config['telos-evm-rpc']['chain_id']
     assert local_w3.eth.chain_id == chain_id
 
 

@@ -43,15 +43,15 @@ def stream(pid, logpath, target_dir, config, source):
     if source in ['indexer', 'translator', 'evm']:
         source = 'telosevm-translator'
 
-    if source in ['hyp', 'rpc']:
-        source = 'hyperion'
+    if source in ['api', 'rpc']:
+        source = 'telos-evm-rpc'
 
     try:
         if source == 'daemon':
             subprocess.run(['tail', '-f', logpath])
             return
 
-        chain_name = config["hyperion"]["chain"]["name"]
+        chain_name = config['telos-evm-rpc']['elastic_prefix']
         src_config = config[source]
 
         if source == 'nodeos':

@@ -28,8 +28,7 @@ setup(
         'requests',
         'daemonize',
         'simplejson',
-        'simple_rlp',
-        'py_eosio@git+https://github.com/guilledk/py-eosio.git@host_deploy'
+        'simple_rlp'
     ],
     include_package_data=True,
     entry_points={
