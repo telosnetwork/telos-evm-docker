@@ -203,10 +203,10 @@ beats = {
     'data_dir': 'data'
 }
 
-telosevm_indexer = {
-    'name': 'telosevm-indexer',
-    'tag': 'tevm:telosevm-indexer',
-    'docker_path': 'telosevm-indexer',
+telosevm_translator = {
+    'name': 'telosevm-translator',
+    'tag': 'tevm:telosevm-translator',
+    'docker_path': 'telosevm-translator',
     'start_block': 180698860,
     'stop_block': 4294967295,
     'deploy_block': 180698860,
@@ -221,5 +221,5 @@ default_config = {
     'nodeos': nodeos,
     'hyperion': hyperion,
     'beats': beats,
-    'telosevm-indexer': telosevm_indexer
+    'telosevm-translator': telosevm_translator
 }

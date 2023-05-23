@@ -40,8 +40,8 @@ def stream(pid, logpath, target_dir, config, source):
     if source in ['elastic', 'es']:
         source = 'elasticsearch'
 
-    if source in ['indexer', 'evm']:
-        source = 'telosevm-indexer'
+    if source in ['indexer', 'translator', 'evm']:
+        source = 'telosevm-translator'
 
     if source in ['hyp', 'rpc']:
         source = 'hyperion'
