@@ -14,9 +14,9 @@ from rlp.sedes import (
     Binary
 )
 
-from py_eosio.cleos import CLEOS
-from py_eosio.sugar import Name, Asset
-from py_eosio.tokens import sys_token
+from leap.cleos import CLEOS
+from leap.sugar import Name, Asset
+from leap.tokens import sys_token
 
 from .utils import to_wei, to_int, decode_hex, remove_0x_prefix
 
@@ -53,13 +53,11 @@ class CLEOSEVM(CLEOS):
     def __init__(
         self,
         *args,
-        hyperion_api_endpoint: str = 'http://127.0.0.1:7000',
         chain_id: int = 41,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
 
-        self.hyperion_api_endpoint = hyperion_api_endpoint
         self.chain_id = chain_id
 
         self.__jsonrpc_id = 0
@@ -177,9 +175,11 @@ class CLEOSEVM(CLEOS):
     def eth_account_from_name(self, name) -> Optional[str]:
         rows = self.get_table(
             'eosio.evm', 'eosio.evm', 'account',
-            '--key-type', 'name', '--index', '3',
-            '--lower', name,
-            '--upper', name)
+            index_position=3,
+            key_type='name',
+            lower_bound=name,
+            upper_bound=name
+        )
 
         if len(rows) != 1:
             return None
@@ -198,43 +198,6 @@ class CLEOSEVM(CLEOS):
             f'{account}@active'
         )
 
-    """    hyperion interaction
-    """
-
-    def hyperion_health(self) -> Dict:
-        return requests.get(
-            f'{self.hyperion_api_endpoint}/v2/health').json()
-
-    # def hyperion_await_evm_tx(self, tx_hash):
-    #     while True:
-    #         resp = requests.get(
-    #             f'{self.hyperion_api_endpoint}/v2/evm/get_transactions',
-    #             params={'hash': tx_hash}).json()
-
-    #         breakpoint()
-
-    def hyperion_await_tx(self, tx_id):
-        while True:
-            resp = requests.get(
-                f'{self.hyperion_api_endpoint}/v2/history/get_transaction',
-                params={'id': tx_id}).json()
-
-            if 'executed' not in resp:
-                self.logger.warning(resp)
-
-            if resp['executed']:
-                break
-
-            self.logger.info('await transaction:')
-            self.logger.info(resp)
-            time.sleep(0.1)
-
-    def hyperion_get_actions(self, **kwargs):
-        return requests.get(
-            f'{self.hyperion_api_endpoint}/v2/history/get_actions',
-            params=kwargs
-        ).json()
-
     """ EVM
     """
 
@@ -250,9 +213,11 @@ class CLEOSEVM(CLEOS):
         addr = ('0' * (12 * 2)) + addr
         rows = self.get_table(
             'eosio.evm', 'eosio.evm', 'account',
-            '--key-type', 'sha256', '--index', '2',
-            '--lower', addr,
-            '--upper', addr)
+            index_position=2,
+            key_type='sha256',
+            lower_bound=addr,
+            upper_bound=addr
+        )
 
         if len(rows) != 1:
             return None
@@ -265,9 +230,11 @@ class CLEOSEVM(CLEOS):
         addr = ('0' * (12 * 2)) + addr
         rows = self.get_table(
             'eosio.evm', 'eosio.evm', 'account',
-            '--key-type', 'sha256', '--index', '2',
-            '--lower', addr,
-            '--upper', addr)
+            index_position=2,
+            key_type='sha256',
+            lower_bound=addr,
+            upper_bound=addr
+        )
 
         if len(rows) != 1:
             return None

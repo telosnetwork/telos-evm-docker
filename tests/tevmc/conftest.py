@@ -28,7 +28,7 @@ TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
 @contextmanager
 def bootstrap_test_stack(
     tmp_path_factory, config,
-    randomize=False, services=TEST_SERVICES,
+    randomize=True, services=TEST_SERVICES,
     **kwargs
 ):
     if randomize:
@@ -37,7 +37,7 @@ def bootstrap_test_stack(
 
     client = get_docker_client()
 
-    chain_name = config['hyperion']['chain']['name']
+    chain_name = config['telos-evm-rpc']['elastic_prefix']
 
     tmp_path = tmp_path_factory.getbasetemp() / chain_name
     manifest = build_docker_manifest(config)
@@ -134,10 +134,22 @@ from web3 import Web3
 @pytest.fixture(scope='module')
 def local_w3(tevmc_local):
     tevmc = tevmc_local
-    hyperion_api_port = tevmc.config["hyperion"]["api"]["server_port"]
-    eth_api_endpoint = f'http://localhost:{hyperion_api_port}/evm'
+    rpc_api_port = tevmc.config['telos-evm-rpc']['api_port']
+    eth_api_endpoint = f'http://127.0.0.1:{rpc_api_port}/evm'
 
     w3 = Web3(Web3.HTTPProvider(eth_api_endpoint))
+    assert w3.is_connected()
+
+    yield w3
+
+
+@pytest.fixture(scope='module')
+def local_websocket_w3(tevmc_local):
+    tevmc = tevmc_local
+    rpc_ws_port = tevmc.config['telos-evm-rpc']['rpc_websocket_port']
+    eth_ws_endpoint = f'ws://127.0.0.1:{rpc_ws_port}/evm'
+
+    w3 = Web3(Web3.WebsocketProvider(eth_ws_endpoint))
     assert w3.is_connected()
 
     yield w3

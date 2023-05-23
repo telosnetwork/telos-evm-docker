@@ -116,16 +116,17 @@ def perform_config_build(target_dir, config):
     write_docker_template(f'{kibana_conf_dir}/kibana.yml', subst)
 
     # nodeos
-    chain_name = get_config('hyperion.chain.name', config)
+    chain_name = config['telos-evm-rpc']['elastic_prefix']
     nodeos_conf = config['nodeos']
     ini_conf = nodeos_conf['ini']
 
     nodeos_dir = nodeos_conf['docker_path']
     nodeos_conf_dir = nodeos_dir + '/' + nodeos_conf['conf_dir']
     nodeos_build_dir = nodeos_dir + '/' + 'build'
+    nodeos_http_port = int(ini_conf['http_addr'].split(':')[-1])
 
     subst = {
-        'nodeos_port': ini_conf['http_addr'].split(':')[-1],
+        'nodeos_port': nodeos_http_port,
         'nodeos_history_port': ini_conf['history_endpoint'].split(':')[-1]
     }
     write_docker_template(f'{nodeos_build_dir}/Dockerfile', subst)
@@ -162,88 +163,6 @@ def perform_config_build(target_dir, config):
     with open(docker_dir / nodeos_conf_dir / 'config.ini', 'w+') as target_file:
         target_file.write(conf_str)
 
-    # hyperion
-    hyperion_conf = config['hyperion']
-
-    hyperion_dir = hyperion_conf['docker_path']
-    hyperion_build_dir = hyperion_dir + '/' + 'build'
-    hyperion_conf_dir  = hyperion_dir + '/' + hyperion_conf['conf_dir']
-
-    subst = {
-        'api_port': config['hyperion']['api']['server_port'],
-        'ws_port': config['hyperion']['chain']['telos-evm']['indexerWebsocketPort'],
-        'rpc_port': config['hyperion']['chain']['telos-evm']['rpcWebsocketPort'],
-        'ws_router_port': config['hyperion']['chain']['router_port']
-    }
-    write_docker_template(f'{hyperion_build_dir}/Dockerfile', subst)
-
-    # connections.json
-    redis_conf = jsonize(flatten('redis', config))
-    elasticsearch_conf = jsonize(flatten('elasticsearch', config))
-
-    chains = {
-        'hyperion_chains': tabulate(json.dumps({
-        get_config('hyperion.chain.name', config): {
-            'name':
-                get_config('hyperion.chain.long_name', config),
-            'chain_id':
-                get_config('hyperion.chain.chain_hash', config),
-            'http':
-                get_config('hyperion.chain.http', config),
-            'ship':
-                get_config('hyperion.chain.ship', config),
-            'WS_ROUTER_HOST':
-                get_config('hyperion.chain.router_host', config),
-            'WS_ROUTER_PORT':
-                get_config('hyperion.chain.router_port', config),
-        }}, indent=4))
-    }
-
-    subst = {}
-    subst.update(redis_conf)
-    subst.update(elasticsearch_conf)
-    subst.update(chains)
-
-    write_config_file(
-        'connections.json', hyperion_build_dir, subst)
-
-    # ecosystem.config.js
-    subst = {'name': get_config('hyperion.chain.name', config)}
-    subst.update(timestamp)
-
-    write_config_file(
-        'ecosystem.config.js', hyperion_build_dir, subst)
-
-    # telos-net.config.json
-    hyperion_api_conf = jsonize(flatten(
-        'hyperion',
-        {'k': flatten('api', config['hyperion'])}, 'k'))
-
-    telos_evm = get_config('hyperion.chain.telos-evm', config)
-    telos_evm['chainId'] = get_config('hyperion.chain.chain_id', config)
-
-    plugins = {
-        'plugins': tabulate(json.dumps({
-            'explorer': get_config('hyperion.chain.explorer', config),
-            'telos-evm': telos_evm
-    }, indent=4))}
-
-    other = jsonize({
-        'long_name': get_config('hyperion.chain.long_name', config),
-        'name': get_config('hyperion.chain.name', config)
-    })
-
-    chains_path = docker_dir / hyperion_conf_dir
-    chains_path.mkdir(parents=True, exist_ok=True)
-
-    subst = {}
-    subst.update(hyperion_api_conf)
-    subst.update(plugins)
-    subst.update(other)
-    with open(chains_path / f'{chain_name}.config.json', 'w+') as target_file:
-        target_file.write(
-            templates['telos-net.config.json'].substitute(**subst))
-
     # beats
     beats_conf = config['beats']
     beats_dir = docker_dir / beats_conf['docker_path']
@@ -256,9 +175,46 @@ def perform_config_build(target_dir, config):
 
     subst = {
         'broadcast_port':
-            config['hyperion']['chain']['telos-evm']['indexerWebsocketPort'],
+            config['telos-evm-rpc']['indexer_websocket_port'],
     }
     write_docker_template(f'{tevmi_build_dir}/Dockerfile', subst)
+
+    # telos-evm-rpc
+    rpc_conf = config['telos-evm-rpc']
+
+    rpc_dir = rpc_conf['docker_path']
+    rpc_build_dir = rpc_dir + '/' + 'build'
+    subst = jsonize({
+        'rpc_chain_id': rpc_conf['chain_id'],
+        'rpc_debug': rpc_conf['debug'],
+        'rpc_host': rpc_conf['api_host'],
+        'rpc_api': rpc_conf['api_port'],
+        'rpc_nodeos_read': f'http://127.0.0.1:{nodeos_http_port}',
+        'rpc_signer_account': rpc_conf['signer_account'],
+        'rpc_signer_permission': rpc_conf['signer_permission'],
+        'rpc_signer_key': rpc_conf['signer_key'],
+        'rpc_contracts': rpc_conf['contracts'],
+        'rpc_indexer_websocket_host': rpc_conf['indexer_websocket_host'],
+        'rpc_indexer_websocket_port': rpc_conf['indexer_websocket_port'],
+        'rpc_indexer_websocket_uri': rpc_conf['indexer_websocket_uri'],
+        'rpc_websocket_host': rpc_conf['rpc_websocket_host'],
+        'rpc_websocket_port': rpc_conf['rpc_websocket_port'],
+        'redis_host': config['redis']['host'],
+        'redis_port': config['redis']['port'],
+        'rpc_elastic_node': f'http://{elastic_conf["host"]}',
+        'elasticsearch_user': elastic_conf['user'],
+        'elasticsearch_pass': elastic_conf['pass'],
+        'elasticsearch_prefix': rpc_conf['elastic_prefix'],
+        'elasticsearch_index_version': rpc_conf['elasitc_index_version']
+    })
+    write_docker_template(f'{rpc_build_dir}/config.json', subst)
+    subst = {
+        'api_port':
+            config['telos-evm-rpc']['api_port'],
+        'ws_port':
+            config['telos-evm-rpc']['indexer_websocket_port']
+    }
+    write_docker_template(f'{rpc_build_dir}/Dockerfile', subst)
 
 
 def perform_docker_build(target_dir, config, logger):
@@ -269,12 +225,13 @@ def perform_docker_build(target_dir, config, logger):
 
     # docker build
     client = get_docker_client()
+    chain_name = config['telos-evm-rpc']['elastic_prefix']
 
     builds = []
     for container, conf in config.items():
         if 'docker_path' in conf:
             builds.append({
-                'tag': f'{conf["tag"]}-{config["hyperion"]["chain"]["name"]}',
+                'tag': f'{conf["tag"]}-{chain_name}',
                 'path': str(docker_dir / conf['docker_path'] / 'build')
             })
 
@@ -322,7 +279,10 @@ def perform_docker_build(target_dir, config, logger):
 @click.option(
     '--config', default='tevmc.json',
     help='Unified config file name.')
-def build(always_conf, target_dir, config):
+@click.option(
+    '--full-build/--templates-only', default=True,
+    help='Perform docker build or only setup files.')
+def build(always_conf, target_dir, config, full_build):
     """Build in-repo docker containers.
     """
     config_fname = config
@@ -364,14 +324,18 @@ def build(always_conf, target_dir, config):
     docker_dir = target_dir / 'docker'
     docker_dir.mkdir(exist_ok=True)
 
+    if not full_build:
+        return
+
     # docker build
     client = get_docker_client()
+    chain_name = config['telos-evm-rpc']['elastic_prefix']
 
     builds = []
     for container, conf in config.items():
         if 'docker_path' in conf:
             builds.append({
-                'tag': f'{conf["tag"]}-{config["hyperion"]["chain"]["name"]}',
+                'tag': f'{conf["tag"]}-{chain_name}',
                 'path': str(docker_dir / conf['docker_path'] / 'build')
             })
 

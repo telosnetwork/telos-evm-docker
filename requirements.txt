@@ -8,4 +8,4 @@ natsort
 requests
 daemonize
 simplejson
-py_eosio@git+https://github.com/guilledk/py-eosio.git@host_deploy
+py-leap@git+https://github.com/guilledk/py-leap@async_net_requests

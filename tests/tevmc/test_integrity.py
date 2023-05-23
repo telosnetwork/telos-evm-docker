@@ -11,8 +11,8 @@ import web3
 from eth_account import Account
 from elasticsearch import Elasticsearch
 
-from py_eosio.sugar import random_string, asset_from_str, Asset
-from py_eosio.tokens import sys_token
+from leap.sugar import random_string, asset_from_str, Asset
+from leap.tokens import sys_token
 
 from tevmc.utils import to_wei, to_int, from_wei, decode_hex
 
@@ -24,7 +24,7 @@ DEFAULT_GAS = 21000
 def test_integrity(tevmc_local, local_w3):
     tevmc = tevmc_local
 
-    index = tevmc.config['hyperion']['chain']['name'] + '-action-*'
+    index = tevmc.config['telos-evm-rpc']['elastic_prefix'] + '-action-*'
 
     es_config = tevmc.config['elasticsearch']
     es = Elasticsearch(

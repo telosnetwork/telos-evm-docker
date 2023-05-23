@@ -48,16 +48,10 @@ def clean(pid, target_dir, config):
 
     client = get_docker_client(timeout=10)
 
-    containers = []
-    for name, conf in config.items():
-        if 'name' in conf:
-            containers.append(f'{conf["name"]}-{pid}')
-
-
-    containers.append(f'config["hyperion"]["indexer"]["name"]-{pid}')
-    containers.append(f'config["hyperion"]["api"]["name"]-{pid}')
-
-    for val in containers:
+    for val in [
+        f'{conf["name"]}-{pid}'
+        for name, conf in config.items()
+    ]:
         while True:
             try:
                 container = client.containers.get(val)

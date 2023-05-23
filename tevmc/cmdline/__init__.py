@@ -5,7 +5,6 @@ from .cli import cli
 from .init import init
 from .up import up
 from .down import down
-from .pull import pull
 from .build import build
 from .clean import clean
 from .stream import stream

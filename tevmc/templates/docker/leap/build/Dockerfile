@@ -29,8 +29,8 @@ RUN wget https://telos-snapshots.s3.amazonaws.com/mainnet/telos-mainet-20211026-
 
 WORKDIR /root
 
-RUN wget https://github.com/telosnetwork/leap/releases/download/v4.0.0-rc3-1.0.0-dev/leap_4.0.0-rc3-1-0-0-ubuntu20.04_amd64.deb && \
-    apt-get install -y -f ./leap_4.0.0-rc3-1-0-0-ubuntu20.04_amd64.deb && \
+RUN wget https://github.com/telosnetwork/leap/releases/download/v4.0.0-1.0.0-dev/leap_4.0.0-1-0-0-ubuntu20.04_amd64.deb && \
+    apt-get install -y -f ./leap_4.0.0-1-0-0-ubuntu20.04_amd64.deb && \
     rm -rf *.deb
 
 
