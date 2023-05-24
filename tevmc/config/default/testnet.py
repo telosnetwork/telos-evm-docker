@@ -181,7 +181,7 @@ telos_evm_rpc = {
     'indexer_websocket_uri': 'ws://127.0.0.1:7300/evm',
     'rpc_websocket_host': '0.0.0.0',
     'rpc_websocket_port': '7400',
-    'elastic_prefix': 'telos-local',
+    'elastic_prefix': 'telos-testnet',
     'elasitc_index_version': 'v1.5'
 }
 
