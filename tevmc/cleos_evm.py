@@ -89,8 +89,8 @@ class CLEOSEVM(CLEOS):
         self.new_account(
             'rpc.evm',
             key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L',
-            cpu='10000.0000 TLOS',
-            net='10000.0000 TLOS',
+            cpu=10000.0000,
+            net=10000.0000,
             ram=100000)
 
         contract_path = '/opt/eosio/bin/contracts/eosio.evm/receiptless'

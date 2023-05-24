@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from leap.sugar import random_string, Asset
-from leap.tokens import sys_token
 
 
 def test_connect(local_w3):
@@ -36,7 +35,7 @@ def test_transaction_count(tevmc_local, local_w3):
     eth_addr = tevmc.cleos.eth_account_from_name(account)
     assert eth_addr
 
-    quantity = Asset(100, sys_token)
+    quantity = Asset(100, tevmc.cleos.sys_token_supply.symbol)
 
     tevmc.cleos.transfer_token('eosio', account, quantity, 'evm test')
     tevmc.cleos.transfer_token(account, 'eosio.evm', quantity, 'Deposit')
