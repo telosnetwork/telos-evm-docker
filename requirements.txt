@@ -8,4 +8,4 @@ natsort
 requests
 daemonize
 simplejson
-py-leap@git+https://github.com/guilledk/py-leap@async_net_requests
+py-leap@git+https://github.com/guilledk/py-leap@v0.1a11

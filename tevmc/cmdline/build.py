@@ -102,7 +102,7 @@ def perform_config_build(target_dir, config):
     host_dir = (docker_dir / elastic_data_dir)
     host_dir.mkdir(parents=True, exist_ok=True)
 
-    os.chown(host_dir, uid=1000, gid=1000)
+    os.chown(host_dir, uid=os.getuid(), gid=os.getgid())
 
     # kibana
     kibana_conf = config['kibana']
