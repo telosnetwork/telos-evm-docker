@@ -1,3 +1,4 @@
+web3
 tqdm
 click
 py-evm
