@@ -15,11 +15,11 @@ RUN git clone https://github.com/telosnetwork/telos-evm-rpc.git
 
 WORKDIR /telos-evm-rpc
 
-COPY config.json config.json
-
 RUN yarn
 
 RUN npx tsc
+
+COPY config.json config.json
 
 CMD ["node", "dist/main.js"]
 

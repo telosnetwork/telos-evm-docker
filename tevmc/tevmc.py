@@ -107,7 +107,6 @@ class TEVMController:
         self,
         name: str,
         image: str,
-        net: str = 'host',
         *args, **kwargs
     ):
         """Start a new container.
@@ -154,6 +153,17 @@ class TEVMController:
                    raise TEVMCException(f'Image \'{image}\' not found on either local or'
                         ' remote repos. Maybe consider running \'tevmc build\'')
 
+
+            # darwin arch doesn't support host networking mode... use bridge
+            if sys.platform == 'darwin':
+                kwargs['network_mode'] = 'bridge'
+
+            elif 'linux' in sys.platform:
+                kwargs['network'] = 'host'
+
+            else:
+                raise OSError('Unsupported network architecture')
+
             # finally run container
             self.logger.info(f'opening {name}...')
             container = self.client.containers.run(
@@ -161,7 +171,6 @@ class TEVMController:
                 *args, **kwargs,
                 name=name,
                 detach=True,
-                network=net,
                 log_config=LogConfig(
                     type=LogConfig.types.JSON,
                     config={'max-size': '100m' }),
@@ -226,11 +235,18 @@ class TEVMController:
                 Mount('/data', str(data_dir.resolve()), 'bind')
             ]
 
+            redis_port = config['port']
+
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {f'{redis_port}/tcp': redis_port}
+
             self.containers['redis'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.chain_name}',
-                    mounts=self.mounts['redis']
+                    mounts=self.mounts['redis'],
+                    **more_params
                 )
             )
 
@@ -255,6 +271,12 @@ class TEVMController:
                 Mount('/home/elasticsearch/data', str(data_dir.resolve()), 'bind')
             ]
 
+            es_port = int(config['host'].split(':')[-1])
+
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {f'{es_port}/tcp': es_port}
+
             self.containers['elasticsearch'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
@@ -268,7 +290,8 @@ class TEVMController:
                         'ES_JAVA_OPTS': '-Xms2g -Xmx2g',
                         'ES_NETWORK_HOST': '0.0.0.0'
                     },
-                    mounts=self.mounts['elasticsearch']
+                    mounts=self.mounts['elasticsearch'],
+                    **more_params
                 )
             )
 
@@ -321,6 +344,12 @@ class TEVMController:
                 Mount('/data', str(data_dir.resolve()), 'bind')
             ]
 
+            kibana_port = config['port']
+
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {f'{kibana_port}/tcp': kibana_port}
+
             self.containers['kibana'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
@@ -330,7 +359,8 @@ class TEVMController:
                         'ELASTICSEARCH_USERNAME': config_elastic['user'],
                         'ELASTICSEARCH_PASSWORD': config_elastic['pass']
                     },
-                    mounts=self.mounts['kibana']
+                    mounts=self.mounts['kibana'],
+                    **more_params
                 )
             )
 
@@ -382,13 +412,24 @@ class TEVMController:
 
             self.logger.info(f'is relaunch: {self.is_nodeos_relaunch}')
 
+            nodeos_api_port = int(config['ini']['http_addr'].split(':')[1])
+            history_port = int(config['ini']['history_endpoint'].split(':')[1])
+
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {
+                    f'{nodeos_api_port}/tcp': nodeos_api_port,
+                    f'{history_port}/tcp': history_port
+                }
+
             # open container
             self.containers['nodeos'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.chain_name}',
                     environment=env,
-                    mounts=self.mounts['nodeos']
+                    mounts=self.mounts['nodeos'],
+                    **more_params
                 )
             )
 
@@ -405,7 +446,6 @@ class TEVMController:
                 ['/bin/bash', '-c',
                     'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
 
-            nodeos_api_port = config['ini']['http_addr'].split(':')[1]
 
             cleos_url = f'http://127.0.0.1:{nodeos_api_port}'
 
@@ -643,6 +683,10 @@ class TEVMController:
             bc_host = config_rpc['indexer_websocket_host']
             bc_port = config_rpc['indexer_websocket_port']
 
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {f'{bc_port}/tcp': bc_port}
+
             self.containers['telosevm-translator'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
@@ -663,7 +707,8 @@ class TEVMController:
                         'EVM_PREV_HASH': config['prev_hash'],
                         'BROADCAST_HOST': bc_host,
                         'BROADCAST_PORT': bc_port
-                    }
+                    },
+                    **more_params
                 )
             )
 
@@ -684,11 +729,23 @@ class TEVMController:
     def start_evm_rpc(self):
         with self.must_keep_running('telos-evm-rpc'):
             config = self.config['telos-evm-rpc']
+
+            api_port = config['api_port']
+            rpc_port = config['rpc_websocket_port']
+
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {
+                    f'{api_port}/tcp': api_port,
+                    f'{rpc_port}/tcp': rpc_port
+                }
+
             self.containers['telos-evm-rpc'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.chain_name}',
-                    mounts=self.mounts['telos-evm-rpc']
+                    mounts=self.mounts['telos-evm-rpc'],
+                    **more_params
                 )
             )
 
