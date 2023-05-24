@@ -16,7 +16,6 @@ from rlp.sedes import (
 
 from leap.cleos import CLEOS
 from leap.sugar import Name, Asset
-from leap.tokens import sys_token
 
 from .utils import to_wei, to_int, decode_hex, remove_0x_prefix
 
@@ -126,7 +125,7 @@ class CLEOSEVM(CLEOS):
             name,
             key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L')
         self.create_evm_account(name, data)
-        quantity = Asset(111000000, sys_token)
+        quantity = Asset(111000000, self.sys_token_supply.symbol)
 
         self.transfer_token('eosio', name, quantity, ' ')
         self.transfer_token(name, 'eosio.evm', quantity, 'Deposit')
@@ -155,7 +154,7 @@ class CLEOSEVM(CLEOS):
                 'evmuser1',
                 eth_addr,
                 addr,
-                Asset(amount, sys_token)
+                Asset(amount, self.sys_token_supply.symbol)
             )
             time.sleep(0.05)
             assert ec == 0
