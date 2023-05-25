@@ -16,7 +16,6 @@ elasticsearch = {
     'tag': 'tevm:elasticsearch',
     'protocol':  'http',
     'host': '127.0.0.1:9200',
-    'ingest_nodes': ['127.0.0.1:9200'],
     'elastic_pass': 'password',
     'user': 'hyper',
     'pass': 'password',

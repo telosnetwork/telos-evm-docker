@@ -153,10 +153,11 @@ class TEVMController:
                    raise TEVMCException(f'Image \'{image}\' not found on either local or'
                         ' remote repos. Maybe consider running \'tevmc build\'')
 
-
-            # darwin arch doesn't support host networking mode... use bridge
+            # darwin arch doesn't support host networking mode...
             if sys.platform == 'darwin':
-                kwargs['network_mode'] = 'bridge'
+                # set to bridge, and connect to our custom virtual net after Launch
+                # this way we can set the ip addr
+                kwargs['network'] = 'bridge'
 
             elif 'linux' in sys.platform:
                 kwargs['network'] = 'host'
@@ -250,6 +251,12 @@ class TEVMController:
                 )
             )
 
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['redis'],
+                    ipv4_address=config['virtual_ip']
+                )
+
             for msg in self.stream_logs(self.containers['redis']):
                 self.logger.info(msg.rstrip())
                 if 'Ready to accept connections' in msg:
@@ -295,15 +302,24 @@ class TEVMController:
                 )
             )
 
+
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['elasticsearch'],
+                    ipv4_address=config['virtual_ip']
+                )
+
             for msg in self.stream_logs(self.containers['elasticsearch']):
                 self.logger.info(msg.rstrip())
                 if ' indices into cluster_state' in msg:
                     break
 
             if not self.is_elastic_relaunch:
+                es_endpoint = f'127.0.0.1:{es_port}'
+
                 # setup password for elastic user
                 resp = requests.put(
-                    f'http://{config["host"]}/_xpack/security/user/elastic/_password',
+                    f'http://{es_endpoint}/_xpack/security/user/elastic/_password',
                     auth=('elastic', 'temporal'),
                     json={'password': config['elastic_pass']})
 
@@ -312,7 +328,7 @@ class TEVMController:
 
                 # setup user
                 resp = requests.put(
-                    f'http://{config["host"]}/_xpack/security/user/{config["user"]}',
+                    f'http://{es_endpoint}/_xpack/security/user/{config["user"]}',
                     auth=('elastic', config['elastic_pass']),
                     json={
                         'password': config['pass'],
@@ -363,6 +379,12 @@ class TEVMController:
                     **more_params
                 )
             )
+
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['kibana'],
+                    ipv4_address=config['virtual_ip']
+                )
 
     def start_nodeos(self):
         """Start eosio_nodeos container.
@@ -421,6 +443,7 @@ class TEVMController:
                     f'{nodeos_api_port}/tcp': nodeos_api_port,
                     f'{history_port}/tcp': history_port
                 }
+                more_params['mem_limit'] = '6g'
 
             # open container
             self.containers['nodeos'] = self.exit_stack.enter_context(
@@ -432,6 +455,12 @@ class TEVMController:
                     **more_params
                 )
             )
+
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['nodeos'],
+                    ipv4_address=config['virtual_ip']
+                )
 
             # for msg in self.stream_logs(self.containers['nodeos']):
             #     self.logger.info(msg.rstrip())
@@ -556,13 +585,19 @@ class TEVMController:
     def setup_index_patterns(self, patterns: List[str]):
         kibana_port = self.config['kibana']['port']
 
+        if sys.platform == 'darwin':
+            kibana_host = self.config['kibana']['virtual_ip']
+
+        else:
+            kibana_host = '127.0.0.1'
+
         for pattern_title in patterns:
             self.logger.info(
                 f'registering index pattern \'{pattern_title}\'')
             while True:
                 try:
                     resp = requests.post(
-                        f'http://localhost:{kibana_port}'
+                        f'http://{kibana_host}:{kibana_port}'
                         '/api/index_patterns/index_pattern',
                         auth=HTTPBasicAuth('elastic', 'password'),
                         headers={'kbn-xsrf': 'true'},
@@ -619,6 +654,12 @@ class TEVMController:
                 )
             )
 
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['beats'],
+                    ipv4_address=config['virtual_ip']
+                )
+
             exec_id, exec_stream = docker_open_process(
                 self.client,
                 self.containers['beats'],
@@ -667,9 +708,15 @@ class TEVMController:
             config_nodeos = self.config['nodeos']
             config_rpc = self.config['telos-evm-rpc']
 
+            if sys.platform == 'darwin':
+                nodeos_host = self.config['nodeos']['virtual_ip']
+
+            else:
+                nodeos_host = '127.0.0.1'
+
             nodeos_api_port = config_nodeos['ini']['http_addr'].split(':')[1]
             nodeos_ship_port = config_nodeos['ini']['history_endpoint'].split(':')[1]
-            endpoint = f'http://127.0.0.1:{nodeos_api_port}'
+            endpoint = f'http://{nodeos_host}:{nodeos_api_port}'
 
             if 'testnet' in self.chain_name:
                 remote_endpoint = 'https://testnet.telos.net'
@@ -678,7 +725,7 @@ class TEVMController:
             else:
                 remote_endpoint = endpoint
 
-            ws_endpoint = f'ws://127.0.0.1:{nodeos_ship_port}'
+            ws_endpoint = f'ws://{nodeos_host}:{nodeos_ship_port}'
 
             bc_host = config_rpc['indexer_websocket_host']
             bc_port = config_rpc['indexer_websocket_port']
@@ -711,6 +758,12 @@ class TEVMController:
                     **more_params
                 )
             )
+
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['telosevm-translator'],
+                    ipv4_address=config['virtual_ip']
+                )
 
             for msg in self.stream_logs(self.containers['telosevm-translator']):
                 self.logger.info(msg.rstrip())
@@ -749,19 +802,26 @@ class TEVMController:
                 )
             )
 
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['telos-evm-rpc'],
+                    ipv4_address=config['virtual_ip']
+                )
+
             for msg in self.stream_logs(self.containers['telos-evm-rpc']):
                 self.logger.info(msg.rstrip())
                 if 'Telos EVM RPC started!!!' in msg:
                     break
 
     def open_rpc_websocket(self):
+        rpc_ws_host = self.config['telos-evm-rpc']['rpc_websocket_host']
         rpc_ws_port = self.config['telos-evm-rpc']['rpc_websocket_port']
 
         connected = False
         for i in range(3):
             try:
                 ws = create_connection(
-                    f'ws://127.0.0.1:{rpc_ws_port}/evm')#, timeout=15)
+                    f'ws://{rpc_ws_host}:{rpc_ws_port}/evm')
                 connected = True
                 break
 
@@ -771,7 +831,28 @@ class TEVMController:
         assert connected
         return ws
 
+    def darwin_network_setup(self):
+        try:
+            self._vnet = self.client.networks.get(self.chain_name)
+
+        except docker.errors.NotFound:
+            ipam_pool = docker.types.IPAMPool(
+                subnet='192.168.123.0/24',
+                gateway='192.168.123.254'
+            )
+            ipam_config = docker.types.IPAMConfig(
+                pool_configs=[ipam_pool]
+            )
+
+            self._vnet = self.client.networks.create(
+                self.chain_name, 'bridge', ipam=ipam_config
+            )
+
     def start(self):
+
+        if sys.platform == 'darwin':
+            self.darwin_network_setup()
+
         if 'redis' in self.services:
             self.start_redis()
 

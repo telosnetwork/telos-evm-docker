@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 
 import pytest
 import docker
@@ -14,7 +15,8 @@ from tevmc.config import (
     local, testnet, mainnet,
     build_docker_manifest,
     randomize_conf_ports,
-    randomize_conf_creds
+    randomize_conf_creds,
+    add_virtual_networking
 )
 from tevmc.cmdline.init import touch_node_dir
 from tevmc.cmdline.build import perform_docker_build
@@ -34,6 +36,9 @@ def bootstrap_test_stack(
     if randomize:
         config = randomize_conf_ports(config)
         config = randomize_conf_creds(config)
+
+    if sys.platform == 'darwin':
+        config = add_virtual_networking(config)
 
     client = get_docker_client()
 
@@ -97,6 +102,14 @@ def tevmc_local(tmp_path_factory):
 def tevmc_local_non_rand(tmp_path_factory):
     with bootstrap_test_stack(
         tmp_path_factory, local.default_config, randomize=False) as tevmc:
+        yield tevmc
+
+@pytest.fixture(scope='module')
+def tevmc_local_only_nodeos(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, local.default_config,
+        services=['nodeos']
+    ) as tevmc:
         yield tevmc
 
 

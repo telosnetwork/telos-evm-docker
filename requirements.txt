@@ -1,4 +1,3 @@
-web3
 tqdm
 click
 py-evm
@@ -9,4 +8,4 @@ natsort
 requests
 daemonize
 simplejson
-py-leap@git+https://github.com/guilledk/py-leap@v0.1a11
+py-leap@git+https://github.com/guilledk/py-leap@wait_blocks_fix
