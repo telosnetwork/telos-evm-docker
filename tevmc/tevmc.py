@@ -386,7 +386,7 @@ class TEVMController:
                     ipv4_address=config['virtual_ip']
                 )
 
-    def start_nodeos(self):
+    def start_nodeos(self, space_monitor=True):
         """Start eosio_nodeos container.
 
         - Initialize CLEOS wrapper and setup keosd & wallet.
@@ -445,11 +445,37 @@ class TEVMController:
                 }
                 more_params['mem_limit'] = '6g'
 
+            # generate nodeos command
+            cmd = [
+                'nodeos',
+                '-e',
+                '-p', 'eosio',
+                '--config=/root/config.ini',
+                f'--data-dir={config["data_dir_guest"]}',
+                '--disable-replay-opts',
+                '--logconf=/root/logging.json'
+            ]
+
+            if not self.is_nodeos_relaunch:
+                if 'snapshot' in config:
+                    cmd += [f'--snapshot={config["snapshot"]}']
+
+                elif 'genesis' in config:
+                    cmd += [f'--genesis-json=/root/genesis/{config["genesis"]}.json']
+
+
+            if not space_monitor:
+                cmd += ['--resource-monitor-not-shutdown-on-threshold-exceeded']
+
+            self.logger.info(f'running nodeos container with command:')
+            self.logger.info(' '.join(cmd))
+
             # open container
             self.containers['nodeos'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.chain_name}',
+                    command=cmd,
                     environment=env,
                     mounts=self.mounts['nodeos'],
                     **more_params
@@ -462,18 +488,15 @@ class TEVMController:
                     ipv4_address=config['virtual_ip']
                 )
 
-            # for msg in self.stream_logs(self.containers['nodeos']):
-            #     self.logger.info(msg.rstrip())
-            #     if 'configured http to listen on' in msg:
-            #         break
+            output = ''
+            for msg in self.stream_logs(self.containers['nodeos']):
+                self.logger.info(msg.rstrip())
+                output += msg
+                if 'configured http to listen on' in msg:
+                    break
 
-            #     elif 'Incorrect plugin configuration' in msg:
-            #         raise TEVMCException('Nodeos bootstrap error.')
-
-            exec_id, exec_stream = docker_open_process(
-                self.client, self.containers['nodeos'],
-                ['/bin/bash', '-c',
-                    'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
+                elif 'Incorrect plugin configuration' in msg:
+                    raise TEVMCException('Nodeos bootstrap error.')
 
 
             cleos_url = f'http://127.0.0.1:{nodeos_api_port}'
@@ -488,39 +511,17 @@ class TEVMController:
 
             self.cleos = cleos
 
-            # manual start stuff
-
-            # init wallet
-            cleos.start_keosd(
-                '-c',
-                '/root/keosd_config.ini')
-
-            nodeos_params = {
-                'data_dir': config['data_dir_guest'],
-                'logfile': config['log_path'],
-                'logging_cfg': '/root/logging.json'
-            }
-
-            if not self.is_nodeos_relaunch:
-                if 'snapshot' in config:
-                    nodeos_params['snapshot'] = config['snapshot']
-
-                elif 'genesis' in config:
-                    nodeos_params['genesis'] = f'/root/genesis/{config["genesis"]}.json'
-
-            output = cleos.start_nodeos_from_config(
-                '/root/config.ini',
-                state_plugin=True,
-                is_local=self.is_local,
-                **nodeos_params
-            )
             if self.is_local:
                 # await for nodeos to produce a block
                 cleos.wait_blocks(4)
 
-                self.is_fresh = 'Initializing new blockchain with genesis state' in output
+                self.is_fresh = 'Starting fresh blockchain state using provided genesis state' in output
 
                 if self.is_fresh:
+                    cleos.start_keosd(
+                        '-c',
+                        '/root/keosd_config.ini')
+
                     cleos.setup_wallet(self.producer_key)
 
                     try:

@@ -36,9 +36,3 @@ RUN wget https://github.com/telosnetwork/leap/releases/download/v4.0.0-1.0.0-dev
 
 EXPOSE $nodeos_port
 EXPOSE $nodeos_history_port
-
-CMD ["/bin/bash", "-c", "while true; do sleep 3; done;"]
-
-# COPY entrypoint.sh /opt/entrypoint.sh
-
-# ENTRYPOINT ["/bin/bash", "/opt/entrypoint.sh"]
