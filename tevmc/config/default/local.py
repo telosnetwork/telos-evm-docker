@@ -35,7 +35,7 @@ kibana = {
 
 nodeos = {
     'name': 'nodeos',
-    'tag': 'tevm:nodeos-4.0.0-evm',
+    'tag': 'tevm:nodeos-4.0.1-evm',
     'docker_path': 'leap',
     'data_dir_guest': '/mnt/dev/data',
     'data_dir_host': 'data',
