@@ -171,7 +171,7 @@ telos_evm_rpc = {
     'logs_dir': 'logs',
     'chain_id': 40,
     'debug': True,
-    'api_host': '127.0.0.1',
+    'api_host': '0.0.0.0',
     'api_port': 7000,
     'signer_account': 'rpc.evm',
     'signer_permission': 'active',
