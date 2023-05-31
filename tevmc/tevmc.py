@@ -492,7 +492,7 @@ class TEVMController:
             for msg in self.stream_logs(self.containers['nodeos']):
                 self.logger.info(msg.rstrip())
                 output += msg
-                if 'configured http to listen on' in msg:
+                if 'start_sync' in msg:
                     break
 
                 elif 'Incorrect plugin configuration' in msg:
