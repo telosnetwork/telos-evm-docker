@@ -492,7 +492,7 @@ class TEVMController:
             for msg in self.stream_logs(self.containers['nodeos']):
                 self.logger.info(msg.rstrip())
                 output += msg
-                if 'start_sync' in msg:
+                if 'start_sync' in msg or 'Produced block' in msg:
                     break
 
                 elif 'Incorrect plugin configuration' in msg:
