@@ -46,7 +46,6 @@ class TEVMController:
     def __init__(
         self,
         config: Dict[str, Dict],
-        client = None,
         logger = None,
         log_level: str = 'info',
         root_pwd: Optional[Path] = None,
@@ -554,7 +553,9 @@ class TEVMController:
             for msg in self.stream_logs(self.containers['nodeos']):
                 self.logger.info(msg.rstrip())
                 output += msg
-                if 'start_sync' in msg or 'Produced block' in msg:
+                if ('start_sync' in msg or
+                    'Produced block' in msg or
+                    'Received block' in msg):
                     break
 
                 elif 'Incorrect plugin configuration' in msg:
