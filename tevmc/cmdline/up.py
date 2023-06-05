@@ -40,6 +40,9 @@ from .cli import cli, get_docker_client
     '--wait/--no-wait', default=True,
     help='Wait until caught up to sync before launching RPC api.')
 @click.option(
+    '--sync/--head', default=True,
+    help='Sync from chain start or from head.')
+@click.option(
     '--config', default='tevmc.json',
     help='Unified config file name.')
 @click.option(
@@ -58,6 +61,7 @@ def up(
     pid,
     services,
     wait,
+    sync,
     config,
     logpath,
     loglevel,
@@ -128,8 +132,9 @@ def up(
                 config,
                 logger=logger,
                 wait=wait,
-                services=services
-            ) as tevm:
+                services=services,
+                from_latest=not sync
+            ):
                 logger.critical('control point reached')
                 try:
                     while True:

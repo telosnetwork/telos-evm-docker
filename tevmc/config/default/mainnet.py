@@ -35,7 +35,7 @@ kibana = {
 
 nodeos = {
     'name': 'nodeos',
-    'tag': 'tevm:nodeos-4.0.0-evm',
+    'tag': 'tevm:nodeos-4.0.1-evm',
     'docker_path': 'leap',
     'data_dir_guest': '/mnt/dev/data',
     'data_dir_host': 'data',
@@ -44,6 +44,7 @@ nodeos = {
     'genesis': 'mainnet',
     'snapshot': '/snapshot-mainnet-20211026-blk-180635436.bin',
     'log_path': '/root/nodeos.log',
+    'v2_api': 'https://mainnet.telos.net',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
@@ -173,6 +174,7 @@ telos_evm_rpc = {
     'debug': True,
     'api_host': '0.0.0.0',
     'api_port': 7000,
+    'remote_endpoint': 'https://mainnet.telos.net/evm',
     'signer_account': 'rpc.evm',
     'signer_permission': 'active',
     'signer_key': '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',

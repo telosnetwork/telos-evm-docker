@@ -19,6 +19,7 @@ setup(
     package_data={'': templates},
     install_requires=[
         'rlp',
+        'web3',
         'tqdm',
         'click',
         'pytest',

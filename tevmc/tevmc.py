@@ -6,6 +6,7 @@ import sys
 import time
 import shutil
 import signal
+import string
 import logging
 
 from signal import SIGINT
@@ -18,6 +19,7 @@ import docker
 import requests
 import simplejson
 
+from web3 import Web3
 from docker.types import LogConfig, Mount
 from requests.auth import HTTPBasicAuth
 from leap.sugar import (
@@ -27,7 +29,8 @@ from leap.sugar import (
 from leap.sugar import (
     collect_stdout,
     docker_open_process,
-    docker_wait_process
+    docker_wait_process,
+    download_latest_snapshot
 )
 
 from .config import *
@@ -56,7 +59,8 @@ class TEVMController:
             'indexer',
             'rpc',
             'beats'
-        ]
+        ],
+        from_latest: bool = False
     ):
         self.pid = os.getpid()
         self.config = config
@@ -98,6 +102,64 @@ class TEVMController:
 
         if self.is_local:
             self.producer_key = config['nodeos']['ini']['sig_provider'].split(':')[-1]
+
+        else:
+            if from_latest:
+                network = 'telos'
+                if 'testnet' in self.chain_name:
+                    network = 'telostest'
+
+                block_num, snap_path = download_latest_snapshot(
+                    self.docker_wd /
+                    config['nodeos']['docker_path'] /
+                    config['nodeos']['conf_dir'],
+                    network=network
+                )
+
+                self.config['nodeos']['snapshot'] = f'/root/{snap_path.name}'
+
+                # native start block
+                start_block = block_num + 100
+
+                self.config['telosevm-translator']['start_block'] = start_block
+                self.config['telosevm-translator']['deploy_block'] = start_block
+
+                # query v2 api to get evm delta
+                resp = requests.get(
+                    self.config['nodeos']['v2_api'] + '/v2/history/get_deltas',
+                    params={
+                        'limit': 1,
+                        'code': 'eosio',
+                        'scope': 'eosio',
+                        'table': 'global'
+                    }
+                )
+                self.logger.info(resp)
+                self.logger.info(resp.text)
+                self.logger.info(resp.json())
+                assert resp.status_code == 200
+                delta_resp = resp.json()
+                delta = delta_resp['deltas'][0]
+
+                evm_delta = delta['block_num'] - delta['data']['block_num']
+                self.logger.info(f'calculated evm delta: {evm_delta}')
+
+                # get eth hash
+                w3 = Web3(Web3.HTTPProvider(
+                    self.config['telos-evm-rpc']['remote_endpoint']))
+
+                evm_start_block = start_block - evm_delta - 1
+
+                prev_hash = (w3.eth.get_block(evm_start_block - 1)['hash']).hex()
+                if prev_hash[:2] == '0x':
+                    prev_hash = prev_hash[2:]
+
+                self.config['telosevm-translator']['prev_hash'] = prev_hash
+
+                # dump edited config file
+                with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
+                    uni_conf.write(json.dumps(self.config, indent=4))
+
 
         self.containers = {}
         self.mounts = {}
@@ -697,11 +759,6 @@ class TEVMController:
             else:
                 self.logger.info('pipelines setup')
 
-
-            if self.is_local:
-                self.setup_index_patterns(
-                    [f'{self.chain_name}-action-*', 'filebeat-*'])
-
     def start_telosevm_translator(self):
         with self.must_keep_running('telosevm-translator'):
             config = self.config['telosevm-translator']
@@ -871,6 +928,16 @@ class TEVMController:
 
             if not self.is_local and self.wait:
                 self.await_full_index()
+
+
+            if 'kibana' in self.services:
+                idx_version = self.config['telos-evm-rpc']['elasitc_index_version']
+                self.setup_index_patterns([
+                    f'{self.chain_name}-action-{idx_version}-*',
+                    f'{self.chain_name}-delta-{idx_version}-*',
+                    'filebeat-*'
+                ])
+
 
         if 'rpc' in self.services:
             self.setup_rpc_log_mount()

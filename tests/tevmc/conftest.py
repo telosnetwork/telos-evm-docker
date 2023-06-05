@@ -8,6 +8,7 @@ import docker
 import logging
 import requests
 
+from pathlib import Path
 from contextlib import contextmanager
 
 from tevmc import TEVMController
@@ -30,7 +31,9 @@ TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
 @contextmanager
 def bootstrap_test_stack(
     tmp_path_factory, config,
-    randomize=True, services=TEST_SERVICES,
+    randomize=True,
+    services=TEST_SERVICES,
+    from_latest=False,
     **kwargs
 ):
     if randomize:
@@ -59,6 +62,7 @@ def bootstrap_test_stack(
             config,
             root_pwd=tmp_path,
             services=services,
+            from_latest=from_latest,
             **kwargs
         ) as _tevmc:
             yield _tevmc
@@ -119,6 +123,12 @@ def tevmc_testnet(tmp_path_factory):
         tmp_path_factory, testnet.default_config) as tevmc:
         yield tevmc
 
+@pytest.fixture(scope='module')
+def tevmc_testnet_latest(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, testnet.default_config, from_latest=True) as tevmc:
+        yield tevmc
+
 
 @pytest.fixture(scope='module')
 def tevmc_testnet_no_wait(tmp_path_factory):
@@ -133,6 +143,12 @@ def tevmc_mainnet(tmp_path_factory):
         tmp_path_factory, mainnet.default_config) as tevmc:
         yield tevmc
 
+@pytest.fixture(scope='module')
+def tevmc_mainnet_latest(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, mainnet.default_config, from_latest=True) as tevmc:
+        yield tevmc
+
 
 @pytest.fixture(scope='module')
 def tevmc_mainnet_no_wait(tmp_path_factory):
@@ -141,7 +157,7 @@ def tevmc_mainnet_no_wait(tmp_path_factory):
         yield tevmc
 
 
-from web3 import Web3
+from web3 import Account, Web3
 
 
 @pytest.fixture(scope='module')

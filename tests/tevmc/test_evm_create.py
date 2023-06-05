@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from leap.sugar import random_string, Asset
-from leap.tokens import sys_token
+from leap.tokens import tlos_token
 
 from tevmc.utils import to_wei
 
@@ -22,7 +22,7 @@ def test_cleos_evm_create(tevmc_local, local_w3):
     eth_addr = tevmc.cleos.eth_account_from_name(account)
     assert eth_addr
 
-    quantity = Asset(100, sys_token)
+    quantity = Asset(100, tlos_token)
 
     tevmc.cleos.transfer_token('eosio', account, quantity, 'evm test')
     tevmc.cleos.transfer_token(account, 'eosio.evm', quantity, 'Deposit')

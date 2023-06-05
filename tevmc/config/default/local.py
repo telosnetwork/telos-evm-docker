@@ -43,6 +43,7 @@ nodeos = {
     'contracts_dir': 'contracts',
     'genesis': 'local',
     'log_path': '/root/nodeos.log',
+    'v2_api': 'disabled',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
@@ -123,8 +124,9 @@ telos_evm_rpc = {
     'logs_dir': 'logs',
     'chain_id': 41,
     'debug': True,
-    'api_host': '127.0.0.1',
+    'api_host': '0.0.0.0',
     'api_port': 7000,
+    'remote_endpoint': 'http://127.0.0.1:7000/evm',
     'signer_account': 'rpc.evm',
     'signer_permission': 'active',
     'signer_key': '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
