@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+from shutil import copyfile
 import sys
 
 import pytest
@@ -20,12 +21,8 @@ from tevmc.config import (
     add_virtual_networking
 )
 from tevmc.cmdline.init import touch_node_dir
-from tevmc.cmdline.build import perform_docker_build
-from tevmc.cmdline.clean import clean
+from tevmc.cmdline.build import perform_docker_build, TEST_SERVICES
 from tevmc.cmdline.cli import get_docker_client
-
-
-TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
 
 
 @contextmanager
@@ -34,6 +31,7 @@ def bootstrap_test_stack(
     randomize=True,
     services=TEST_SERVICES,
     from_latest=False,
+    host_snapshot=None,
     **kwargs
 ):
     if randomize:
@@ -48,12 +46,21 @@ def bootstrap_test_stack(
     chain_name = config['telos-evm-rpc']['elastic_prefix']
 
     tmp_path = tmp_path_factory.getbasetemp() / chain_name
-    manifest = build_docker_manifest(config)
+    build_docker_manifest(config)
 
     tmp_path.mkdir(parents=True, exist_ok=True)
     touch_node_dir(tmp_path, config, 'tevmc.json')
     perform_docker_build(
-        tmp_path, config, logging)
+        tmp_path, config, logging, services)
+
+    if host_snapshot:
+        snapshot = Path(host_snapshot).name
+        target_path = (tmp_path / 'docker' /
+            config['nodeos']['docker_path'] /
+            config['nodeos']['conf_dir'] / snapshot)
+        copyfile(
+            host_snapshot,
+            target_path)
 
     containers = None
 
@@ -121,6 +128,49 @@ def tevmc_local_only_nodeos(tmp_path_factory):
 def tevmc_testnet(tmp_path_factory):
     with bootstrap_test_stack(
         tmp_path_factory, testnet.default_config) as tevmc:
+        yield tevmc
+
+@pytest.fixture(scope='module')
+def testnet_from_228038712(tmp_path_factory):
+    import zstandard as zstd
+    from urllib.request import urlretrieve
+
+    snapshots_dir = Path('tests/tevmc/snapshots')
+    snapshots_dir.mkdir(exist_ok=True, parents=True)
+
+    snapshot_name = 'snapshot-2023-04-05-14-telostest-v6-0228038712.bin'
+    host_snapshot = str(snapshots_dir / snapshot_name)
+
+    # finally retrieve
+    logging.info('Dowloading snapshot...')
+    urlretrieve(
+        'https://pub.store.eosnation.io/telostest-snapshots/snapshot-2023-04-05-14-telostest-v6-0228038712.bin.zst',
+        host_snapshot + '.zst'
+    )
+
+    logging.info('done, decompress...')
+    dctx = zstd.ZstdDecompressor()
+    with open(host_snapshot + '.zst', 'rb') as ifh:
+        with open(host_snapshot, 'wb') as ofh:
+            dctx.copy_stream(ifh, ofh)
+
+    config = dict(testnet.default_config)
+    config['nodeos']['snapshot'] = f'/root/{snapshot_name}'
+    config['nodeos']['ini']['plugins'].append('eosio::producer_api_plugin')
+
+    config['telosevm-translator']['start_block'] = 228039000
+    config['telosevm-translator']['deploy_block'] = 228039000
+    config['telosevm-translator']['prev_hash'] = '30f184986cccf4725a8dc69c81030a7515d7f84ff18a0452c6cc6978488ce58e'
+
+    logging.info('done, starting tevmc...')
+
+    with bootstrap_test_stack(
+        tmp_path_factory,
+        config,
+        wait=False,
+        host_snapshot=host_snapshot,
+        services=['elastic', 'nodeos', 'indexer']
+    ) as tevmc:
         yield tevmc
 
 @pytest.fixture(scope='module')

@@ -553,8 +553,7 @@ class TEVMController:
             for msg in self.stream_logs(self.containers['nodeos']):
                 self.logger.info(msg.rstrip())
                 output += msg
-                if ('start_sync' in msg or
-                    'Produced block' in msg or
+                if ('Produced block' in msg or
                     'Received block' in msg):
                     break
 

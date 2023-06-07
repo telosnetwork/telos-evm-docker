@@ -20,7 +20,6 @@ setup(
     install_requires=[
         'rlp',
         'web3',
-        'tqdm',
         'click',
         'pytest',
         'psutil',

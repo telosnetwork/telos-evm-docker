@@ -12,12 +12,13 @@ from hashlib import sha1
 from pathlib import Path
 from datetime import datetime
 
-from tqdm import tqdm
-
 from .cli import cli, get_docker_client
 from .init import load_config_templates, load_docker_templates
 from ..config import *
 
+
+DEFAULT_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc', 'beats']
+TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
 
 
 class TEVMCBuildException(Exception):
@@ -52,14 +53,6 @@ def perform_config_build(target_dir, config):
             ndict[key] = json.dumps(val, **kwargs)
 
         return ndict
-
-    def tabulate(_str: str, amount=1) -> str:
-        splt = _str.split('\n')
-        nstr = splt[0] + '\n'
-        for line in splt[1:]:
-            tabs = '\t' * amount
-            nstr += tabs + line + '\n'
-        return nstr
 
     def write_config_file(
         fname: str,
@@ -166,7 +159,6 @@ def perform_config_build(target_dir, config):
     # beats
     beats_conf = config['beats']
     beats_dir = docker_dir / beats_conf['docker_path']
-    beats_conf_dir = beats_dir / beats_conf['conf_dir']
 
     # telosevm-translator
     tevmi_conf = config['telosevm-translator']
@@ -217,7 +209,20 @@ def perform_config_build(target_dir, config):
     write_docker_template(f'{rpc_build_dir}/Dockerfile', subst)
 
 
-def perform_docker_build(target_dir, config, logger):
+def service_alias_to_fullname(alias: str):
+    if alias in ['elastic', 'es']:
+        return 'elasticsearch'
+
+    if alias in ['indexer', 'translator', 'evm']:
+        return 'telosevm-translator'
+
+    if alias in ['api', 'rpc']:
+        return 'telos-evm-rpc'
+
+    return alias
+
+
+def perform_docker_build(target_dir, config, logger, services):
     perform_config_build(target_dir, config)
 
     docker_dir = target_dir / 'docker'
@@ -228,13 +233,14 @@ def perform_docker_build(target_dir, config, logger):
     chain_name = config['telos-evm-rpc']['elastic_prefix']
 
     builds = []
-    for container, conf in config.items():
+    for service in services:
+        fullname = service_alias_to_fullname(service)
+        conf = config[fullname]
         if 'docker_path' in conf:
             builds.append({
                 'tag': f'{conf["tag"]}-{chain_name}',
                 'path': str(docker_dir / conf['docker_path'] / 'build')
             })
-
 
     for build_args in builds:
         stream = ''
