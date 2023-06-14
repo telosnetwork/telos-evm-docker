@@ -94,6 +94,7 @@ class TEVMController:
             self.logger = logging.getLogger()
             self.logger.setLevel(log_level.upper())
 
+        self.is_fresh = True
         self.is_local = (
             ('testnet' not in self.chain_name) and
             ('mainnet' not in self.chain_name)
