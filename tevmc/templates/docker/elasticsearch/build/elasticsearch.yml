@@ -84,4 +84,4 @@ http.port: $elasticsearch_port
 #
 # Allow wildcard deletion of indices:
 #
-#action.destructive_requires_name: false
+action.destructive_requires_name: false
