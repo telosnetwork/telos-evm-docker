@@ -2,7 +2,7 @@ from node:18-bullseye
 
 workdir /root
 
-run git clone https://github.com/telosnetwork/telosevm-translator.git indexer --branch off_by_on_microfork
+run git clone https://github.com/telosnetwork/telosevm-translator.git indexer --branch gap_check_upgrade
 
 run rm -rdf indexer/.git indexer/yarn.lock
 
