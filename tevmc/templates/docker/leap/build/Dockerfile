@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM --platform=linux/amd64 ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -29,16 +29,10 @@ RUN wget https://telos-snapshots.s3.amazonaws.com/mainnet/telos-mainet-20211026-
 
 WORKDIR /root
 
-RUN wget https://github.com/telosnetwork/leap/releases/download/v4.0.0-rc3-1.0.0-dev/leap_4.0.0-rc3-1-0-0-ubuntu20.04_amd64.deb && \
-    apt-get install -y -f ./leap_4.0.0-rc3-1-0-0-ubuntu20.04_amd64.deb && \
+RUN wget https://github.com/telosnetwork/leap/releases/download/v4.0.1-1.0.0-dev/leap_4.0.1-1-0-0-ubuntu20.04_amd64.deb && \
+    apt-get install -y -f ./leap_4.0.1-1-0-0-ubuntu20.04_amd64.deb && \
     rm -rf *.deb
 
 
 EXPOSE $nodeos_port
 EXPOSE $nodeos_history_port
-
-CMD ["/bin/bash", "-c", "while true; do sleep 3; done;"]
-
-# COPY entrypoint.sh /opt/entrypoint.sh
-
-# ENTRYPOINT ["/bin/bash", "/opt/entrypoint.sh"]

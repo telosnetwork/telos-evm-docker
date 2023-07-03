@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import json
 import errno
 import socket
@@ -10,7 +11,7 @@ from pathlib import Path
 
 import docker
 
-from py_eosio.sugar import random_string
+from leap.sugar import random_string
 
 from .default import local, testnet, mainnet
 
@@ -45,6 +46,7 @@ def load_config(location: str, name: str) -> Dict[str, Dict]:
 
 
 def build_docker_manifest(config: Dict) -> List[str]:
+    chain_name = config['telos-evm-rpc']['elastic_prefix']
     manifest = []
     for container_name, conf in config.items():
         if 'docker_path' not in conf:
@@ -52,7 +54,7 @@ def build_docker_manifest(config: Dict) -> List[str]:
 
         try:
             repo, tag = conf['tag'].split(':')
-            tag = f'{tag}-{config["hyperion"]["chain"]["name"]}'
+            tag = f'{tag}-{chain_name}'
 
         except ValueError:
             raise ValueError(
@@ -110,9 +112,8 @@ def randomize_conf_ports(config: Dict) -> Dict:
     ret['redis']['port'] = get_free_port()
 
     # elasticsearch
-    elastic_addr = get_free_local_addr()
+    elastic_addr = get_free_remote_addr()
     ret['elasticsearch']['host'] = elastic_addr
-    ret['elasticsearch']['ingest_nodes'] = [elastic_addr]
 
     # kibana
     ret['kibana']['port'] = get_free_port()
@@ -124,28 +125,14 @@ def randomize_conf_ports(config: Dict) -> Dict:
     ret['nodeos']['ini']['p2p_addr'] = f'0.0.0.0:{get_free_port()}'
     ret['nodeos']['ini']['history_endpoint'] = f'0.0.0.0:{state_history_port}'
 
-    # hyperion
-    ret['hyperion']['chain']['http'] = f'http://127.0.0.1:{nodeos_http_port}'
-    ret['hyperion']['chain']['ship'] = f'ws://127.0.0.1:{state_history_port}'
-
-    hyperion_api_port = get_free_port()
-    ret['hyperion']['chain']['router_port'] = get_free_port()
-
+    # telos-evm-rpc
     idx_ws_port = get_free_port()
+    ret['telos-evm-rpc']['indexer_websocket_port'] = idx_ws_port
+    ret['telos-evm-rpc']['indexer_websocket_uri'] = f'ws://127.0.0.1:{idx_ws_port}/evm'
 
-    ret['hyperion']['chain']['telos-evm'][
-        'nodeos_read'] = f'http://127.0.0.1:{nodeos_http_port}'
+    ret['telos-evm-rpc']['rpc_websocket_port'] = get_free_port()
 
-    ret['hyperion']['chain']['telos-evm'][
-        'indexerWebsocketPort'] = idx_ws_port
-
-    ret['hyperion']['chain']['telos-evm'][
-        'indexerWebsocketUri'] = f'ws://127.0.0.1:{idx_ws_port}/evm'
-
-    ret['hyperion']['chain']['telos-evm'][
-        'rpcWebsocketPort'] = get_free_port()
-
-    ret['hyperion']['api']['server_port'] = hyperion_api_port
+    ret['telos-evm-rpc']['api_port'] = get_free_port()
 
     return ret
 
@@ -155,5 +142,39 @@ def randomize_conf_creds(config: Dict) -> Dict:
     ret['elasticsearch']['user'] = random_string(size=16)
     ret['elasticsearch']['elastic_pass'] = random_string(size=32)
     ret['elasticsearch']['pass'] = random_string(size=32)
+
+    return ret
+
+def add_virtual_networking(config: Dict) -> Dict:
+    ret = config.copy()
+
+    ips = [
+        f'192.168.123.{i}'
+        for i in range(2, 9)
+    ]
+
+    # redis
+    ret['redis']['virtual_ip'] = ips[0]
+
+    # elastic
+    ret['elasticsearch']['virtual_ip'] = ips[1]
+
+    # kibana
+    ret['kibana']['virtual_ip'] = ips[2]
+
+    # nodeos
+    ret['nodeos']['virtual_ip'] = ips[3]
+
+    # beats
+    ret['beats']['virtual_ip'] = ips[4]
+
+    # translator
+    ret['telosevm-translator']['virtual_ip'] = ips[5]
+
+    # rpc
+    ret['telos-evm-rpc']['virtual_ip'] = ips[6]
+    ret['telos-evm-rpc']['api_host'] = ips[6]
+    indexer_ws_port = ret['telos-evm-rpc']['indexer_websocket_port']
+    ret['telos-evm-rpc']['indexer_websocket_uri'] = f'ws://{ips[5]}:{indexer_ws_port}/evm'
 
     return ret

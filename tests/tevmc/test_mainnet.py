@@ -14,3 +14,8 @@ def test_restart(tevmc_mainnet_no_wait):
         'leap/data/blocks/blocks.log').is_file()
 
     tevmc.start()
+
+def test_start_from_latest(tevmc_mainnet_latest):
+    tevmc = tevmc_mainnet_latest
+
+    breakpoint()

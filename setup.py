@@ -19,6 +19,7 @@ setup(
     package_data={'': templates},
     install_requires=[
         'rlp',
+        'web3',
         'tqdm',
         'click',
         'pytest',
@@ -28,8 +29,7 @@ setup(
         'requests',
         'daemonize',
         'simplejson',
-        'simple_rlp',
-        'py_eosio@git+https://github.com/guilledk/py-eosio.git@host_deploy'
+        'simple_rlp'
     ],
     include_package_data=True,
     entry_points={

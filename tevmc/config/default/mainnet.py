@@ -16,7 +16,6 @@ elasticsearch = {
     'tag': 'tevm:elasticsearch',
     'protocol':  'http',
     'host': '127.0.0.1:9200',
-    'ingest_nodes': ['127.0.0.1:9200'],
     'elastic_pass': 'password',
     'user': 'hyper',
     'pass': 'password',
@@ -36,7 +35,7 @@ kibana = {
 
 nodeos = {
     'name': 'nodeos',
-    'tag': 'tevm:nodeos-4.0.0-evm',
+    'tag': 'tevm:nodeos-4.0.1-evm',
     'docker_path': 'leap',
     'data_dir_guest': '/mnt/dev/data',
     'data_dir_host': 'data',
@@ -45,6 +44,7 @@ nodeos = {
     'genesis': 'mainnet',
     'snapshot': '/snapshot-mainnet-20211026-blk-180635436.bin',
     'log_path': '/root/nodeos.log',
+    'v2_api': 'https://mainnet.telos.net',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
@@ -146,55 +146,6 @@ nodeos = {
     }
 }
 
-hyperion = {
-    'tag': 'tevm:hyperion',
-    'name': 'hyperion-api',
-    'docker_path': 'hyperion',
-    'conf_dir': 'config',
-    'logs_dir': 'logs',
-    'chain': {
-        'name': 'telos-mainnet',
-        'long_name': 'Telos Mainnet',
-        'chain_hash': '4667b205c6838ef70ff7988f6e8257e8be0e1284a2f59699054a018f743b1d11',
-        'chain_id': 40,
-        'http': 'http://127.0.0.1:8888',
-        'ship': 'ws://127.0.0.1:29999',
-        'router_host': '127.0.0.1',
-        'router_port': 7120,
-
-        'explorer': {
-            'enabled': True,
-            'chain_logo_url': 'http://raw.githubusercontent.com/telosnetwork/images/master/chain_icons/telos-logo-light.png',
-            'server_name': 'rpcX.XX.telos.net'
-        },
-
-        'telos-evm': {
-            'enabled': True,
-            'signer_account': 'rpc.evm',
-            'signer_permission': 'rpc',
-            'signer_key': '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
-            'contracts': {
-                'main': 'eosio.evm'
-            },
-            'debug': False,
-            'nodeos_read': 'http://127.0.0.1:8888',
-            'indexerWebsocketHost': '0.0.0.0',
-            'indexerWebsocketPort': '7300',
-            'indexerWebsocketUri': 'ws://127.0.0.1:7300/evm',
-            'rpcWebsocketHost': '0.0.0.0',
-            'rpcWebsocketPort': '7400'
-        }
-    },
-    'api': {
-        'name': 'hyperion-api',
-        'server_addr': '0.0.0.0',
-        'server_port': 7000,
-        'server_name': 'rpcX.XX.telos.net',
-        'provider_name': 'TelosEVM Mainnet node',
-        'provider_url': 'https://telos.net'
-    }
-}
-
 beats = {
     'name': 'beats',
     'tag': 'tevm:beats',
@@ -214,12 +165,37 @@ telosevm_translator = {
     'elastic_dump_size': 4096
 }
 
+telos_evm_rpc = {
+    'name': 'telos-evm-rpc',
+    'tag': 'tevm:telos-evm-rpc',
+    'docker_path': 'telos-evm-rpc',
+    'logs_dir': 'logs',
+    'chain_id': 40,
+    'debug': True,
+    'api_host': '0.0.0.0',
+    'api_port': 7000,
+    'remote_endpoint': 'https://mainnet.telos.net/evm',
+    'signer_account': 'rpc.evm',
+    'signer_permission': 'active',
+    'signer_key': '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
+    'contracts': {
+        'main': 'eosio.evm'
+    },
+    'indexer_websocket_host': '0.0.0.0',
+    'indexer_websocket_port': '7300',
+    'indexer_websocket_uri': 'ws://127.0.0.1:7300/evm',
+    'rpc_websocket_host': '0.0.0.0',
+    'rpc_websocket_port': '7400',
+    'elastic_prefix': 'telos-mainnet',
+    'elasitc_index_version': 'v1.5'
+}
+
 default_config = {
     'redis': redis,
     'elasticsearch': elasticsearch,
     'kibana': kibana,
     'nodeos': nodeos,
-    'hyperion': hyperion,
     'beats': beats,
-    'telosevm-translator': telosevm_translator
+    'telosevm-translator': telosevm_translator,
+    'telos-evm-rpc': telos_evm_rpc
 }

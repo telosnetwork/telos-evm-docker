@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 
 import time
-import json
 import random
-
-from datetime import datetime
-
-import web3
 
 from eth_account import Account
 from elasticsearch import Elasticsearch
 
-from py_eosio.sugar import random_string, asset_from_str, Asset
-from py_eosio.tokens import sys_token
+from leap.sugar import random_string, asset_from_str, Asset
+from leap.tokens import tlos_token
 
 from tevmc.utils import to_wei, to_int, from_wei, decode_hex
 
@@ -24,7 +19,7 @@ DEFAULT_GAS = 21000
 def test_integrity(tevmc_local, local_w3):
     tevmc = tevmc_local
 
-    index = tevmc.config['hyperion']['chain']['name'] + '-action-*'
+    index = tevmc.config['telos-evm-rpc']['elastic_prefix'] + '-action-*'
 
     es_config = tevmc.config['elasticsearch']
     es = Elasticsearch(
@@ -114,7 +109,7 @@ def test_integrity(tevmc_local, local_w3):
     # to the native telos accounts, and then deposit to evm
 
     initial_deposit_assets = [
-        Asset(random.randint(100, 10000), sys_token)
+        Asset(random.randint(100, 10000), tlos_token)
         for i in range(amount)
     ]
 
@@ -148,7 +143,7 @@ def test_integrity(tevmc_local, local_w3):
             account,
             native_eth_addr,
             eth_addr.address,
-            Asset(init_deposit_asset.amount - 1, sys_token)
+            Asset(init_deposit_asset.amount - 1, tlos_token)
         )
         assert ec == 0
 

@@ -14,7 +14,8 @@ import click
 from .cli import cli
 from ..config import (
     local, testnet, mainnet,
-    randomize_conf_ports, randomize_conf_creds
+    randomize_conf_ports, randomize_conf_creds,
+    add_virtual_networking
 )
 
 
@@ -98,6 +99,9 @@ def init(config, target_dir, chain_name, random_creds, random_ports):
 
     if random_creds:
         conf = randomize_conf_creds(conf)
+
+    if sys.platform == 'darwin':
+        conf = add_virtual_networking(conf)
 
     target_dir = target_dir / chain_name
     target_dir.mkdir(parents=True, exist_ok=True)

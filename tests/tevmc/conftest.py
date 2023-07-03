@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 
 import pytest
 import docker
 import logging
 import requests
 
+from pathlib import Path
 from contextlib import contextmanager
 
 from tevmc import TEVMController
@@ -14,7 +16,8 @@ from tevmc.config import (
     local, testnet, mainnet,
     build_docker_manifest,
     randomize_conf_ports,
-    randomize_conf_creds
+    randomize_conf_creds,
+    add_virtual_networking
 )
 from tevmc.cmdline.init import touch_node_dir
 from tevmc.cmdline.build import perform_docker_build
@@ -28,16 +31,21 @@ TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
 @contextmanager
 def bootstrap_test_stack(
     tmp_path_factory, config,
-    randomize=False, services=TEST_SERVICES,
+    randomize=True,
+    services=TEST_SERVICES,
+    from_latest=False,
     **kwargs
 ):
     if randomize:
         config = randomize_conf_ports(config)
         config = randomize_conf_creds(config)
 
+    if sys.platform == 'darwin':
+        config = add_virtual_networking(config)
+
     client = get_docker_client()
 
-    chain_name = config['hyperion']['chain']['name']
+    chain_name = config['telos-evm-rpc']['elastic_prefix']
 
     tmp_path = tmp_path_factory.getbasetemp() / chain_name
     manifest = build_docker_manifest(config)
@@ -54,6 +62,7 @@ def bootstrap_test_stack(
             config,
             root_pwd=tmp_path,
             services=services,
+            from_latest=from_latest,
             **kwargs
         ) as _tevmc:
             yield _tevmc
@@ -99,11 +108,25 @@ def tevmc_local_non_rand(tmp_path_factory):
         tmp_path_factory, local.default_config, randomize=False) as tevmc:
         yield tevmc
 
+@pytest.fixture(scope='module')
+def tevmc_local_only_nodeos(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, local.default_config,
+        services=['nodeos']
+    ) as tevmc:
+        yield tevmc
+
 
 @pytest.fixture(scope='module')
 def tevmc_testnet(tmp_path_factory):
     with bootstrap_test_stack(
         tmp_path_factory, testnet.default_config) as tevmc:
+        yield tevmc
+
+@pytest.fixture(scope='module')
+def tevmc_testnet_latest(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, testnet.default_config, from_latest=True) as tevmc:
         yield tevmc
 
 
@@ -120,6 +143,12 @@ def tevmc_mainnet(tmp_path_factory):
         tmp_path_factory, mainnet.default_config) as tevmc:
         yield tevmc
 
+@pytest.fixture(scope='module')
+def tevmc_mainnet_latest(tmp_path_factory):
+    with bootstrap_test_stack(
+        tmp_path_factory, mainnet.default_config, from_latest=True) as tevmc:
+        yield tevmc
+
 
 @pytest.fixture(scope='module')
 def tevmc_mainnet_no_wait(tmp_path_factory):
@@ -128,16 +157,28 @@ def tevmc_mainnet_no_wait(tmp_path_factory):
         yield tevmc
 
 
-from web3 import Web3
+from web3 import Account, Web3
 
 
 @pytest.fixture(scope='module')
 def local_w3(tevmc_local):
     tevmc = tevmc_local
-    hyperion_api_port = tevmc.config["hyperion"]["api"]["server_port"]
-    eth_api_endpoint = f'http://localhost:{hyperion_api_port}/evm'
+    rpc_api_port = tevmc.config['telos-evm-rpc']['api_port']
+    eth_api_endpoint = f'http://127.0.0.1:{rpc_api_port}/evm'
 
     w3 = Web3(Web3.HTTPProvider(eth_api_endpoint))
+    assert w3.is_connected()
+
+    yield w3
+
+
+@pytest.fixture(scope='module')
+def local_websocket_w3(tevmc_local):
+    tevmc = tevmc_local
+    rpc_ws_port = tevmc.config['telos-evm-rpc']['rpc_websocket_port']
+    eth_ws_endpoint = f'ws://127.0.0.1:{rpc_ws_port}/evm'
+
+    w3 = Web3(Web3.WebsocketProvider(eth_ws_endpoint))
     assert w3.is_connected()
 
     yield w3

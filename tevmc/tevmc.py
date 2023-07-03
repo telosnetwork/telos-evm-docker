@@ -6,27 +6,31 @@ import sys
 import time
 import shutil
 import signal
+import string
 import logging
 
 from signal import SIGINT
 from typing import List, Dict, Optional
 from pathlib import Path
+from websocket import create_connection
 from contextlib import contextmanager, ExitStack
 
 import docker
 import requests
 import simplejson
 
+from web3 import Web3
 from docker.types import LogConfig, Mount
 from requests.auth import HTTPBasicAuth
-from py_eosio.sugar import (
+from leap.sugar import (
     Asset,
     wait_for_attr
 )
-from py_eosio.sugar import (
+from leap.sugar import (
     collect_stdout,
     docker_open_process,
-    docker_wait_process
+    docker_wait_process,
+    download_latest_snapshot
 )
 
 from .config import *
@@ -42,7 +46,6 @@ class TEVMController:
     def __init__(
         self,
         config: Dict[str, Dict],
-        client = None,
         logger = None,
         log_level: str = 'info',
         root_pwd: Optional[Path] = None,
@@ -55,7 +58,8 @@ class TEVMController:
             'indexer',
             'rpc',
             'beats'
-        ]
+        ],
+        from_latest: bool = False
     ):
         self.pid = os.getpid()
         self.config = config
@@ -83,7 +87,7 @@ class TEVMController:
             config['elasticsearch']['data_dir'] /
             'nodes').is_dir()
 
-        self.chain_name = config['hyperion']['chain']['name']
+        self.chain_name = config['telos-evm-rpc']['elastic_prefix']
         self.logger = logger
 
         if logger is None:
@@ -98,6 +102,64 @@ class TEVMController:
         if self.is_local:
             self.producer_key = config['nodeos']['ini']['sig_provider'].split(':')[-1]
 
+        else:
+            if from_latest:
+                network = 'telos'
+                if 'testnet' in self.chain_name:
+                    network = 'telostest'
+
+                block_num, snap_path = download_latest_snapshot(
+                    self.docker_wd /
+                    config['nodeos']['docker_path'] /
+                    config['nodeos']['conf_dir'],
+                    network=network
+                )
+
+                self.config['nodeos']['snapshot'] = f'/root/{snap_path.name}'
+
+                # native start block
+                start_block = block_num + 100
+
+                self.config['telosevm-translator']['start_block'] = start_block
+                self.config['telosevm-translator']['deploy_block'] = start_block
+
+                # query v2 api to get evm delta
+                resp = requests.get(
+                    self.config['nodeos']['v2_api'] + '/v2/history/get_deltas',
+                    params={
+                        'limit': 1,
+                        'code': 'eosio',
+                        'scope': 'eosio',
+                        'table': 'global'
+                    }
+                )
+                self.logger.info(resp)
+                self.logger.info(resp.text)
+                self.logger.info(resp.json())
+                assert resp.status_code == 200
+                delta_resp = resp.json()
+                delta = delta_resp['deltas'][0]
+
+                evm_delta = delta['block_num'] - delta['data']['block_num']
+                self.logger.info(f'calculated evm delta: {evm_delta}')
+
+                # get eth hash
+                w3 = Web3(Web3.HTTPProvider(
+                    self.config['telos-evm-rpc']['remote_endpoint']))
+
+                evm_start_block = start_block - evm_delta - 1
+
+                prev_hash = (w3.eth.get_block(evm_start_block - 1)['hash']).hex()
+                if prev_hash[:2] == '0x':
+                    prev_hash = prev_hash[2:]
+
+                self.config['telosevm-translator']['prev_hash'] = prev_hash
+
+                # dump edited config file
+                with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
+                    uni_conf.write(json.dumps(self.config, indent=4))
+
+
         self.containers = {}
         self.mounts = {}
 
@@ -106,7 +168,6 @@ class TEVMController:
         self,
         name: str,
         image: str,
-        net: str = 'host',
         *args, **kwargs
     ):
         """Start a new container.
@@ -153,6 +214,18 @@ class TEVMController:
                    raise TEVMCException(f'Image \'{image}\' not found on either local or'
                         ' remote repos. Maybe consider running \'tevmc build\'')
 
+            # darwin arch doesn't support host networking mode...
+            if sys.platform == 'darwin':
+                # set to bridge, and connect to our custom virtual net after Launch
+                # this way we can set the ip addr
+                kwargs['network'] = 'bridge'
+
+            elif 'linux' in sys.platform:
+                kwargs['network'] = 'host'
+
+            else:
+                raise OSError('Unsupported network architecture')
+
             # finally run container
             self.logger.info(f'opening {name}...')
             container = self.client.containers.run(
@@ -160,7 +233,6 @@ class TEVMController:
                 *args, **kwargs,
                 name=name,
                 detach=True,
-                network=net,
                 log_config=LogConfig(
                     type=LogConfig.types.JSON,
                     config={'max-size': '100m' }),
@@ -225,13 +297,26 @@ class TEVMController:
                 Mount('/data', str(data_dir.resolve()), 'bind')
             ]
 
+            redis_port = config['port']
+
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {f'{redis_port}/tcp': redis_port}
+
             self.containers['redis'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                    mounts=self.mounts['redis']
+                    f'{config["tag"]}-{self.chain_name}',
+                    mounts=self.mounts['redis'],
+                    **more_params
                 )
             )
+
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['redis'],
+                    ipv4_address=config['virtual_ip']
+                )
 
             for msg in self.stream_logs(self.containers['redis']):
                 self.logger.info(msg.rstrip())
@@ -254,10 +339,16 @@ class TEVMController:
                 Mount('/home/elasticsearch/data', str(data_dir.resolve()), 'bind')
             ]
 
+            es_port = int(config['host'].split(':')[-1])
+
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {f'{es_port}/tcp': es_port}
+
             self.containers['elasticsearch'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    f'{config["tag"]}-{self.chain_name}',
                     environment={
                         'discovery.type': 'single-node',
                         'cluster.name': 'es-cluster',
@@ -267,9 +358,17 @@ class TEVMController:
                         'ES_JAVA_OPTS': '-Xms2g -Xmx2g',
                         'ES_NETWORK_HOST': '0.0.0.0'
                     },
-                    mounts=self.mounts['elasticsearch']
+                    mounts=self.mounts['elasticsearch'],
+                    **more_params
                 )
             )
+
+
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['elasticsearch'],
+                    ipv4_address=config['virtual_ip']
+                )
 
             for msg in self.stream_logs(self.containers['elasticsearch']):
                 self.logger.info(msg.rstrip())
@@ -277,9 +376,11 @@ class TEVMController:
                     break
 
             if not self.is_elastic_relaunch:
+                es_endpoint = f'127.0.0.1:{es_port}'
+
                 # setup password for elastic user
                 resp = requests.put(
-                    f'http://{config["host"]}/_xpack/security/user/elastic/_password',
+                    f'http://{es_endpoint}/_xpack/security/user/elastic/_password',
                     auth=('elastic', 'temporal'),
                     json={'password': config['elastic_pass']})
 
@@ -288,7 +389,7 @@ class TEVMController:
 
                 # setup user
                 resp = requests.put(
-                    f'http://{config["host"]}/_xpack/security/user/{config["user"]}',
+                    f'http://{es_endpoint}/_xpack/security/user/{config["user"]}',
                     auth=('elastic', config['elastic_pass']),
                     json={
                         'password': config['pass'],
@@ -320,20 +421,33 @@ class TEVMController:
                 Mount('/data', str(data_dir.resolve()), 'bind')
             ]
 
+            kibana_port = config['port']
+
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {f'{kibana_port}/tcp': kibana_port}
+
             self.containers['kibana'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    f'{config["tag"]}-{self.chain_name}',
                     environment={
                         'ELASTICSEARCH_HOSTS': f'http://{config_elastic["host"]}',
                         'ELASTICSEARCH_USERNAME': config_elastic['user'],
                         'ELASTICSEARCH_PASSWORD': config_elastic['pass']
                     },
-                    mounts=self.mounts['kibana']
+                    mounts=self.mounts['kibana'],
+                    **more_params
                 )
             )
 
-    def start_nodeos(self):
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['kibana'],
+                    ipv4_address=config['virtual_ip']
+                )
+
+    def start_nodeos(self, space_monitor=True):
         """Start eosio_nodeos container.
 
         - Initialize CLEOS wrapper and setup keosd & wallet.
@@ -381,34 +495,74 @@ class TEVMController:
 
             self.logger.info(f'is relaunch: {self.is_nodeos_relaunch}')
 
+            nodeos_api_port = int(config['ini']['http_addr'].split(':')[1])
+            history_port = int(config['ini']['history_endpoint'].split(':')[1])
+
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {
+                    f'{nodeos_api_port}/tcp': nodeos_api_port,
+                    f'{history_port}/tcp': history_port
+                }
+                more_params['mem_limit'] = '6g'
+
+            # generate nodeos command
+            cmd = [
+                'nodeos',
+                '-e',
+                '-p', 'eosio',
+                '--config=/root/config.ini',
+                f'--data-dir={config["data_dir_guest"]}',
+                '--disable-replay-opts',
+                '--logconf=/root/logging.json'
+            ]
+
+            if not self.is_nodeos_relaunch:
+                if 'snapshot' in config:
+                    cmd += [f'--snapshot={config["snapshot"]}']
+
+                elif 'genesis' in config:
+                    cmd += [f'--genesis-json=/root/genesis/{config["genesis"]}.json']
+
+
+            if not space_monitor:
+                cmd += ['--resource-monitor-not-shutdown-on-threshold-exceeded']
+
+            self.logger.info(f'running nodeos container with command:')
+            self.logger.info(' '.join(cmd))
+
             # open container
             self.containers['nodeos'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    f'{config["tag"]}-{self.chain_name}',
+                    command=cmd,
                     environment=env,
-                    mounts=self.mounts['nodeos']
+                    mounts=self.mounts['nodeos'],
+                    **more_params
                 )
             )
 
-            # for msg in self.stream_logs(self.containers['nodeos']):
-            #     self.logger.info(msg.rstrip())
-            #     if 'configured http to listen on' in msg:
-            #         break
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['nodeos'],
+                    ipv4_address=config['virtual_ip']
+                )
 
-            #     elif 'Incorrect plugin configuration' in msg:
-            #         raise TEVMCException('Nodeos bootstrap error.')
+            output = ''
+            for msg in self.stream_logs(self.containers['nodeos']):
+                self.logger.info(msg.rstrip())
+                output += msg
+                if ('start_sync' in msg or
+                    'Produced block' in msg or
+                    'Received block' in msg):
+                    break
 
-            exec_id, exec_stream = docker_open_process(
-                self.client, self.containers['nodeos'],
-                ['/bin/bash', '-c',
-                    'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
+                elif 'Incorrect plugin configuration' in msg:
+                    raise TEVMCException('Nodeos bootstrap error.')
 
-            nodeos_api_port = config['ini']['http_addr'].split(':')[1]
-            hyperion_api_port = self.config['hyperion']['chain']['router_port']
 
             cleos_url = f'http://127.0.0.1:{nodeos_api_port}'
-            hyperion_api_url = f'http://127.0.0.1:{hyperion_api_port}'
 
             # setup cleos wrapper
             cleos = CLEOSEVM(
@@ -416,44 +570,21 @@ class TEVMController:
                 self.containers['nodeos'],
                 logger=self.logger,
                 url=cleos_url,
-                hyperion_api_endpoint=hyperion_api_url,
-                chain_id=self.config['hyperion']['chain']['chain_id'])
+                chain_id=self.config['telos-evm-rpc']['chain_id'])
 
             self.cleos = cleos
 
-            # manual start stuff
-
-            # init wallet
-            cleos.start_keosd(
-                '-c',
-                '/root/keosd_config.ini')
-
-            nodeos_params = {
-                'data_dir': config['data_dir_guest'],
-                'logfile': config['log_path'],
-                'logging_cfg': '/root/logging.json'
-            }
-
-            if not self.is_nodeos_relaunch:
-                if 'snapshot' in config:
-                    nodeos_params['snapshot'] = config['snapshot']
-
-                elif 'genesis' in config:
-                    nodeos_params['genesis'] = f'/root/genesis/{config["genesis"]}.json'
-
-            output = cleos.start_nodeos_from_config(
-                '/root/config.ini',
-                state_plugin=True,
-                is_local=self.is_local,
-                **nodeos_params
-            )
             if self.is_local:
                 # await for nodeos to produce a block
                 cleos.wait_blocks(4)
 
-                self.is_fresh = 'Initializing new blockchain with genesis state' in output
+                self.is_fresh = 'Starting fresh blockchain state using provided genesis state' in output
 
                 if self.is_fresh:
+                    cleos.start_keosd(
+                        '-c',
+                        '/root/keosd_config.ini')
+
                     cleos.setup_wallet(self.producer_key)
 
                     try:
@@ -481,17 +612,6 @@ class TEVMController:
             self.logger.info(f'nodeos has started, waiting until blocks.log contains evm genesis block number {genesis_block}')
             cleos.wait_blocks(
                 genesis_block - cleos.get_info()['head_block_num'], sleep_time=10)
-
-    def setup_hyperion_log_mount(self):
-        docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
-        logs_dir = docker_dir / self.config['hyperion']['logs_dir']
-        conf_dir = docker_dir / self.config['hyperion']['conf_dir']
-        logs_dir.mkdir(parents=True, exist_ok=True)
-
-        self.mounts['hyperion'] = [
-            Mount('/hyperion-history-api/chains', str(conf_dir.resolve()), 'bind'),
-            Mount('/root/.pm2/logs', str(logs_dir.resolve()), 'bind')
-        ]
 
     def _get_head_block(self):
         if 'testnet' in self.chain_name:
@@ -526,29 +646,14 @@ class TEVMController:
                 remote_head_block = self._get_head_block()
                 last_update_time = now
 
-
-    def start_hyperion_api(self):
-        with self.must_keep_running('hyperion-api'):
-            config = self.config['hyperion']['api']
-
-            self.containers['hyperion-api'] = self.exit_stack.enter_context(
-                self.open_container(
-                    f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{self.config["hyperion"]["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
-                    command=[
-                        '/bin/bash', '-c', f'/root/scripts/run-hyperion.sh {self.chain_name}-api'
-                    ],
-                    mounts=self.mounts['hyperion']
-                )
-            )
-
-            for msg in self.stream_logs(self.containers['hyperion-api']):
-                self.logger.info(msg.rstrip())
-                if 'api ready' in msg:
-                    break
-
     def setup_index_patterns(self, patterns: List[str]):
         kibana_port = self.config['kibana']['port']
+
+        if sys.platform == 'darwin':
+            kibana_host = self.config['kibana']['virtual_ip']
+
+        else:
+            kibana_host = '127.0.0.1'
 
         for pattern_title in patterns:
             self.logger.info(
@@ -556,7 +661,7 @@ class TEVMController:
             while True:
                 try:
                     resp = requests.post(
-                        f'http://localhost:{kibana_port}'
+                        f'http://{kibana_host}:{kibana_port}'
                         '/api/index_patterns/index_pattern',
                         auth=HTTPBasicAuth('elastic', 'password'),
                         headers={'kbn-xsrf': 'true'},
@@ -586,8 +691,8 @@ class TEVMController:
             config_elastic = self.config['elasticsearch']
             config_kibana = self.config['kibana']
 
-            hyperion_docker_dir = self.docker_wd / self.config['hyperion']['docker_path']
-            data_dir = hyperion_docker_dir / self.config['hyperion']['logs_dir']
+            rpc_docker_dir = self.docker_wd / self.config['telos-evm-rpc']['docker_path']
+            data_dir = rpc_docker_dir / self.config['telos-evm-rpc']['logs_dir']
             docker_dir = self.docker_wd / config['docker_path']
             conf_dir = docker_dir / config['conf_dir']
 
@@ -601,7 +706,7 @@ class TEVMController:
             self.containers['beats'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{self.config["hyperion"]["chain"]["name"]}',
+                    f'{config["tag"]}-{self.chain_name}',
                     environment={
                         'CHAIN_NAME': self.chain_name,
                         'ELASTIC_USER': config_elastic['user'],
@@ -612,6 +717,12 @@ class TEVMController:
                     mounts=self.mounts['beats']
                 )
             )
+
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['beats'],
+                    ipv4_address=config['virtual_ip']
+                )
 
             exec_id, exec_stream = docker_open_process(
                 self.client,
@@ -649,21 +760,22 @@ class TEVMController:
             else:
                 self.logger.info('pipelines setup')
 
-
-            if self.is_local:
-                self.setup_index_patterns(
-                    [f'{self.chain_name}-action-*', 'filebeat-*'])
-
     def start_telosevm_translator(self):
         with self.must_keep_running('telosevm-translator'):
             config = self.config['telosevm-translator']
             config_elastic = self.config['elasticsearch']
             config_nodeos = self.config['nodeos']
-            config_hyperion = self.config['hyperion']['chain']['telos-evm']
+            config_rpc = self.config['telos-evm-rpc']
+
+            if sys.platform == 'darwin':
+                nodeos_host = self.config['nodeos']['virtual_ip']
+
+            else:
+                nodeos_host = '127.0.0.1'
 
             nodeos_api_port = config_nodeos['ini']['http_addr'].split(':')[1]
             nodeos_ship_port = config_nodeos['ini']['history_endpoint'].split(':')[1]
-            endpoint = f'http://127.0.0.1:{nodeos_api_port}'
+            endpoint = f'http://{nodeos_host}:{nodeos_api_port}'
 
             if 'testnet' in self.chain_name:
                 remote_endpoint = 'https://testnet.telos.net'
@@ -672,18 +784,22 @@ class TEVMController:
             else:
                 remote_endpoint = endpoint
 
-            ws_endpoint = f'ws://127.0.0.1:{nodeos_ship_port}'
+            ws_endpoint = f'ws://{nodeos_host}:{nodeos_ship_port}'
 
-            bc_host = config_hyperion['indexerWebsocketHost']
-            bc_port = config_hyperion['indexerWebsocketPort']
+            bc_host = config_rpc['indexer_websocket_host']
+            bc_port = config_rpc['indexer_websocket_port']
+
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {f'{bc_port}/tcp': bc_port}
 
             self.containers['telosevm-translator'] = self.exit_stack.enter_context(
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{ self.config["hyperion"]["chain"]["name"]}',
+                    f'{config["tag"]}-{self.chain_name}',
                     environment={
-                        'CHAIN_NAME': self.config['hyperion']['chain']['name'],
-                        'CHAIN_ID': self.config['hyperion']['chain']['chain_id'],
+                        'CHAIN_NAME': self.chain_name,
+                        'CHAIN_ID': config_rpc['chain_id'],
                         'ELASTIC_USERNAME': config_elastic['user'],
                         'ELASTIC_PASSWORD': config_elastic['pass'],
                         'ELASTIC_NODE': f'http://{config_elastic["host"]}',
@@ -697,16 +813,105 @@ class TEVMController:
                         'EVM_PREV_HASH': config['prev_hash'],
                         'BROADCAST_HOST': bc_host,
                         'BROADCAST_PORT': bc_port
-                    }
+                    },
+                    **more_params
                 )
             )
+
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['telosevm-translator'],
+                    ipv4_address=config['virtual_ip']
+                )
 
             for msg in self.stream_logs(self.containers['telosevm-translator']):
                 self.logger.info(msg.rstrip())
                 if 'drained' in msg:
                     break
 
+    def setup_rpc_log_mount(self):
+        docker_dir = self.docker_wd / self.config['telos-evm-rpc']['docker_path']
+        logs_dir = docker_dir / self.config['telos-evm-rpc']['logs_dir']
+        logs_dir.mkdir(parents=True, exist_ok=True)
+
+        self.mounts['telos-evm-rpc'] = [
+            Mount('/root/.pm2/logs', str(logs_dir.resolve()), 'bind')
+        ]
+
+    def start_evm_rpc(self):
+        with self.must_keep_running('telos-evm-rpc'):
+            config = self.config['telos-evm-rpc']
+
+            api_port = config['api_port']
+            rpc_port = config['rpc_websocket_port']
+
+            more_params = {}
+            if sys.platform == 'darwin':
+                more_params['ports'] = {
+                    f'{api_port}/tcp': api_port,
+                    f'{rpc_port}/tcp': rpc_port
+                }
+
+            self.containers['telos-evm-rpc'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
+                    f'{config["tag"]}-{self.chain_name}',
+                    mounts=self.mounts['telos-evm-rpc'],
+                    **more_params
+                )
+            )
+
+            if sys.platform == 'darwin':
+                self._vnet.connect(
+                    self.containers['telos-evm-rpc'],
+                    ipv4_address=config['virtual_ip']
+                )
+
+            for msg in self.stream_logs(self.containers['telos-evm-rpc']):
+                self.logger.info(msg.rstrip())
+                if 'Telos EVM RPC started!!!' in msg:
+                    break
+
+    def open_rpc_websocket(self):
+        rpc_ws_host = self.config['telos-evm-rpc']['rpc_websocket_host']
+        rpc_ws_port = self.config['telos-evm-rpc']['rpc_websocket_port']
+
+        connected = False
+        for i in range(3):
+            try:
+                ws = create_connection(
+                    f'ws://{rpc_ws_host}:{rpc_ws_port}/evm')
+                connected = True
+                break
+
+            except ConnectionRefusedError:
+                time.sleep(5)
+
+        assert connected
+        return ws
+
+    def darwin_network_setup(self):
+        try:
+            self._vnet = self.client.networks.get(self.chain_name)
+
+        except docker.errors.NotFound:
+            ipam_pool = docker.types.IPAMPool(
+                subnet='192.168.123.0/24',
+                gateway='192.168.123.254'
+            )
+            ipam_config = docker.types.IPAMConfig(
+                pool_configs=[ipam_pool]
+            )
+
+            self._vnet = self.client.networks.create(
+                self.chain_name, 'bridge', ipam=ipam_config
+            )
+
     def start(self):
+
+        if sys.platform == 'darwin':
+            self.darwin_network_setup()
+
         if 'redis' in self.services:
             self.start_redis()
 
@@ -719,15 +924,25 @@ class TEVMController:
         if 'nodeos' in self.services:
             self.start_nodeos()
 
-        if 'rpc' in self.services:
-            self.setup_hyperion_log_mount()
-            self.start_hyperion_api()
-
         if 'indexer' in self.services:
             self.start_telosevm_translator()
 
             if not self.is_local and self.wait:
                 self.await_full_index()
+
+
+            if 'kibana' in self.services:
+                idx_version = self.config['telos-evm-rpc']['elasitc_index_version']
+                self.setup_index_patterns([
+                    f'{self.chain_name}-action-{idx_version}-*',
+                    f'{self.chain_name}-delta-{idx_version}-*',
+                    'filebeat-*'
+                ])
+
+
+        if 'rpc' in self.services:
+            self.setup_rpc_log_mount()
+            self.start_evm_rpc()
 
         else:
             if self.wait:
