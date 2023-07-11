@@ -52,6 +52,8 @@ nodeos = {
 
         'chain_state_size': 65536,
         'account_queries': True,
+        'abi_serializer_max_time': 2000000,
+        'http_max_response_time': 100000,
 
         'http_addr': '0.0.0.0:8888',
         'allow_origin': '*',

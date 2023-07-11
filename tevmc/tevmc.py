@@ -94,6 +94,7 @@ class TEVMController:
             self.logger = logging.getLogger()
             self.logger.setLevel(log_level.upper())
 
+        self.is_fresh = True
         self.is_local = (
             ('testnet' not in self.chain_name) and
             ('mainnet' not in self.chain_name)
@@ -363,7 +364,6 @@ class TEVMController:
                 )
             )
 
-
             if sys.platform == 'darwin':
                 self._vnet.connect(
                     self.containers['elasticsearch'],
@@ -553,8 +553,7 @@ class TEVMController:
             for msg in self.stream_logs(self.containers['nodeos']):
                 self.logger.info(msg.rstrip())
                 output += msg
-                if ('start_sync' in msg or
-                    'Produced block' in msg or
+                if ('Produced block' in msg or
                     'Received block' in msg):
                     break
 
@@ -931,13 +930,13 @@ class TEVMController:
                 self.await_full_index()
 
 
-            if 'kibana' in self.services:
-                idx_version = self.config['telos-evm-rpc']['elasitc_index_version']
-                self.setup_index_patterns([
-                    f'{self.chain_name}-action-{idx_version}-*',
-                    f'{self.chain_name}-delta-{idx_version}-*',
-                    'filebeat-*'
-                ])
+        if 'kibana' in self.services:
+            idx_version = self.config['telos-evm-rpc']['elasitc_index_version']
+            self.setup_index_patterns([
+                f'{self.chain_name}-action-{idx_version}-*',
+                f'{self.chain_name}-delta-{idx_version}-*',
+                'filebeat-*'
+            ])
 
 
         if 'rpc' in self.services:
@@ -951,16 +950,19 @@ class TEVMController:
         if 'beats' in self.services:
             self.start_beats()
 
-        if self.is_local and self.is_fresh:
+        if self.is_local and self.is_fresh and 'nodeos' in self.services:
             self.cleos.create_test_evm_account()
 
     def stop(self):
-        self.cleos.stop_nodeos(
-            from_file=self.config['nodeos']['log_path'])
-        self.is_nodeos_relaunch = True
+        if 'nodeos' in self.services:
+            self.cleos.stop_nodeos(
+                from_file=self.config['nodeos']['log_path'])
 
-        self.stop_elasticsearch()
-        self.is_elastic_relaunch = True
+            self.is_nodeos_relaunch = True
+
+        if 'elastic' in self.services:
+            self.stop_elasticsearch()
+            self.is_elastic_relaunch = True
 
         self.exit_stack.pop_all().close()
 

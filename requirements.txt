@@ -1,4 +1,3 @@
-tqdm
 click
 py-evm
 pytest

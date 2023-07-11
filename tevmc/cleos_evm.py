@@ -130,6 +130,8 @@ class CLEOSEVM(CLEOS):
         self.transfer_token('eosio', name, quantity, ' ')
         self.transfer_token(name, 'eosio.evm', quantity, 'Deposit')
 
+        self.wait_blocks(3)
+
         eth_addr = self.eth_account_from_name(name)
         assert eth_addr
 

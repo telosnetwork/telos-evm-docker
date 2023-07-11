@@ -20,7 +20,6 @@ setup(
     install_requires=[
         'rlp',
         'web3',
-        'tqdm',
         'click',
         'pytest',
         'psutil',
@@ -29,8 +28,12 @@ setup(
         'requests',
         'daemonize',
         'simplejson',
-        'simple_rlp'
+        'simple_rlp',
+        'py-leap@git+https://github.com/guilledk/py-leap@v0.1a14'
     ],
+    extras_require={
+        'async': ['asks']
+    },
     include_package_data=True,
     entry_points={
         'console_scripts': [
