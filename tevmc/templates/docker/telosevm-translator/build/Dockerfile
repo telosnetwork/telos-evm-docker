@@ -4,7 +4,7 @@ workdir /root
 
 run git clone https://github.com/telosnetwork/telosevm-translator.git indexer --branch gap_check_upgrade
 
-run rm -rdf indexer/.git indexer/yarn.lock
+run rm -rdf indexer/.git
 
 workdir /root/indexer
 

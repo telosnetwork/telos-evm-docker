@@ -364,7 +364,6 @@ class TEVMController:
                 )
             )
 
-
             if sys.platform == 'darwin':
                 self._vnet.connect(
                     self.containers['elasticsearch'],

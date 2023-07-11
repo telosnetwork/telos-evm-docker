@@ -115,6 +115,7 @@ def tevmc_local_non_rand(tmp_path_factory):
         tmp_path_factory, local.default_config, randomize=False) as tevmc:
         yield tevmc
 
+
 @pytest.fixture(scope='module')
 def tevmc_local_only_nodeos(tmp_path_factory):
     with bootstrap_test_stack(
@@ -206,6 +207,18 @@ def tevmc_mainnet_no_wait(tmp_path_factory):
         tmp_path_factory, mainnet.default_config, wait=False) as tevmc:
         yield tevmc
 
+
+@pytest.fixture(scope='module')
+def tevmc_mainnet_translator_dev(tmp_path_factory):
+    services = ['redis', 'elastic', 'nodeos']
+    with bootstrap_test_stack(
+        tmp_path_factory,
+        mainnet.default_config,
+        wait=False,
+        randomize=False,
+        services=services
+    ) as tevmc:
+        yield tevmc
 
 from web3 import Account, Web3
 
