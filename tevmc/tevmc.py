@@ -67,6 +67,8 @@ class TEVMController:
         self.exit_stack = ExitStack()
         self.wait = wait
         self.services = services
+        self.nodeos_logfile = None
+        self.nodeos_logproc = None
 
         if not root_pwd:
             self.root_pwd = Path().resolve()
@@ -507,7 +509,7 @@ class TEVMController:
                 more_params['mem_limit'] = '6g'
 
             # generate nodeos command
-            cmd = [
+            nodeos_cmd = [
                 'nodeos',
                 '-e',
                 '-p', 'eosio',
@@ -519,14 +521,19 @@ class TEVMController:
 
             if not self.is_nodeos_relaunch:
                 if 'snapshot' in config:
-                    cmd += [f'--snapshot={config["snapshot"]}']
+                    nodeos_cmd += [f'--snapshot={config["snapshot"]}']
 
                 elif 'genesis' in config:
-                    cmd += [f'--genesis-json=/root/genesis/{config["genesis"]}.json']
+                    nodeos_cmd += [f'--genesis-json=/root/genesis/{config["genesis"]}.json']
 
 
             if not space_monitor:
-                cmd += ['--resource-monitor-not-shutdown-on-threshold-exceeded']
+                nodeos_cmd += ['--resource-monitor-not-shutdown-on-threshold-exceeded']
+
+            nodeos_cmd += ['>>', config['log_path'], '2>&1']
+            nodeos_cmd_str = ' '.join(nodeos_cmd)
+
+            cmd = ['/bin/bash', '-c', nodeos_cmd_str]
 
             self.logger.info(f'running nodeos container with command:')
             self.logger.info(' '.join(cmd))
@@ -543,23 +550,16 @@ class TEVMController:
                 )
             )
 
+            exec_id, exec_stream = docker_open_process(
+                self.client, self.containers['nodeos'],
+                ['/bin/bash', '-c',
+                    'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
+
             if sys.platform == 'darwin':
                 self._vnet.connect(
                     self.containers['nodeos'],
                     ipv4_address=config['virtual_ip']
                 )
-
-            output = ''
-            for msg in self.stream_logs(self.containers['nodeos']):
-                self.logger.info(msg.rstrip())
-                output += msg
-                if ('Produced block' in msg or
-                    'Received block' in msg):
-                    break
-
-                elif 'Incorrect plugin configuration' in msg:
-                    raise TEVMCException('Nodeos bootstrap error.')
-
 
             cleos_url = f'http://127.0.0.1:{nodeos_api_port}'
 
@@ -606,6 +606,9 @@ class TEVMController:
                         for msg in self.stream_logs(self.containers['nodeos']):
                             self.logger.critical(msg.rstrip())
                         sys.exit(1)
+
+            else:
+                cleos.wait_received(from_file=config['log_path'])
 
             genesis_block = self.config['telosevm-translator']['start_block'] - 1
             self.logger.info(f'nodeos has started, waiting until blocks.log contains evm genesis block number {genesis_block}')
@@ -965,6 +968,10 @@ class TEVMController:
             self.is_elastic_relaunch = True
 
         self.exit_stack.pop_all().close()
+
+        if self.nodeos_logproc:
+            self.nodeos_logproc.kill()
+            self.nodeos_logfile.close()
 
 
     def __enter__(self):
