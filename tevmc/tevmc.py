@@ -574,6 +574,7 @@ class TEVMController:
             self.cleos = cleos
 
             if self.is_local:
+                output = cleos.wait_produced(from_file=config['log_path'])
                 # await for nodeos to produce a block
                 cleos.wait_blocks(4)
 
