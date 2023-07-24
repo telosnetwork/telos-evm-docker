@@ -11,7 +11,7 @@ RUN curl -sL https://deb.nodesource.com/setup_18.x | bash -
 
 RUN apt-get update && apt-get install -y yarn nodejs
 
-RUN git clone https://github.com/telosnetwork/telos-evm-rpc.git
+RUN git clone https://github.com/telosnetwork/telos-evm-rpc.git -b ws_hotfix
 
 WORKDIR /telos-evm-rpc
 

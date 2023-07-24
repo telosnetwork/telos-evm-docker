@@ -14,7 +14,7 @@ templates = package_files('tevmc/templates')
 
 setup(
     name='tevmc',
-    version='0.1a3',
+    version='0.1a4',
     packages=find_packages(),
     package_data={'': templates},
     install_requires=[
@@ -26,6 +26,7 @@ setup(
         'docker',
         'natsort',
         'requests',
+        'iterators',
         'daemonize',
         'simplejson',
         'simple_rlp',

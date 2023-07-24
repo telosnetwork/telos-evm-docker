@@ -5,6 +5,7 @@ psutil
 docker
 natsort
 requests
+iterators
 daemonize
 simplejson
 py-leap@git+https://github.com/guilledk/py-leap@v0.1a14

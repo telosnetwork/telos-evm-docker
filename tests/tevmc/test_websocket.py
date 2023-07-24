@@ -4,7 +4,7 @@ import time
 import json
 
 from leap.sugar import random_string, asset_from_str, Asset
-from leap.tokens import sys_token
+from leap.tokens import tlos_token
 
 from tevmc.utils import to_wei
 
@@ -66,7 +66,7 @@ def test_websocket_local_rpc(tevmc_local, local_websocket_w3):
 
     primary = tevmc.cleos.eth_account_from_name(account)
 
-    initial_tokens = Asset(102, sys_token)
+    initial_tokens = Asset(102, tlos_token)
     tevmc.cleos.transfer_token(
         'eosio', account,
         initial_tokens,
@@ -84,7 +84,7 @@ def test_websocket_local_rpc(tevmc_local, local_websocket_w3):
         account,
         primary,
         address.address,
-        Asset(initial_tokens.amount - 1, sys_token)
+        Asset(initial_tokens.amount - 1, tlos_token)
     )
     assert ec == 0
 

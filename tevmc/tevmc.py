@@ -34,6 +34,7 @@ from leap.sugar import (
 )
 
 from .config import *
+from .utils import docker_stream_logs
 from .cleos_evm import CLEOSEVM
 
 
@@ -259,12 +260,13 @@ class TEVMController:
             self.logger.info('stopped.')
 
 
-    def stream_logs(self, container):
+    def stream_logs(self, container, timeout=30.0):
         if container is None:
             self.logger.critical("container is None")
             raise StopIteration
 
-        for chunk in container.logs(stream=True):
+        for chunk in docker_stream_logs(
+            self.client, self.containers[container], timeout=timeout):
             msg = chunk.decode('utf-8')
             yield msg
 
@@ -321,7 +323,7 @@ class TEVMController:
                     ipv4_address=config['virtual_ip']
                 )
 
-            for msg in self.stream_logs(self.containers['redis']):
+            for msg in self.stream_logs('redis'):
                 self.logger.info(msg.rstrip())
                 if 'Ready to accept connections' in msg:
                     break
@@ -372,7 +374,7 @@ class TEVMController:
                     ipv4_address=config['virtual_ip']
                 )
 
-            for msg in self.stream_logs(self.containers['elasticsearch']):
+            for msg in self.stream_logs('elasticsearch'):
                 self.logger.info(msg.rstrip())
                 if ' indices into cluster_state' in msg:
                     break
@@ -403,10 +405,6 @@ class TEVMController:
 
     def stop_elasticsearch(self):
         self.containers['elasticsearch'].kill(signal.SIGTERM)
-
-        for msg in self.stream_logs(
-            self.containers['elasticsearch']):
-            continue
 
     def start_kibana(self):
         with self.must_keep_running('kibana'):
@@ -454,7 +452,8 @@ class TEVMController:
 
         - Initialize CLEOS wrapper and setup keosd & wallet.
         - Launch nodeos with config.ini
-        - Wait for nodeos to produce blocks
+        - Wait for nodeos 
+                    to produce blocks
         - Create evm accounts and deploy contract
         """
         with self.must_keep_running('nodeos'):
@@ -604,7 +603,7 @@ class TEVMController:
                             uni_conf.write(json.dumps(self.config, indent=4))
 
                     except AssertionError:
-                        for msg in self.stream_logs(self.containers['nodeos']):
+                        for msg in self.stream_logs('nodeos'):
                             self.logger.critical(msg.rstrip())
                         sys.exit(1)
 
@@ -631,7 +630,7 @@ class TEVMController:
         last_update_time = time.time()
         delta = remote_head_block - self.cleos.get_info()['head_block_num']
 
-        for line in self.stream_logs(self.containers['telosevm-translator']):
+        for line in self.stream_logs('telosevm-translator'):
             if '] pushed, at ' in line:
                 m = re.findall(r'(?<=: \[)(.*?)(?=\|)', line)
                 if len(m) == 1 and m[0] != 'NaN':
@@ -827,7 +826,7 @@ class TEVMController:
                     ipv4_address=config['virtual_ip']
                 )
 
-            for msg in self.stream_logs(self.containers['telosevm-translator']):
+            for msg in self.stream_logs('telosevm-translator'):
                 self.logger.info(msg.rstrip())
                 if 'drained' in msg:
                     break
@@ -845,11 +844,10 @@ class TEVMController:
         with self.must_keep_running('telos-evm-rpc'):
             config = self.config['telos-evm-rpc']
 
-            api_port = config['api_port']
-            rpc_port = config['rpc_websocket_port']
-
             more_params = {}
             if sys.platform == 'darwin':
+                api_port = config['api_port']
+                rpc_port = config['rpc_websocket_port']
                 more_params['ports'] = {
                     f'{api_port}/tcp': api_port,
                     f'{rpc_port}/tcp': rpc_port
@@ -870,20 +868,22 @@ class TEVMController:
                     ipv4_address=config['virtual_ip']
                 )
 
-            for msg in self.stream_logs(self.containers['telos-evm-rpc']):
+            for msg in self.stream_logs('telos-evm-rpc'):
                 self.logger.info(msg.rstrip())
                 if 'Telos EVM RPC started!!!' in msg:
                     break
 
     def open_rpc_websocket(self):
-        rpc_ws_host = self.config['telos-evm-rpc']['rpc_websocket_host']
+        rpc_ws_host = '127.0.0.1'  # self.config['telos-evm-rpc']['rpc_websocket_host']
         rpc_ws_port = self.config['telos-evm-rpc']['rpc_websocket_port']
+
+        rpc_endpoint = f'ws://{rpc_ws_host}:{rpc_ws_port}/evm'
+        self.logger.info(f'connecting to {rpc_endpoint}')
 
         connected = False
         for i in range(3):
             try:
-                ws = create_connection(
-                    f'ws://{rpc_ws_host}:{rpc_ws_port}/evm')
+                ws = create_connection(rpc_endpoint)
                 connected = True
                 break
 

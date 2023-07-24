@@ -279,3 +279,50 @@ def is_hex(value: Any) -> bool:
     if not value:
         return False
     return _HEX_REGEXP.fullmatch(value) is not None
+
+
+# docker read logs with timeout
+import queue
+import logging
+import threading
+import time
+
+from iterators import TimeoutIterator
+
+
+def docker_stream_logs(client, container, timeout=30.0):
+
+    log_queue = queue.Queue()
+
+    def read_logs():
+        try:
+            stream = TimeoutIterator(
+                container.logs(stream=True, follow=True),
+                timeout=timeout,
+                sentinel=None
+            )
+            for line in stream:
+                if line == None:
+                    break
+                else:
+                    log_queue.put(line)
+
+        except docker.errors.APIError:
+            ...
+
+    log_thread = threading.Thread(target=read_logs)
+    log_thread.start()
+
+    while True:
+        try:
+            # Wait up to 30 seconds for a log line to become available
+            yield log_queue.get(timeout=timeout)
+
+        except queue.Empty:
+            break
+
+        # Check if the log thread has finished (i.e., if the log stream has closed)
+        if not log_thread.is_alive() and log_queue.empty():
+            break
+
+    log_thread.join()

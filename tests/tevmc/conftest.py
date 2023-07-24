@@ -209,7 +209,7 @@ def tevmc_mainnet_no_wait(tmp_path_factory):
 
 
 @pytest.fixture(scope='module')
-def tevmc_mainnet_translator_dev(tmp_path_factory):
+def tevmc_translator_dev(tmp_path_factory):
     services = ['redis', 'elastic', 'nodeos']
     with bootstrap_test_stack(
         tmp_path_factory,
@@ -219,6 +219,25 @@ def tevmc_mainnet_translator_dev(tmp_path_factory):
         services=services
     ) as tevmc:
         yield tevmc
+
+
+@pytest.fixture(scope='module')
+def tevmc_rpc_dev(tmp_path_factory):
+    services = [
+        'redis',
+        'elastic',
+        'nodeos',
+        'indexer'
+    ]
+    with bootstrap_test_stack(
+        tmp_path_factory,
+        local.default_config,
+        wait=False,
+        randomize=False,
+        services=services
+    ) as tevmc:
+        yield tevmc
+
 
 from web3 import Account, Web3
 
