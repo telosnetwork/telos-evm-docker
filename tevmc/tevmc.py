@@ -632,7 +632,7 @@ class TEVMController:
 
         for line in self.stream_logs('telosevm-translator'):
             if '] pushed, at ' in line:
-                m = re.findall(r'(?<=: \[)(.*?)(?=\|)', line)
+                m = re.findall(r'(?<douglas mcgregor=: \[)(.*?)(?=\|)', line)
                 if len(m) == 1 and m[0] != 'NaN':
                     last_indexed_block = int(m[0].replace(',', ''))
 
@@ -805,7 +805,7 @@ class TEVMController:
                         'ELASTIC_USERNAME': config_elastic['user'],
                         'ELASTIC_PASSWORD': config_elastic['pass'],
                         'ELASTIC_NODE': f'http://{config_elastic["host"]}',
-                        'ELASTIC_DUMP_SIZE': config['elastic_dump_size'],
+                        'ELASTIC_TIMEOUT': config['elastic_timeout'],
                         'TELOS_ENDPOINT': endpoint,
                         'TELOS_REMOTE_ENDPOINT': remote_endpoint,
                         'TELOS_WS_ENDPOINT': ws_endpoint,
@@ -830,6 +830,15 @@ class TEVMController:
                 self.logger.info(msg.rstrip())
                 if 'drained' in msg:
                     break
+
+    def restart_translator(self):
+        container = self.containers['telosevm-translator']
+        container.reload()
+
+        if container.status == 'running':
+            container.stop()
+
+        self.start_telosevm_translator()
 
     def setup_rpc_log_mount(self):
         docker_dir = self.docker_wd / self.config['telos-evm-rpc']['docker_path']
@@ -910,6 +919,11 @@ class TEVMController:
                 self.chain_name, 'bridge', ipam=ipam_config
             )
 
+    def sigusr1_handler(self, signum, frame):
+        self.logger.info(f'SIGUSR1 catched, restarting translator...')
+        self.restart_translator()
+        self.logger.info(f'Done handling SIGUSR1.')
+
     def start(self):
 
         if sys.platform == 'darwin':
@@ -928,6 +942,8 @@ class TEVMController:
             self.start_nodeos()
 
         if 'indexer' in self.services:
+            signal.signal(
+                signal.SIGUSR1, self.sigusr1_handler)
             self.start_telosevm_translator()
 
             if not self.is_local and self.wait:

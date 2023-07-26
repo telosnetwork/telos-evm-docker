@@ -158,7 +158,8 @@ telosevm_translator = {
     'stop_block': 4294967295,
     'deploy_block': 136393814,
     'prev_hash': '',
-    'elastic_dump_size': 4096
+    'elastic_dump_size': 4096,
+    'elastic_timeout': 1000 * 60 * 10
 }
 
 telos_evm_rpc = {
