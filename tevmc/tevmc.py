@@ -820,6 +820,7 @@ class TEVMController:
                         'INDEXER_STOP_BLOCK': config['stop_block'],
                         'EVM_DEPLOY_BLOCK': config['deploy_block'],
                         'EVM_PREV_HASH': config['prev_hash'],
+                        'EVM_START_BLOCK': config['evm_start_block'],
                         'BROADCAST_HOST': bc_host,
                         'BROADCAST_PORT': bc_port
                     },

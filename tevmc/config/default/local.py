@@ -112,9 +112,10 @@ telosevm_translator = {
     'tag': 'tevm:telosevm-translator',
     'docker_path': 'telosevm-translator',
     'start_block': 'override',
+    'evm_start_block': -1,
     'stop_block': 4294967295,
     'deploy_block': 'override',
-    'prev_hash': '56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+    'prev_hash': '',
     'elastic_dump_size': 1,
     'elastic_timeout': 1000 * 60 * 1
 }
