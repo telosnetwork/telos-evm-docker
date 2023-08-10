@@ -60,7 +60,9 @@ class TEVMController:
             'rpc',
             'beats'
         ],
-        from_latest: bool = False
+        from_latest: bool = False,
+        is_producer: bool = True,
+        skip_init: bool = False
     ):
         self.pid = os.getpid()
         self.config = config
@@ -77,6 +79,9 @@ class TEVMController:
             self.root_pwd = root_pwd
 
         self.docker_wd = self.root_pwd / 'docker'
+
+        self.is_producer = is_producer
+        self.skip_init = skip_init
 
         self.is_nodeos_relaunch = (
             self.docker_wd /
@@ -509,9 +514,7 @@ class TEVMController:
 
             # generate nodeos command
             nodeos_cmd = [
-                'nodeos',
-                '-e',
-                '-p', 'eosio',
+                config['nodeos_bin'],
                 '--config=/root/config.ini',
                 f'--data-dir={config["data_dir_guest"]}',
                 '--disable-replay-opts',
@@ -523,11 +526,15 @@ class TEVMController:
                     nodeos_cmd += [f'--snapshot={config["snapshot"]}']
 
                 elif 'genesis' in config:
-                    nodeos_cmd += [f'--genesis-json=/root/genesis/{config["genesis"]}.json']
-
+                    nodeos_cmd += [
+                        f'--genesis-json=/root/genesis/{config["genesis"]}.json'
+                    ]
 
             if not space_monitor:
                 nodeos_cmd += ['--resource-monitor-not-shutdown-on-threshold-exceeded']
+
+            if self.is_producer:
+                nodeos_cmd += ['-e', '-p', 'eosio']
 
             nodeos_cmd += ['>>', config['log_path'], '2>&1']
             nodeos_cmd_str = ' '.join(nodeos_cmd)
@@ -572,7 +579,7 @@ class TEVMController:
 
             self.cleos = cleos
 
-            if self.is_local:
+            if self.is_local and not self.skip_init:
                 output = cleos.wait_produced(from_file=config['log_path'])
                 # await for nodeos to produce a block
                 cleos.wait_blocks(4)
@@ -970,7 +977,10 @@ class TEVMController:
         if 'beats' in self.services:
             self.start_beats()
 
-        if self.is_local and self.is_fresh and 'nodeos' in self.services:
+        if (self.is_local and
+            self.is_fresh and
+            not self.skip_init and
+            'nodeos' in self.services):
             self.cleos.create_test_evm_account()
 
     def stop(self):

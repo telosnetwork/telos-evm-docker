@@ -44,6 +44,7 @@ nodeos = {
     'genesis': 'local',
     'log_path': '/root/nodeos.log',
     'v2_api': 'disabled',
+    'nodeos_bin': 'nodeos',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,

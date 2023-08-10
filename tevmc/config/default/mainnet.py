@@ -45,6 +45,7 @@ nodeos = {
     'snapshot': '/snapshot-mainnet-20211026-blk-180635436.bin',
     'log_path': '/root/nodeos.log',
     'v2_api': 'https://mainnet.telos.net',
+    'nodeos_bin': 'nodeos',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
