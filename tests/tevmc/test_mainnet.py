@@ -16,6 +16,4 @@ def test_restart(tevmc_mainnet_no_wait):
     tevmc.start()
 
 def test_start_from_latest(tevmc_mainnet_latest):
-    tevmc = tevmc_mainnet_latest
-
-    breakpoint()
+    ...

@@ -95,7 +95,10 @@ nodeos = {
             'eosio::producer_api_plugin',
             'eosio::state_history_plugin'
         ],
-        'peers': []
+        'peers': [],
+        'subst': {
+            'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/regular/regular.wasm'
+        }
     }
 }
 

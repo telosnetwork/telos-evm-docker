@@ -139,7 +139,8 @@ nodeos = {
             'telos-testnet.eosio.cr:9879',
             'testnet.dailytelos.net:9877',
             'testnet.telos.goodblock.io:9876'
-        ]
+        ],
+        'subst': 'http://evmwasms.s3.amazonaws.com/subst.json'
     }
 }
 

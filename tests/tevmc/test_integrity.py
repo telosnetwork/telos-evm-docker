@@ -16,7 +16,7 @@ DEFAULT_GAS_PRICE = 524799638144
 DEFAULT_GAS = 21000
 
 
-def test_integrity(tevmc_local, local_w3):
+def test_integrity_elastic(tevmc_local, local_w3):
     tevmc = tevmc_local
 
     index = tevmc.config['telos-evm-rpc']['elastic_prefix'] + '-action-*'

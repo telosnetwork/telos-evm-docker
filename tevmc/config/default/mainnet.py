@@ -82,10 +82,7 @@ nodeos = {
         'max_transaction_time': 500,
 
         'plugins': [
-            'eosio::net_plugin',
             'eosio::http_plugin',
-            'eosio::chain_plugin',
-            'eosio::producer_plugin',
             'eosio::chain_api_plugin',
             'eosio::state_history_plugin'
         ],
@@ -145,7 +142,8 @@ nodeos = {
             '136.243.90.53:9876',
             'p2p.telos.dutcheos.io:9876',
             'p2p.telos.zenblocks.io:9876'
-        ]
+        ],
+        'subst': 'http://evmwasms.s3.amazonaws.com/subst.json'
     }
 }
 

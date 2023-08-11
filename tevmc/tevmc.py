@@ -4,12 +4,9 @@ import re
 import os
 import sys
 import time
-import shutil
 import signal
-import string
 import logging
 
-from signal import SIGINT
 from typing import List, Dict, Optional
 from pathlib import Path
 from websocket import create_connection
@@ -23,11 +20,6 @@ from web3 import Web3
 from docker.types import LogConfig, Mount
 from requests.auth import HTTPBasicAuth
 from leap.sugar import (
-    Asset,
-    wait_for_attr
-)
-from leap.sugar import (
-    collect_stdout,
     docker_open_process,
     docker_wait_process,
     download_latest_snapshot
@@ -245,7 +237,7 @@ class TEVMController:
                 log_config=LogConfig(
                     type=LogConfig.types.JSON,
                     config={'max-size': '100m' }),
-                remove=True,
+                # remove=True,
                 labels=DEFAULT_DOCKER_LABEL)
 
             container.reload()
@@ -263,6 +255,16 @@ class TEVMController:
                 ...
 
             self.logger.info('stopped.')
+
+            self.logger.info(f'removing container \"{name}\"')
+            try:
+                if container:
+                    for i in range(3):
+                        container.remove()
+            except docker.errors.APIError as e:
+                ...
+
+            self.logger.info('removed.')
 
 
     def stream_logs(self, container, timeout=30.0):
@@ -555,7 +557,9 @@ class TEVMController:
                     **more_params
                 )
             )
+            self.containers['nodeos'].reload()
 
+        with self.must_keep_running('nodeos'):
             exec_id, exec_stream = docker_open_process(
                 self.client, self.containers['nodeos'],
                 ['/bin/bash', '-c',
@@ -845,6 +849,7 @@ class TEVMController:
 
         if container.status == 'running':
             container.stop()
+            container.remove()
 
         self.start_telosevm_translator()
 

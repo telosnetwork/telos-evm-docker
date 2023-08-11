@@ -148,6 +148,17 @@ def perform_config_build(target_dir, config):
     for plugin in subst['plugins']:
         conf_str += f'plugin = {plugin}\n'
 
+    if 'subst' in subst:
+        conf_str += f'plugin = eosio::subst_plugin\n'
+        conf_str += '\n'
+        sinfo = subst['subst']
+        if isinstance(sinfo, str):
+            conf_str += f'subst-manifest = {sinfo}'
+
+        elif isinstance(sinfo, dict):
+            for skey, val in sinfo.items():
+                conf_str += f'subst-by-name = {skey}:{val}'
+
     conf_str += '\n'
 
     for peer in subst['peers']:

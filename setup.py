@@ -14,12 +14,13 @@ templates = package_files('tevmc/templates')
 
 setup(
     name='tevmc',
-    version='0.1a4',
+    version='0.1a5',
     packages=find_packages(),
     package_data={'': templates},
     install_requires=[
         'rlp',
         'web3',
+        'asks',
         'click',
         'pytest',
         'psutil',
@@ -32,9 +33,6 @@ setup(
         'simple_rlp',
         'py-leap@git+https://github.com/guilledk/py-leap@v0.1a14'
     ],
-    extras_require={
-        'async': ['asks']
-    },
     include_package_data=True,
     entry_points={
         'console_scripts': [

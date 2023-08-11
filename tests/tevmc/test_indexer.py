@@ -6,22 +6,19 @@ import time
 def test_indexer_restart(tevmc_local):
     tevmc = tevmc_local
 
-    tevmc.stop()
-    tevmc.start()
+    tevmc.restart_translator()
 
-    for msg in tevmc.stream_logs(
-        tevmc.containers['telosevm-indexer']):
-        if 'start from' in msg:
+    for msg in tevmc.stream_logs('telosevm-translator'):
+        if 'starting from genesis' in msg:
             assert False
 
-        elif 'found!' in msg:
+        elif 'start from' in msg:
             break
 
 def test_indexer_reconnect(tevmc_local):
     tevmc = tevmc_local
 
-    for msg in tevmc.stream_logs(
-        tevmc.containers['telosevm-indexer']):
+    for msg in tevmc.stream_logs('telosevm-translator'):
         if 'drained' in msg:
             break
 
@@ -43,7 +40,6 @@ def test_indexer_reconnect(tevmc_local):
         **nodeos_params
     )
 
-    for msg in tevmc.stream_logs(
-        tevmc.containers['telosevm-indexer']):
+    for msg in tevmc.stream_logs('telosevm-translator'):
         if 'drained' in msg:
             break
