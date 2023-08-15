@@ -45,6 +45,7 @@ nodeos = {
     'log_path': '/root/nodeos.log',
     'v2_api': 'disabled',
     'nodeos_bin': 'nodeos',
+    'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/receiptless',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
@@ -119,6 +120,7 @@ telosevm_translator = {
     'stop_block': 4294967295,
     'deploy_block': 'override',
     'prev_hash': '',
+    'worker_amount': 1,
     'elastic_dump_size': 1,
     'elastic_timeout': 1000 * 60 * 1
 }

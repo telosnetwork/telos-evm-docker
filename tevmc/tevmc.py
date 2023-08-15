@@ -267,13 +267,17 @@ class TEVMController:
             self.logger.info('removed.')
 
 
-    def stream_logs(self, container, timeout=30.0):
+    def stream_logs(self, container, timeout=30.0, from_latest=False):
         if container is None:
             self.logger.critical("container is None")
             raise StopIteration
 
         for chunk in docker_stream_logs(
-            self.client, self.containers[container], timeout=timeout):
+            self.client,
+            self.containers[container],
+            timeout=timeout,
+            from_latest=from_latest
+        ):
             msg = chunk.decode('utf-8')
             yield msg
 
@@ -366,7 +370,7 @@ class TEVMController:
                         'cluster.name': 'es-cluster',
                         'node.name': 'es01',
                         'bootstrap.memory_lock': 'true',
-                        'xpack.security.enabled': 'true',
+                        'xpack.security.enabled': 'false',
                         'ES_JAVA_OPTS': '-Xms2g -Xmx2g',
                         'ES_NETWORK_HOST': '0.0.0.0'
                     },
@@ -385,30 +389,6 @@ class TEVMController:
                 self.logger.info(msg.rstrip())
                 if ' indices into cluster_state' in msg:
                     break
-
-            if not self.is_elastic_relaunch:
-                es_endpoint = f'127.0.0.1:{es_port}'
-
-                # setup password for elastic user
-                resp = requests.put(
-                    f'http://{es_endpoint}/_xpack/security/user/elastic/_password',
-                    auth=('elastic', 'temporal'),
-                    json={'password': config['elastic_pass']})
-
-                self.logger.info(resp.text)
-                assert resp.status_code == 200
-
-                # setup user
-                resp = requests.put(
-                    f'http://{es_endpoint}/_xpack/security/user/{config["user"]}',
-                    auth=('elastic', config['elastic_pass']),
-                    json={
-                        'password': config['pass'],
-                        'roles': [ 'superuser' ]
-                    })
-
-                self.logger.info(resp.text)
-                assert resp.status_code == 200
 
     def stop_elasticsearch(self):
         self.containers['elasticsearch'].kill(signal.SIGTERM)
@@ -602,7 +582,7 @@ class TEVMController:
                             sys_contracts_mount='/opt/eosio/bin/contracts',
                             verify_hash=False)
 
-                        cleos.deploy_evm()
+                        cleos.deploy_evm(self.config['nodeos']['eosio.evm'])
 
                         evm_deploy_block = cleos.evm_deploy_info['processed']['block_num']
 
@@ -826,7 +806,8 @@ class TEVMController:
                         'EVM_PREV_HASH': config['prev_hash'],
                         'EVM_START_BLOCK': config['evm_start_block'],
                         'BROADCAST_HOST': bc_host,
-                        'BROADCAST_PORT': bc_port
+                        'BROADCAST_PORT': bc_port,
+                        'WORKER_AMOUNT': config['worker_amount']
                     },
                     **more_params
                 )

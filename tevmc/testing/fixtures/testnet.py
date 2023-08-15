@@ -10,14 +10,14 @@ from tevmc.config import testnet
 from tevmc.testing import bootstrap_test_stack
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def tevm_node(request, tmp_path_factory):
     request.applymarker(pytest.mark.config(**testnet.default_config))
     with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
         yield tevmc
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def tevm_node_non_random(request, tmp_path_factory):
     request.applymarker(pytest.mark.config(**testnet.default_config))
     request.applymarker(pytest.mark.randomize(False))
@@ -25,7 +25,7 @@ def tevm_node_non_random(request, tmp_path_factory):
         yield tevmc
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def nodeos(request, tmp_path_factory):
     request.applymarker(pytest.mark.config(**testnet.default_config))
     request.applymarker(pytest.mark.services('nodeos'))
@@ -33,7 +33,7 @@ def nodeos(request, tmp_path_factory):
         yield tevmc
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def nodeos_latest(request, tmp_path_factory):
     request.applymarker(pytest.mark.config(**testnet.default_config))
     request.applymarker(pytest.mark.services('nodeos'))
@@ -42,7 +42,7 @@ def nodeos_latest(request, tmp_path_factory):
         yield tevmc
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def nodeos_vanilla(request, tmp_path_factory):
     config = deepcopy(testnet.default_config)
 
@@ -55,7 +55,7 @@ def nodeos_vanilla(request, tmp_path_factory):
         yield tevmc
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def tevm_node_latest(request, tmp_path_factory):
     request.applymarker(pytest.mark.config(**testnet.default_config))
     request.applymarker(pytest.mark.tevmc_params(from_latest=True))
@@ -63,7 +63,7 @@ def tevm_node_latest(request, tmp_path_factory):
         yield tevmc
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def tevm_node_no_wait(request, tmp_path_factory):
     request.applymarker(pytest.mark.config(**testnet.default_config))
     request.applymarker(pytest.mark.tevmc_params(wait=False))

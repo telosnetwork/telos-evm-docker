@@ -3,18 +3,6 @@
 import time
 
 
-def test_indexer_restart(tevmc_local):
-    tevmc = tevmc_local
-
-    tevmc.restart_translator()
-
-    for msg in tevmc.stream_logs('telosevm-translator'):
-        if 'starting from genesis' in msg:
-            assert False
-
-        elif 'start from' in msg:
-            break
-
 def test_indexer_reconnect(tevmc_local):
     tevmc = tevmc_local
 

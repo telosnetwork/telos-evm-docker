@@ -1,12 +1,22 @@
+import pytest
 
-def test_manual_full(tevmc_local_non_rand):
-    tevmc = tevmc_local_non_rand
+
+@pytest.mark.randomize(False)
+def test_manual_full(tevmc_local):
+    tevmc = tevmc_local
     breakpoint()
 
-def test_manual_translator_dev(tevmc_translator_dev_translator_dev):
-    tevmc = tevmc_translator_dev
+
+@pytest.mark.randomize(False)
+@pytest.mark.services('elastic', 'nodeos')
+def test_manual_translator_dev(tevmc_mainnet):
+    tevmc = tevmc_mainnet
     breakpoint()
 
-def test_manual_rpc_dev(tevmc_rpc_dev):
-    tevmc = tevmc_rpc_dev
+
+@pytest.mark.randomize(False)
+@pytest.mark.services(
+    'redis', 'elastic', 'nodeos', 'indexer')
+def test_manual_rpc_dev(tevmc_local):
+    tevmc = tevmc_local
     breakpoint()

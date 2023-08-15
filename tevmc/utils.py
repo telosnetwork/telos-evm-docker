@@ -290,14 +290,17 @@ import time
 from iterators import TimeoutIterator
 
 
-def docker_stream_logs(client, container, timeout=30.0):
+def docker_stream_logs(client, container, timeout=30.0, from_latest=False):
 
     log_queue = queue.Queue()
+    extra_args = {}
+    if from_latest:
+        extra_args['tail'] = 0
 
     def read_logs():
         try:
             stream = TimeoutIterator(
-                container.logs(stream=True, follow=True),
+                container.logs(stream=True, follow=True, **extra_args),
                 timeout=timeout,
                 sentinel=None
             )

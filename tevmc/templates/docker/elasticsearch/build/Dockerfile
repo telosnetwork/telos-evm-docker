@@ -1,11 +1,6 @@
-FROM docker.elastic.co/elasticsearch/elasticsearch:7.17.4
+FROM docker.elastic.co/elasticsearch/elasticsearch:8.8.1
 
 COPY elasticsearch.yml /usr/share/elasticsearch/config/
-
-RUN mkdir -p /home/elasticsearch/data
-RUN mkdir -p /home/elasticsearch/logs
-
-RUN printf "temporal" | ./bin/elasticsearch-keystore add -f -x "bootstrap.password"
 
 EXPOSE $elasticsearch_port
 

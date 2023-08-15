@@ -62,6 +62,7 @@ class CLEOSEVM(CLEOS):
 
     def deploy_evm(
         self,
+        contract_path,
         start_bytes: int = 2684354560,
         start_cost: str = '21000.0000 TLOS',
         target_free: int = 2684354560,
@@ -91,8 +92,6 @@ class CLEOSEVM(CLEOS):
             cpu=10000.0000,
             net=10000.0000,
             ram=100000)
-
-        contract_path = '/opt/eosio/bin/contracts/eosio.evm/receiptless'
 
         self.create_snapshot(self.url, {})
 

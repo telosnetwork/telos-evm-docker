@@ -8,14 +8,14 @@ from tevmc.config import local
 from tevmc.testing import bootstrap_test_stack
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def tevm_node(request, tmp_path_factory):
     request.applymarker(pytest.mark.config(**local.default_config))
     with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
         yield tevmc
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def tevm_node_non_random(request, tmp_path_factory):
     request.applymarker(pytest.mark.config(**local.default_config))
     request.applymarker(pytest.mark.randomize(False))
@@ -23,7 +23,7 @@ def tevm_node_non_random(request, tmp_path_factory):
         yield tevmc
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def nodeos(request, tmp_path_factory):
     request.applymarker(pytest.mark.config(**local.default_config))
     request.applymarker(pytest.mark.services('nodeos'))
@@ -31,7 +31,7 @@ def nodeos(request, tmp_path_factory):
         yield tevmc
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def nodeos_vanilla(request, tmp_path_factory):
     config = deepcopy(local.default_config)
 
