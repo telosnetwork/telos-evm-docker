@@ -14,6 +14,8 @@ from typing import (
     Union,
 )
 
+from docker.errors import DockerException
+
 
 HexStr = NewType('HexStr', str)
 Primitives = Union[bytes, int, bool]
@@ -281,51 +283,86 @@ def is_hex(value: Any) -> bool:
     return _HEX_REGEXP.fullmatch(value) is not None
 
 
-# docker read logs with timeout
-import queue
-import logging
-import threading
-import time
+import struct
+import requests_unixsocket
+from requests.exceptions import Timeout
 
-from iterators import TimeoutIterator
+def _parse_docker_log(data):
+    '''Parses Docker logs by handling Docker's log protocol.
+
+    Docker prefixes each log entry with an 8-byte header:
+    - 1 byte: Stream type (STDIN, STDOUT, STDERR)
+    - 7 bytes: Size of the message that follows
+
+    Args:
+        data (bytes): The raw logs data with Docker's headers.
+
+    Yields:
+        str: The parsed log messages.
+    '''
+    while data:
+        # Extract header from data
+        header = data[:8]
+        _, length = struct.unpack('>BxxxL', header)
+
+        # Extract the actual log message based on the length from the header
+        message = data[8:8+length].decode('utf-8', errors='replace')
+
+        # Advance the buffer to next log entry
+        data = data[8+length:]
+
+        yield message
 
 
-def docker_stream_logs(client, container, timeout=30.0, from_latest=False):
+def docker_stream_logs(container, timeout=30.0, from_latest=False):
+    '''Streams logs from a running Docker container.
 
-    log_queue = queue.Queue()
-    extra_args = {}
+    Args:
+        container (container): Docker container object.
+        timeout (float, optional): Time to wait between log messages. Default to 30.0 seconds.
+        from_latest (bool, optional): Only fetch logs since the last log. Default to False.
+
+    Yields:
+        str: The log messages.
+
+    Raises:
+        DockerException: If the container is not running.
+        StopIteration: If no logs are received within the timeout period.
+    '''
+    container.reload()
+
+    if container.status != 'running':
+        raise DockerException(
+            f'Tried to stream logs but container {container.name} is stopped')
+
+    # Set up a session to use the Docker Unix socket
+    session = requests_unixsocket.Session()
+
+    url = f'http+unix://%2Fvar%2Frun%2Fdocker.sock/containers/{container.name}/logs'
+
+    # Parameters for the log request
+    params = {
+        'stdout': '1',
+        'stderr': '1',
+        'follow': '1'
+    }
+
+    # If only logs from the latest are required
     if from_latest:
-        extra_args['tail'] = 0
+        params['tail'] = '0'
 
-    def read_logs():
-        try:
-            stream = TimeoutIterator(
-                container.logs(stream=True, follow=True, **extra_args),
-                timeout=timeout,
-                sentinel=None
-            )
-            for line in stream:
-                if line == None:
-                    break
-                else:
-                    log_queue.put(line)
+    response = session.get(
+        url, params=params, stream=True, timeout=timeout)
 
-        except docker.errors.APIError:
-            ...
+    try:
+        data_buffer = b''
+        for chunk in response.iter_content(chunk_size=1024):
+            if chunk:
+                data_buffer += chunk
+                for message in _parse_docker_log(data_buffer):
+                    yield message
+                    # Adjust the buffer after reading the message
+                    data_buffer = data_buffer[len(message)+8:]
 
-    log_thread = threading.Thread(target=read_logs)
-    log_thread.start()
-
-    while True:
-        try:
-            # Wait up to 30 seconds for a log line to become available
-            yield log_queue.get(timeout=timeout)
-
-        except queue.Empty:
-            break
-
-        # Check if the log thread has finished (i.e., if the log stream has closed)
-        if not log_thread.is_alive() and log_queue.empty():
-            break
-
-    log_thread.join()
+    except Timeout:
+        raise StopIteration(f'No logs received for {timeout} seconds.')

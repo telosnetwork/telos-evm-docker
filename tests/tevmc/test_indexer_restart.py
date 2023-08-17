@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
+import pytest
 
+
+@pytest.mark.services('elastic', 'nodeos', 'indexer')
 def test_indexer_restart_simple(tevmc_local):
     tevmc = tevmc_local
 

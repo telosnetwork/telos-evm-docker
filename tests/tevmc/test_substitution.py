@@ -4,14 +4,13 @@ import pytest
 
 from leap.sugar import Asset
 
-from tevmc.config import local
-
 from web3 import Account
 
 
 @pytest.mark.randomize(False)
-def test_setcode_with_same_hash_subst(nodeos_local):
-    tevmc = nodeos_local
+@pytest.mark.services('nodeos')
+def test_setcode_with_same_hash_subst(tevmc_local):
+    tevmc = tevmc_local
 
     regular_path = '/opt/eosio/bin/contracts/eosio.evm/regular'
     receiptless_path = '/opt/eosio/bin/contracts/eosio.evm/receiptless'

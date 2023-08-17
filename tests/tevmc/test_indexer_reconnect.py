@@ -2,7 +2,10 @@
 
 import time
 
+import pytest
 
+
+@pytest.mark.services('elastic', 'nodeos', 'indexer')
 def test_indexer_reconnect(tevmc_local):
     tevmc = tevmc_local
 
@@ -15,19 +18,10 @@ def test_indexer_reconnect(tevmc_local):
     tevmc.is_nodeos_relaunch = True
 
     time.sleep(4)
-    config = tevmc.config['nodeos']
-    nodeos_params = {
-        'data_dir': config['data_dir_guest'],
-        'logfile': config['log_path'],
-        'logging_cfg': '/root/logging.json'
-    }
-    output = tevmc.cleos.start_nodeos_from_config(
-        '/root/config.ini',
-        state_plugin=True,
-        is_local=tevmc.is_local,
-        **nodeos_params
-    )
 
-    for msg in tevmc.stream_logs('telosevm-translator'):
+    tevmc.start_nodeos()
+
+    for msg in tevmc.stream_logs('telosevm-translator', from_latest=True):
+        tevmc.logger.info(msg)
         if 'drained' in msg:
             break

@@ -2,7 +2,10 @@ from node:18-bullseye
 
 workdir /root
 
-run git clone https://github.com/telosnetwork/telosevm-translator.git indexer -b ws_hotfix
+run git clone \
+    https://github.com/telosnetwork/telosevm-translator.git \
+    indexer \
+    -b v1.0.0
 
 run rm -rdf indexer/.git
 

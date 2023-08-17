@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import pytest
-
 from leap.sugar import random_string, Asset
 from leap.tokens import tlos_token
 

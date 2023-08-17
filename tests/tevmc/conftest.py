@@ -1,15 +1,27 @@
 #!/usr/bin/env python3
 
-from tevmc.testing.fixtures.local import tevm_node as tevmc_local
-from tevmc.testing.fixtures.local import tevm_node_non_random as tevmc_local_non_rand
-from tevmc.testing.fixtures.local import nodeos as nodeos_local
+import pytest
 
-from tevmc.testing.fixtures.testnet import tevm_node as tevmc_testnet
-from tevmc.testing.fixtures.testnet import tevm_node_latest as tevmc_testnet_latest
-from tevmc.testing.fixtures.testnet import tevm_node_no_wait as tevmc_testnet_no_wait
-from tevmc.testing.fixtures.testnet import nodeos_latest as nodeos_testnet_latest
+from tevmc.config import local, testnet, mainnet
+from tevmc.testing import bootstrap_test_stack
 
-from tevmc.testing.fixtures.mainnet import tevm_node as tevmc_mainnet
-from tevmc.testing.fixtures.mainnet import tevm_node_latest as tevmc_mainnet_latest
-from tevmc.testing.fixtures.mainnet import tevm_node_no_wait as tevmc_mainnet_no_wait
 
+@pytest.fixture()
+def tevmc_local(request, tmp_path_factory):
+    request.applymarker(pytest.mark.config(**local.default_config))
+    with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
+        yield tevmc
+
+
+@pytest.fixture()
+def tevmc_testnet(request, tmp_path_factory):
+    request.applymarker(pytest.mark.config(**testnet.default_config))
+    with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
+        yield tevmc
+
+
+@pytest.fixture()
+def tevmc_mainnet(request, tmp_path_factory):
+    request.applymarker(pytest.mark.config(**mainnet.default_config))
+    with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
+        yield tevmc

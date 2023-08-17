@@ -31,6 +31,7 @@ setup(
         'daemonize',
         'simplejson',
         'simple_rlp',
+        'requests-unixsocket',
         'py-leap@git+https://github.com/guilledk/py-leap@v0.1a14'
     ],
     include_package_data=True,

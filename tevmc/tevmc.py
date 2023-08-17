@@ -273,13 +273,11 @@ class TEVMController:
             raise StopIteration
 
         for chunk in docker_stream_logs(
-            self.client,
             self.containers[container],
             timeout=timeout,
             from_latest=from_latest
         ):
-            msg = chunk.decode('utf-8')
-            yield msg
+            yield chunk
 
     @contextmanager
     def must_keep_running(self, container: str):
@@ -374,6 +372,7 @@ class TEVMController:
                         'ES_JAVA_OPTS': '-Xms2g -Xmx2g',
                         'ES_NETWORK_HOST': '0.0.0.0'
                     },
+                    user='root',
                     mounts=self.mounts['elasticsearch'],
                     **more_params
                 )
@@ -443,6 +442,11 @@ class TEVMController:
                     to produce blocks
         - Create evm accounts and deploy contract
         """
+        # remove container if exists
+        if 'nodeos' in self.containers:
+            self.containers['nodeos'].stop()
+            self.containers['nodeos'].remove()
+
         with self.must_keep_running('nodeos'):
             config = self.config['nodeos']
             docker_dir = self.docker_wd / config['docker_path']
@@ -623,7 +627,7 @@ class TEVMController:
 
         for line in self.stream_logs('telosevm-translator'):
             if '] pushed, at ' in line:
-                m = re.findall(r'(?<douglas mcgregor=: \[)(.*?)(?=\|)', line)
+                m = re.findall(r'(?<=: \[)(.*?)(?=\|)', line)
                 if len(m) == 1 and m[0] != 'NaN':
                     last_indexed_block = int(m[0].replace(',', ''))
 
@@ -796,6 +800,7 @@ class TEVMController:
                         'ELASTIC_USERNAME': config_elastic['user'],
                         'ELASTIC_PASSWORD': config_elastic['pass'],
                         'ELASTIC_NODE': f'http://{config_elastic["host"]}',
+                        'ELASTIC_DUMP_SIZE': config['elastic_dump_size'],
                         'ELASTIC_TIMEOUT': config['elastic_timeout'],
                         'TELOS_ENDPOINT': endpoint,
                         'TELOS_REMOTE_ENDPOINT': remote_endpoint,
@@ -805,6 +810,7 @@ class TEVMController:
                         'EVM_DEPLOY_BLOCK': config['deploy_block'],
                         'EVM_PREV_HASH': config['prev_hash'],
                         'EVM_START_BLOCK': config['evm_start_block'],
+                        'EVM_VALIDATE_HASH': config['evm_validate_hash'],
                         'BROADCAST_HOST': bc_host,
                         'BROADCAST_PORT': bc_port,
                         'WORKER_AMOUNT': config['worker_amount']
@@ -981,12 +987,11 @@ class TEVMController:
             self.stop_elasticsearch()
             self.is_elastic_relaunch = True
 
-        self.exit_stack.pop_all().close()
-
         if self.nodeos_logproc:
             self.nodeos_logproc.kill()
             self.nodeos_logfile.close()
 
+        self.exit_stack.pop_all().close()
 
     def __enter__(self):
         self.start()

@@ -7,11 +7,11 @@ import logging
 import tarfile
 import requests
 
+import pytest
+
 from shutil import copyfile
 from pathlib import Path
 from contextlib import contextmanager
-
-import pytest
 
 from web3 import Web3
 
@@ -152,7 +152,7 @@ def bootstrap_test_stack(request, tmp_path_factory):
         raise
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def tevm_node(request, tmp_path_factory):
     with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
         yield tevmc

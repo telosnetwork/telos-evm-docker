@@ -9,4 +9,6 @@ requests
 iterators
 daemonize
 simplejson
+requests-unixsocket
+
 py-leap@git+https://github.com/guilledk/py-leap@v0.1a14
