@@ -2,6 +2,8 @@
 
 import pytest
 
+from tevmc.testing.database import ElasticDriver
+
 
 @pytest.mark.services('elastic', 'nodeos', 'indexer')
 def test_indexer_restart_simple(tevmc_local):
@@ -9,9 +11,5 @@ def test_indexer_restart_simple(tevmc_local):
 
     tevmc.restart_translator()
 
-    for msg in tevmc.stream_logs('telosevm-translator'):
-        if 'starting from genesis' in msg:
-            assert False
-
-        elif 'found!' in msg:
-            break
+    elastic = ElasticDriver(tevmc.config)
+    elastic.full_integrity_check()

@@ -2,6 +2,8 @@
 
 import pytest
 
+from tevmc.testing.database import ElasticDriver
+
 
 @pytest.mark.tevmc_params(wait=False)
 def test_restart(tevmc_mainnet):
@@ -14,3 +16,4 @@ def test_restart(tevmc_mainnet):
 
     tevmc.start()
 
+    ElasticDriver(tevmc_mainnet.config).full_integrity_check()

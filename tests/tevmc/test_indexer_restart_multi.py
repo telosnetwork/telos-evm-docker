@@ -5,6 +5,7 @@ from copy import deepcopy
 import pytest
 
 from tevmc.config import testnet
+from tevmc.testing.database import ElasticDriver
 
 
 conf = deepcopy(testnet.default_config)
@@ -21,9 +22,5 @@ def test_indexer_restart_multi_during_sync(tevmc_testnet):
         tevmc.cleos.wait_blocks(10 * 1000)
         tevmc.restart_translator()
 
-        for msg in tevmc.stream_logs('telosevm-translator'):
-            if 'starting from genesis' in msg:
-                assert False
-
-            elif 'found!' in msg:
-                break
+        elastic = ElasticDriver(tevmc.config)
+        elastic.full_integrity_check()
