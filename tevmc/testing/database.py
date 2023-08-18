@@ -130,8 +130,8 @@ class ElasticDriver:
         logging.debug('delta indices: ')
         logging.debug(json.dumps(delta_indices, indent=4))
         for i in range(1, len(delta_indices)):
-            previous_index_suffix_num = index_to_suffix_num(delta_indices[i - 1]['index'])
-            current_index_suffix_num = index_to_suffix_num(delta_indices[i]['index'])
+            previous_index_suffix_num = index_to_suffix_num(delta_indices[i - 1])
+            current_index_suffix_num = index_to_suffix_num(delta_indices[i])
 
             if current_index_suffix_num - previous_index_suffix_num > 1:
                 return {
@@ -332,7 +332,8 @@ class ElasticDriver:
             upper = (gap['gapStart'] + 1) * self.docs_per_index
             agg = self.run_histogram_gap_check(
                 lower, upper, self.docs_per_index)
-            return agg[0]['max_block']['value']
+            gap = agg[0]['max_block']['value'] + 1
+            raise ElasticDataIntegrityError(f'Gap found! {int(gap)}')
 
         initial_interval = upper_bound - lower_bound
 

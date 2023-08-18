@@ -107,6 +107,15 @@ def test_python_elastic_integrity_tool(tevmc_local):
 
     assert 'Gap found! 121' in str(error)
 
+    # whole index gap
+    prepare_db_for_test(
+        tevmc, datetime.now(), [(1, 1), (20_000_000, 20_000_000)])
+
+    with pytest.raises(ElasticDataIntegrityError) as error:
+        elastic.full_integrity_check()
+
+    assert 'Gap found! 2' in str(error)
+
     # duplicate block range
     prepare_db_for_test(
         tevmc, datetime.now(), [(100, 200), (150, 151)])
