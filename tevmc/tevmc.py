@@ -605,6 +605,16 @@ class TEVMController:
             else:
                 cleos.wait_received(from_file=config['log_path'])
 
+            # wait until nodeos apis are up
+            for i in range(60):
+                try:
+                    cleos.get_info()
+                    break
+
+                except requests.exceptions.ConnectionError:
+                    self.logger.warning('connection error trying to get chain info...')
+                    time.sleep(1)
+
             genesis_block = self.config['telosevm-translator']['start_block'] - 1
             self.logger.info(f'nodeos has started, waiting until blocks.log contains evm genesis block number {genesis_block}')
             cleos.wait_blocks(
