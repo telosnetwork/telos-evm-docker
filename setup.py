@@ -21,6 +21,7 @@ setup(
         'rlp',
         'web3',
         'asks',
+        'flask',
         'click',
         'pytest',
         'psutil',

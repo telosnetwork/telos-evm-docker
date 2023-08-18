@@ -9,6 +9,7 @@ import logging
 
 from typing import List, Dict, Optional
 from pathlib import Path
+from docker.errors import NotFound
 from websocket import create_connection
 from contextlib import contextmanager, ExitStack
 
@@ -17,6 +18,7 @@ import requests
 import simplejson
 
 from web3 import Web3
+from flask import Flask
 from docker.types import LogConfig, Mount
 from requests.auth import HTTPBasicAuth
 from leap.sugar import (
@@ -24,6 +26,8 @@ from leap.sugar import (
     docker_wait_process,
     download_latest_snapshot
 )
+
+from tevmc.routes import add_routes
 
 from .config import *
 from .utils import docker_stream_logs
@@ -163,6 +167,8 @@ class TEVMController:
 
         self.containers = {}
         self.mounts = {}
+
+        self.api = Flask(f'tevmc-{os.getpid()}')
 
     @contextmanager
     def open_container(
@@ -444,8 +450,12 @@ class TEVMController:
         """
         # remove container if exists
         if 'nodeos' in self.containers:
-            self.containers['nodeos'].stop()
-            self.containers['nodeos'].remove()
+            try:
+                self.containers['nodeos'].stop()
+                self.containers['nodeos'].remove()
+
+            except NotFound:
+                ...
 
         with self.must_keep_running('nodeos'):
             config = self.config['nodeos']
@@ -619,6 +629,15 @@ class TEVMController:
             self.logger.info(f'nodeos has started, waiting until blocks.log contains evm genesis block number {genesis_block}')
             cleos.wait_blocks(
                 genesis_block - cleos.get_info()['head_block_num'], sleep_time=10)
+
+    def restart_nodeos(self):
+        self.cleos.stop_nodeos(
+            from_file=self.config['nodeos']['log_path'])
+        self.is_nodeos_relaunch = True
+
+        time.sleep(4)
+
+        self.start_nodeos()
 
     def _get_head_block(self):
         if 'testnet' in self.chain_name:
@@ -892,6 +911,16 @@ class TEVMController:
                 if 'Telos EVM RPC started!!!' in msg:
                     break
 
+    def restart_rpc(self):
+        container = self.containers['telos-evm-rpc']
+        container.reload()
+
+        if container.status == 'running':
+            container.stop()
+            container.remove()
+
+        self.start_evm_rpc()
+
     def open_rpc_websocket(self):
         rpc_ws_host = '127.0.0.1'  # self.config['telos-evm-rpc']['rpc_websocket_host']
         rpc_ws_port = self.config['telos-evm-rpc']['rpc_websocket_port']
@@ -929,11 +958,6 @@ class TEVMController:
                 self.chain_name, 'bridge', ipam=ipam_config
             )
 
-    def sigusr1_handler(self, signum, frame):
-        self.logger.info(f'SIGUSR1 catched, restarting translator...')
-        self.restart_translator()
-        self.logger.info(f'Done handling SIGUSR1.')
-
     def start(self):
 
         if sys.platform == 'darwin':
@@ -952,8 +976,6 @@ class TEVMController:
             self.start_nodeos()
 
         if 'indexer' in self.services:
-            signal.signal(
-                signal.SIGUSR1, self.sigusr1_handler)
             self.start_telosevm_translator()
 
             if not self.is_local and self.wait:
@@ -985,6 +1007,10 @@ class TEVMController:
             not self.skip_init and
             'nodeos' in self.services):
             self.cleos.create_test_evm_account()
+
+    def serve_api(self):
+        add_routes(self)
+        self.api.run(port=self.config['daemon']['port'])
 
     def stop(self):
         if 'nodeos' in self.services:

@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
-import os
 import sys
 import json
-import time
 import logging
 
 from pathlib import Path
@@ -14,7 +12,6 @@ import requests
 
 from daemonize import Daemonize
 
-from ..tevmc import TEVMController, TEVMCException
 from ..config import *
 
 from .cli import cli, get_docker_client
@@ -33,7 +30,6 @@ from .cli import cli, get_docker_client
         'nodeos',
         'indexer',
         'rpc',
-        'beats'
     ],
     help='Services to launch')
 @click.option(
@@ -42,6 +38,9 @@ from .cli import cli, get_docker_client
 @click.option(
     '--sync/--head', default=True,
     help='Sync from chain start or from head.')
+@click.option(
+    '--daemon/--no-daemon', default=True,
+    help='Daemonize or run in foreground.')
 @click.option(
     '--config', default='tevmc.json',
     help='Unified config file name.')
@@ -62,6 +61,7 @@ def up(
     services,
     wait,
     sync,
+    daemon,
     config,
     logpath,
     loglevel,
@@ -70,6 +70,8 @@ def up(
 ):
     """Bring tevmc daemon up.
     """
+    from ..tevmc import TEVMController
+
     try:
         config = load_config(target_dir, config)
 
@@ -88,22 +90,30 @@ def up(
             'with \'tevmc build\' before running.')
         sys.exit(1)
 
-    # config logging to file
-    loglevel = loglevel.upper()
 
     fmt = logging.Formatter(
         fmt='%(asctime)s:%(levelname)s:%(message)s',
         datefmt='%H:%M:%S'
     )
-
+    loglevel = loglevel.upper()
     logger = logging.getLogger('tevmc')
     logger.setLevel(loglevel)
     logger.propagate = False
-    fh = logging.FileHandler(logpath, 'w')
-    fh.setLevel(loglevel)
-    fh.setFormatter(fmt)
-    logger.addHandler(fh)
-    keep_fds = [fh.stream.fileno()]
+
+    if daemon:
+        # config logging to file
+        fh = logging.FileHandler(logpath, 'w')
+        fh.setLevel(loglevel)
+        fh.setFormatter(fmt)
+        logger.addHandler(fh)
+        keep_fds = [fh.stream.fileno()]
+
+    else:
+        # config logging to stdout
+        oh = logging.StreamHandler(sys.stdout)
+        oh.setLevel(loglevel)
+        oh.setFormatter(fmt)
+        logger.addHandler(oh)
 
     # create image manifest ie images needed to run daemon
     try:
@@ -134,11 +144,10 @@ def up(
                 wait=wait,
                 services=services,
                 from_latest=not sync
-            ):
+            ) as _tevmc:
                 logger.critical('control point reached')
                 try:
-                    while True:
-                        time.sleep(90)
+                    _tevmc.serve_api()
 
                 except KeyboardInterrupt:
                     logger.warning('interrupt catched.')
@@ -149,14 +158,16 @@ def up(
                 'please await tear down or run \'tevmc clean\''
                 'to cleanup envoirment.')
 
-    # daemonize
-    daemon = Daemonize(
-        app='tevmc',
-        pid=pid,
-        action=wait_exit_forever,
-        keep_fds=keep_fds,
-        chdir=target_dir,
-        auto_close_fds=False)
+    if daemon:
+        daemon = Daemonize(
+            app='tevmc',
+            pid=pid,
+            action=wait_exit_forever,
+            keep_fds=keep_fds,
+            chdir=target_dir,
+            auto_close_fds=False)
 
-    daemon.start()
+        daemon.start()
 
+    else:
+        wait_exit_forever()

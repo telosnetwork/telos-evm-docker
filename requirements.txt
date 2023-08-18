@@ -1,4 +1,5 @@
 asks
+flask
 click
 py-evm
 pytest
