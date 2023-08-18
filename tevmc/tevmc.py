@@ -835,7 +835,7 @@ class TEVMController:
                     ipv4_address=config['virtual_ip']
                 )
 
-            for msg in self.stream_logs('telosevm-translator'):
+            for msg in self.stream_logs('telosevm-translator', timeout=60*10):
                 self.logger.info(msg.rstrip())
                 if 'drained' in msg:
                     break
@@ -990,6 +990,8 @@ class TEVMController:
         if 'nodeos' in self.services:
             self.cleos.stop_nodeos(
                 from_file=self.config['nodeos']['log_path'])
+
+            self.containers['nodeos'].kill(signal='SIGINT')
 
             self.is_nodeos_relaunch = True
 
