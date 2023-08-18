@@ -300,13 +300,20 @@ class ElasticDriver:
 
         lower_bound = lower_bound_doc.global_block_num
         upper_bound = upper_bound_doc.global_block_num
+        step = 10_000_000
 
-        # Check duplicates
-        delta_duplicates = self.find_duplicate_deltas(lower_bound, upper_bound)
+        delta_duplicates = []
+        action_duplicates = []
+
+        for current_lower in range(lower_bound, upper_bound, step):
+            current_upper = min(current_lower + step, upper_bound)
+
+            delta_duplicates += self.find_duplicate_deltas(current_lower, current_upper)
+            action_duplicates += self.find_duplicate_actions(current_lower, current_upper)
+
         if len(delta_duplicates) > 0:
             logging.error(f'block duplicates found: {json.dumps(delta_duplicates)}')
 
-        action_duplicates = self.find_duplicate_actions(lower_bound, upper_bound)
         if len(action_duplicates) > 0:
             logging.error(f'tx duplicates found: {json.dumps(action_duplicates)}')
 
