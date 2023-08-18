@@ -15,13 +15,7 @@ def test_indexer_reconnect(tevmc_local):
         if 'drained' in msg:
             break
 
-    tevmc.cleos.stop_nodeos(
-        from_file=tevmc.config['nodeos']['log_path'])
-    tevmc.is_nodeos_relaunch = True
-
-    time.sleep(4)
-
-    tevmc.start_nodeos()
+    tevmc.restart_nodeos()
 
     for msg in tevmc.stream_logs('telosevm-translator', from_latest=True):
         tevmc.logger.info(msg)

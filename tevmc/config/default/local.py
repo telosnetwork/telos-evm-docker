@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+daemon = {
+    'port': 12321
+}
+
 redis = {
     'name': 'redis',
     'docker_path': 'redis',
@@ -152,6 +156,8 @@ telos_evm_rpc = {
 }
 
 default_config = {
+    'daemon': daemon,
+
     'redis': redis,
     'elasticsearch': elasticsearch,
     'kibana': kibana,
@@ -160,3 +166,4 @@ default_config = {
     'telosevm-translator': telosevm_translator,
     'telos-evm-rpc': telos_evm_rpc
 }
+
