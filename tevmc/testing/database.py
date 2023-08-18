@@ -2,6 +2,7 @@ import json
 import math
 import locale
 import logging
+from typing import Optional
 
 from elasticsearch import Elasticsearch
 
@@ -243,7 +244,7 @@ class ElasticDriver:
         else:
             return []
 
-    def check_gaps(self, lower_bound: int, upper_bound: int, interval: int) -> None | int:
+    def check_gaps(self, lower_bound: int, upper_bound: int, interval: int) -> Optional[int]:
 
         interval = math.ceil(interval)
 
