@@ -7,7 +7,6 @@ docker
 natsort
 requests
 iterators
-daemonize
 simplejson
 requests-unixsocket
 

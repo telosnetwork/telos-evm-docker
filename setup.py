@@ -28,7 +28,6 @@ setup(
         'natsort',
         'requests',
         'iterators',
-        'daemonize',
         'simplejson',
         'simple_rlp',
         'requests-unixsocket',

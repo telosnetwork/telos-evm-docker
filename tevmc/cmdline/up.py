@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import os
 import sys
 import json
 import time
@@ -12,9 +11,7 @@ import click
 import docker
 import requests
 
-from daemonize import Daemonize
-
-from ..tevmc import TEVMController, TEVMCException
+from ..tevmc import TEVMController
 from ..config import *
 
 from .cli import cli, get_docker_client
@@ -98,12 +95,11 @@ def up(
 
     logger = logging.getLogger('tevmc')
     logger.setLevel(loglevel)
-    logger.propagate = False
+    # logger.propagate = False
     fh = logging.FileHandler(logpath, 'w')
     fh.setLevel(loglevel)
     fh.setFormatter(fmt)
     logger.addHandler(fh)
-    keep_fds = [fh.stream.fileno()]
 
     # create image manifest ie images needed to run daemon
     try:
@@ -125,38 +121,24 @@ def up(
         logger.critical(err.message)
         sys.exit(1)
 
-    # main daemon thread
-    def wait_exit_forever():
-        try:
-            with TEVMController(
-                config,
-                logger=logger,
-                wait=wait,
-                services=services,
-                from_latest=not sync
-            ):
-                logger.critical('control point reached')
-                try:
-                    while True:
-                        time.sleep(90)
+    try:
+        with TEVMController(
+            config,
+            logger=logger,
+            wait=wait,
+            services=services,
+            from_latest=not sync
+        ):
+            logger.critical('control point reached')
+            try:
+                while True:
+                    time.sleep(90)
 
-                except KeyboardInterrupt:
-                    logger.warning('interrupt catched.')
+            except KeyboardInterrupt:
+                logger.warning('interrupt catched.')
 
-        except requests.exceptions.ReadTimeout:
-            logger.critical(
-                'docker timeout! usually means system hung, '
-                'please await tear down or run \'tevmc clean\''
-                'to cleanup envoirment.')
-
-    # daemonize
-    daemon = Daemonize(
-        app='tevmc',
-        pid=pid,
-        action=wait_exit_forever,
-        keep_fds=keep_fds,
-        chdir=target_dir,
-        auto_close_fds=False)
-
-    daemon.start()
-
+    except requests.exceptions.ReadTimeout:
+        logger.critical(
+            'docker timeout! usually means system hung, '
+            'please await tear down or run \'tevmc clean\''
+            'to cleanup envoirment.')
