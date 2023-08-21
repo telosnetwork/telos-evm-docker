@@ -1069,10 +1069,13 @@ class TEVMController:
                 self.cleos.stop_nodeos(
                     from_file=self.config['nodeos']['log_path'])
 
-                self.containers['nodeos'].kill(signal='SIGINT')
+                self.containers['nodeos'].wait(timeout=30)
 
             except docker.errors.NotFound:
                 ...
+
+            except docker.errors.APIError:
+                self.containers['nodeos'].stop()
 
             self.is_nodeos_relaunch = True
 

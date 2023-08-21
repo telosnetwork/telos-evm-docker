@@ -118,7 +118,7 @@ def up(
         sys.exit(1)
 
     with open(pid, 'w+') as pidfile:
-        pidfile.write(os.getpid())
+        pidfile.write(str(os.getpid()))
 
     try:
         with TEVMController(
