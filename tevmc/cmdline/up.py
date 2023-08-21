@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 import json
 import logging
@@ -9,8 +10,6 @@ from pathlib import Path
 import click
 import docker
 import requests
-
-from ..tevmc import TEVMController
 
 from ..config import *
 
@@ -117,6 +116,9 @@ def up(
     except docker.errors.NotFound as err:
         logger.critical(err.message)
         sys.exit(1)
+
+    with open(pid, 'w+') as pidfile:
+        pidfile.write(os.getpid())
 
     try:
         with TEVMController(

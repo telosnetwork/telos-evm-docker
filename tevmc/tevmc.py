@@ -586,12 +586,15 @@ class TEVMController:
 
             cleos_url = f'http://127.0.0.1:{nodeos_api_port}'
 
+            cleos_evm_url = f'http://127.0.0.1:{self.config["telos-evm-rpc"]["api_port"]}/evm'
+
             # setup cleos wrapper
             cleos = CLEOSEVM(
                 self.client,
                 self.containers['nodeos'],
                 logger=self.logger,
                 url=cleos_url,
+                evm_url=cleos_evm_url,
                 chain_id=self.config['telos-evm-rpc']['chain_id'])
 
             self.cleos = cleos

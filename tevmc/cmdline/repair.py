@@ -14,12 +14,13 @@ from leap.sugar import download_snapshot
 from tevmc.cmdline.build import perform_docker_build
 from tevmc.config import load_config
 from tevmc.testing.database import ElasticDriver
-from tevmc.tevmc import TEVMController
 
 from .cli import cli
 
 
 def perform_data_repair(config_path, progress=True):
+    from tevmc.tevmc import TEVMController
+
     root_pwd = config_path.parent.resolve()
     config = load_config(str(root_pwd), config_path.name)
 
