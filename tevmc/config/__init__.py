@@ -134,6 +134,9 @@ def randomize_conf_ports(config: Dict) -> Dict:
 
     ret['telos-evm-rpc']['api_port'] = get_free_port()
 
+    if '127.0.0.1' in ret['telos-evm-rpc']['remote_endpoint']:
+        ret['telos-evm-rpc']['remote_endpoint'] = f'http://127.0.0.1:{nodeos_http_port}/evm'
+
     return ret
 
 def randomize_conf_creds(config: Dict) -> Dict:

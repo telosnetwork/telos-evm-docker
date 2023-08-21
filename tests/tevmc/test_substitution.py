@@ -1,61 +1,48 @@
 #!/usr/bin/env python3
 
-import time
-import logging
+import pytest
 
-from elasticsearch import Elasticsearch
+from leap.sugar import Asset
+
+from web3 import Account
 
 
-def test_subst_after_contract_redeploy(testnet_from_228038712):
+@pytest.mark.randomize(False)
+@pytest.mark.services('nodeos')
+def test_setcode_with_same_hash_subst(tevmc_local):
+    tevmc = tevmc_local
 
-    tevmc = testnet_from_228038712
-    delta_index = tevmc.config['telos-evm-rpc']['elastic_prefix'] + '-delta-*'
-    action_index = tevmc.config['telos-evm-rpc']['elastic_prefix'] + '-action-*'
+    regular_path = '/opt/eosio/bin/contracts/eosio.evm/regular'
+    receiptless_path = '/opt/eosio/bin/contracts/eosio.evm/receiptless'
 
-    es_config = tevmc.config['elasticsearch']
-    es = Elasticsearch(
-        f'{es_config["protocol"]}://{es_config["host"]}',
-        basic_auth=(
-            es_config['user'], es_config['pass']
-        )
+    tevmc.cleos.deploy_contract(
+        'eosio.evm', regular_path,
+        privileged=True,
+        create_account=False,
+        verify_hash=False)
+
+    tevmc.cleos.deploy_contract(
+        'eosio.evm', receiptless_path,
+        privileged=True,
+        create_account=False,
+        verify_hash=False)
+
+    tevmc.cleos.wait_blocks(10)
+
+    eth_addr = tevmc.cleos.eth_account_from_name('evmuser1')
+    assert eth_addr
+    ec, _ = tevmc.cleos.eth_transfer(
+        'evmuser1',
+        eth_addr,
+        Account.create().address,
+        Asset(1, tevmc.cleos.sys_token_supply.symbol)
+    )
+    assert ec == 0
+
+    nodeos_logs = tevmc.cleos.wait_for_phrase_in_nodeos_logs(
+        'RCPT', lines=5, timeout=4,
+        from_file=tevmc.config['nodeos']['log_path']
     )
 
-    tevmc.cleos.wait_blocks(350000)
+    assert 'RCPT' in nodeos_logs
 
-    for msg in tevmc.stream_logs(tevmc.containers['telosevm-translator']):
-        tevmc.logger.info(msg.rstrip())
-        if 'drained' in msg:
-            break
-
-    def get_last_indexed_tx():
-        result = es.search(
-            index=action_index,
-            size=1,
-            sort={'@raw.block': 'desc'},
-            query={
-                'query_string': {
-                    'query': '@raw.itxs: *'
-                }
-            }
-        )
-        return result['hits']['hits'][0]['_source']['@raw']
-
-    def get_last_indexed_block():
-        result = es.search(
-            index=delta_index,
-            size=1,
-            sort={'@global.block_num': 'desc'},
-            query={
-                'match_all': {}
-            }
-        )
-        return result['hits']['hits'][0]['_source']
-
-    last_block = get_last_indexed_block()
-    while last_block['block_num'] < 228399099:
-        logging.info(f'last indexed: {last_block}')
-        time.sleep(5)
-        last_block = get_last_indexed_block()
-
-    last_tx = get_last_indexed_tx()
-    assert last_tx['block'] > 228399099

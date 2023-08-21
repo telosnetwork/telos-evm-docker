@@ -44,6 +44,8 @@ nodeos = {
     'genesis': 'local',
     'log_path': '/root/nodeos.log',
     'v2_api': 'disabled',
+    'nodeos_bin': 'nodeos',
+    'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/receiptless',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
@@ -94,7 +96,10 @@ nodeos = {
             'eosio::producer_api_plugin',
             'eosio::state_history_plugin'
         ],
-        'peers': []
+        'peers': [],
+        'subst': {
+            'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/regular/regular.wasm'
+        }
     }
 }
 
@@ -111,10 +116,14 @@ telosevm_translator = {
     'tag': 'tevm:telosevm-translator',
     'docker_path': 'telosevm-translator',
     'start_block': 'override',
+    'evm_start_block': -1,
+    'evm_validate_hash': '',
     'stop_block': 4294967295,
     'deploy_block': 'override',
-    'prev_hash': '56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-    'elastic_dump_size': 1
+    'prev_hash': '',
+    'worker_amount': 1,
+    'elastic_dump_size': 1,
+    'elastic_timeout': 1000 * 60 * 1
 }
 
 telos_evm_rpc = {

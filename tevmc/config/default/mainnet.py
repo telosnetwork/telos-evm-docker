@@ -45,6 +45,7 @@ nodeos = {
     'snapshot': '/snapshot-mainnet-20211026-blk-180635436.bin',
     'log_path': '/root/nodeos.log',
     'v2_api': 'https://mainnet.telos.net',
+    'nodeos_bin': 'nodeos',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
@@ -81,10 +82,7 @@ nodeos = {
         'max_transaction_time': 500,
 
         'plugins': [
-            'eosio::net_plugin',
             'eosio::http_plugin',
-            'eosio::chain_plugin',
-            'eosio::producer_plugin',
             'eosio::chain_api_plugin',
             'eosio::state_history_plugin'
         ],
@@ -144,7 +142,8 @@ nodeos = {
             '136.243.90.53:9876',
             'p2p.telos.dutcheos.io:9876',
             'p2p.telos.zenblocks.io:9876'
-        ]
+        ],
+        'subst': 'http://evmwasms.s3.amazonaws.com/subst.json'
     }
 }
 
@@ -161,10 +160,14 @@ telosevm_translator = {
     'tag': 'tevm:telosevm-translator',
     'docker_path': 'telosevm-translator',
     'start_block': 180698860,
+    'evm_start_block': -1,
+    'evm_validate_hash': '9bd7e881e0903ea4fa161c7f00096c11346f122bff30a3a5122ef5c1f9c9f80c',
     'stop_block': 4294967295,
     'deploy_block': 180698860,
     'prev_hash': '',
-    'elastic_dump_size': 4096
+    'worker_amount': 4,
+    'elastic_dump_size': 4096,
+    'elastic_timeout': 1000 * 60 * 10
 }
 
 telos_evm_rpc = {

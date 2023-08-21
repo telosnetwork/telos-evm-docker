@@ -8,6 +8,7 @@ from elasticsearch import Elasticsearch
 
 from leap.sugar import random_string, asset_from_str, Asset
 from leap.tokens import tlos_token
+from tevmc.testing import open_web3
 
 from tevmc.utils import to_wei, to_int, from_wei, decode_hex
 
@@ -16,8 +17,9 @@ DEFAULT_GAS_PRICE = 524799638144
 DEFAULT_GAS = 21000
 
 
-def test_integrity(tevmc_local, local_w3):
+def test_integrity_elastic(tevmc_local):
     tevmc = tevmc_local
+    local_w3 = open_web3(tevmc_local)
 
     index = tevmc.config['telos-evm-rpc']['elastic_prefix'] + '-action-*'
 
@@ -147,6 +149,8 @@ def test_integrity(tevmc_local, local_w3):
         )
         assert ec == 0
 
+    time.sleep(2)
+
     for addr, deposit in zip(internal_eth_addrs, initial_deposit_assets):
         on_chain_balance = tevmc.cleos.eth_get_balance(addr.address)
         assert on_chain_balance == to_wei(deposit.amount - 1, 'ether')
@@ -201,7 +205,7 @@ def test_integrity(tevmc_local, local_w3):
             account,
             Asset(
                 float(from_wei(local_w3.eth.get_balance(addr), 'ether')),
-                sys_token),
+                tevmc_local.cleos.sys_token_supply.symbol),
             account
         )
         assert ec == 0

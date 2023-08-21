@@ -2,9 +2,8 @@
 
 import time
 import json
-import requests
 
-from typing import Optional, Union, Dict
+from typing import Optional, Union
 
 import rlp
 
@@ -63,6 +62,7 @@ class CLEOSEVM(CLEOS):
 
     def deploy_evm(
         self,
+        contract_path,
         start_bytes: int = 2684354560,
         start_cost: str = '21000.0000 TLOS',
         target_free: int = 2684354560,
@@ -93,7 +93,7 @@ class CLEOSEVM(CLEOS):
             net=10000.0000,
             ram=100000)
 
-        contract_path = '/opt/eosio/bin/contracts/eosio.evm/receiptless'
+        self.create_snapshot(self.url, {})
 
         self.evm_deploy_info = self.deploy_contract(
             'eosio.evm', contract_path,

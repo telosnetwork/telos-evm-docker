@@ -2,7 +2,10 @@ from node:18-bullseye
 
 workdir /root
 
-run git clone https://github.com/telosnetwork/telosevm-translator.git indexer --branch gap_check_upgrade
+run git clone \
+    https://github.com/telosnetwork/telosevm-translator.git \
+    indexer \
+    -b v1.0.0
 
 run rm -rdf indexer/.git
 

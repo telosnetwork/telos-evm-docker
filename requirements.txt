@@ -1,3 +1,4 @@
+asks
 click
 py-evm
 pytest
@@ -5,6 +6,8 @@ psutil
 docker
 natsort
 requests
-daemonize
+iterators
 simplejson
+requests-unixsocket
+
 py-leap@git+https://github.com/guilledk/py-leap@v0.1a14
