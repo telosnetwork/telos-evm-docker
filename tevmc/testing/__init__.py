@@ -63,8 +63,8 @@ def bootstrap_test_stack(request, tmp_path_factory):
 
     randomize = maybe_get_marker(request, 'randomize', 'args', [True])[0]
 
-    services = maybe_get_marker(
-        request, 'services', 'args', TEST_SERVICES)
+    services = list(maybe_get_marker(
+        request, 'services', 'args', TEST_SERVICES))
 
     if randomize:
         config = randomize_conf_ports(config)

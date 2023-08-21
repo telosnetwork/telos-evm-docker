@@ -6,6 +6,7 @@ import json
 from typing import Optional, Union
 
 import rlp
+import requests
 
 from rlp.sedes import (
     big_endian_int,
@@ -52,10 +53,12 @@ class CLEOSEVM(CLEOS):
         self,
         *args,
         chain_id: int = 41,
+        evm_url: str = 'http://localhost:7000/evm',
         **kwargs
     ):
         super().__init__(*args, **kwargs)
 
+        self.evm_url = evm_url
         self.chain_id = chain_id
 
         self.__jsonrpc_id = 0
@@ -242,6 +245,32 @@ class CLEOSEVM(CLEOS):
 
         return rows[0]['nonce']
 
+    def eth_get_transaction_receipt(self, transaction_hash, url=None):
+        payload = {
+            'jsonrpc': '2.0',
+            'method': 'eth_getTransactionReceipt',
+            'params': [transaction_hash],
+            'id': 1
+        }
+        response = requests.post(
+            url if url else self.evm_url,
+            json=payload,
+            headers={'Content-Type': 'application/json'})
+        return response.json() if response.status_code == 200 else None
+
+    def eth_get_code(self, address, block='latest', url=None):
+        payload = {
+            'jsonrpc': '2.0',
+            'method': 'eth_getCode',
+            'params': [address, block],
+            'id': 1
+        }
+        response = requests.post(
+            url if url else self.evm_url,
+            json=payload,
+            headers={'Content-Type': 'application/json'})
+        return response.json() if response.status_code == 200 else None
+
     def eth_raw_tx(
         self,
         sender: str,
@@ -319,3 +348,24 @@ class CLEOSEVM(CLEOS):
             [to, quantity],
             f'{account}@active'
         )
+
+    def eth_get_block_by_number(
+        self,
+        block_number: int | str,
+        full_transactions: bool= False,
+        url: Optional[str] = None
+    ):
+        headers = {'Content-Type': 'application/json'}
+        payload = {
+            'jsonrpc': '2.0',
+            'method': 'eth_getBlockByNumber',
+            'params': [
+                block_number,
+                full_transactions
+            ],
+            'id': 1
+        }
+        response = requests.post(
+            url if url else self.evm_url,
+            json=payload, headers=headers)
+        return response.json() if response.status_code == 200 else None
