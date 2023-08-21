@@ -1,4 +1,5 @@
-asks
+tdqm
+web3>=5.31.0
 flask
 click
 py-evm
@@ -9,6 +10,7 @@ natsort
 requests
 iterators
 simplejson
+elasticsearch
 requests-unixsocket
 
-py-leap@git+https://github.com/guilledk/py-leap@v0.1a14
+py-leap@git+https://github.com/guilledk/py-leap@v0.1a15

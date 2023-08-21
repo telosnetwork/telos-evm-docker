@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import sys
 import json
-import errno
 import socket
 import random
 

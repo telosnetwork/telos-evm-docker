@@ -6,6 +6,7 @@ import sys
 import time
 import signal
 import logging
+import subprocess
 
 from typing import List, Dict, Optional
 from pathlib import Path
@@ -46,7 +47,7 @@ class TEVMController:
         logger = None,
         log_level: str = 'info',
         root_pwd: Optional[Path] = None,
-        wait: bool = True,
+        wait: bool = False,
         services: List[str] = [
             'redis',
             'elastic',
@@ -103,6 +104,12 @@ class TEVMController:
             ('testnet' not in self.chain_name) and
             ('mainnet' not in self.chain_name)
         )
+
+        self.chain_type = 'local'
+        if 'testnet' in self.chain_name:
+            self.chain_type = 'testnet'
+        elif 'mainnet' in self.chain_name:
+            self.chain_type = 'mainnet'
 
         if self.is_local:
             self.producer_key = config['nodeos']['ini']['sig_provider'].split(':')[-1]
@@ -278,12 +285,22 @@ class TEVMController:
             self.logger.critical("container is None")
             raise StopIteration
 
-        for chunk in docker_stream_logs(
-            self.containers[container],
-            timeout=timeout,
-            from_latest=from_latest
-        ):
-            yield chunk
+        elif container == 'nodeos':
+            if from_latest:
+                lines = 1
+            else:
+                lines = 1000
+
+            for line in self._stream_nodeos(lines, timeout=int(timeout)):
+                yield line
+
+        else:
+            for chunk in docker_stream_logs(
+                self.containers[container],
+                timeout=timeout,
+                from_latest=from_latest
+            ):
+                yield chunk
 
     @contextmanager
     def must_keep_running(self, container: str):
@@ -439,7 +456,7 @@ class TEVMController:
                     ipv4_address=config['virtual_ip']
                 )
 
-    def start_nodeos(self, space_monitor=True):
+    def start_nodeos(self, space_monitor=True, do_init=True):
         """Start eosio_nodeos container.
 
         - Initialize CLEOS wrapper and setup keosd & wallet.
@@ -457,101 +474,103 @@ class TEVMController:
             except NotFound:
                 ...
 
-        with self.must_keep_running('nodeos'):
-            config = self.config['nodeos']
-            docker_dir = self.docker_wd / config['docker_path']
+        config = self.config['nodeos']
+        docker_dir = self.docker_wd / config['docker_path']
 
-            data_dir_guest = config['data_dir_guest']
-            data_dir_host = docker_dir / config['data_dir_host']
+        data_dir_guest = config['data_dir_guest']
+        data_dir_host = docker_dir / config['data_dir_host']
 
-            conf_dir = docker_dir / config['conf_dir']
-            contracts_dir = docker_dir / config['contracts_dir']
+        conf_dir = docker_dir / config['conf_dir']
+        contracts_dir = docker_dir / config['contracts_dir']
 
-            data_dir_host.mkdir(parents=True, exist_ok=True)
+        data_dir_host.mkdir(parents=True, exist_ok=True)
 
-            self.mounts['nodeos'] = [
-                Mount('/root', str(conf_dir.resolve()), 'bind'),
-                Mount('/opt/eosio/bin/contracts', str(contracts_dir.resolve()), 'bind'),
-                Mount(data_dir_guest, str(data_dir_host.resolve()), 'bind')
-            ]
+        self.mounts['nodeos'] = [
+            Mount('/root', str(conf_dir.resolve()), 'bind'),
+            Mount('/opt/eosio/bin/contracts', str(contracts_dir.resolve()), 'bind'),
+            Mount(data_dir_guest, str(data_dir_host.resolve()), 'bind')
+        ]
 
-            if 'mounts' in config:
-                self.mounts['nodeos'] += [
-                    Mount(m['target'], m['source'], 'bind') for m in config['mounts']]
+        if 'mounts' in config:
+            self.mounts['nodeos'] += [
+                Mount(m['target'], m['source'], 'bind') for m in config['mounts']]
 
-            env = {
-                'NODEOS_DATA_DIR': config['data_dir_guest'],
-                'NODEOS_CONFIG': f'/root/config.ini',
-                'NODEOS_LOG_PATH': config['log_path'],
-                'NODEOS_LOGCONF': '/root/logging.json',
-                'KEOSD_LOG_PATH': '/root/keosd.log',
-                'KEOSD_CONFIG': '/root/keosd_config.ini'
+        env = {
+            'NODEOS_DATA_DIR': config['data_dir_guest'],
+            'NODEOS_CONFIG': f'/root/config.ini',
+            'NODEOS_LOG_PATH': config['log_path'],
+            'NODEOS_LOGCONF': '/root/logging.json',
+            'KEOSD_LOG_PATH': '/root/keosd.log',
+            'KEOSD_CONFIG': '/root/keosd_config.ini'
+        }
+
+        if not self.is_nodeos_relaunch:
+            if 'snapshot' in config:
+                env['NODEOS_SNAPSHOT'] = config['snapshot']
+
+            elif 'genesis' in config:
+                env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
+
+        self.logger.info(f'is relaunch: {self.is_nodeos_relaunch}')
+
+        nodeos_api_port = int(config['ini']['http_addr'].split(':')[1])
+        history_port = int(config['ini']['history_endpoint'].split(':')[1])
+
+        more_params = {}
+        if sys.platform == 'darwin':
+            more_params['ports'] = {
+                f'{nodeos_api_port}/tcp': nodeos_api_port,
+                f'{history_port}/tcp': history_port
             }
+            more_params['mem_limit'] = '6g'
 
-            if not self.is_nodeos_relaunch:
-                if 'snapshot' in config:
-                    env['NODEOS_SNAPSHOT'] = config['snapshot']
+        # generate nodeos command
+        nodeos_cmd = [
+            config['nodeos_bin'],
+            '--config=/root/config.ini',
+            f'--data-dir={config["data_dir_guest"]}',
+            '--disable-replay-opts',
+            '--logconf=/root/logging.json'
+        ]
 
-                elif 'genesis' in config:
-                    env['NODEOS_GENESIS_JSON'] = f'/root/genesis/{config["genesis"]}.json'
+        if not self.is_nodeos_relaunch:
+            if 'snapshot' in config:
+                nodeos_cmd += [f'--snapshot={config["snapshot"]}']
 
-            self.logger.info(f'is relaunch: {self.is_nodeos_relaunch}')
+            elif 'genesis' in config:
+                nodeos_cmd += [
+                    f'--genesis-json=/root/genesis/{config["genesis"]}.json'
+                ]
 
-            nodeos_api_port = int(config['ini']['http_addr'].split(':')[1])
-            history_port = int(config['ini']['history_endpoint'].split(':')[1])
+        if not space_monitor:
+            nodeos_cmd += ['--resource-monitor-not-shutdown-on-threshold-exceeded']
 
-            more_params = {}
-            if sys.platform == 'darwin':
-                more_params['ports'] = {
-                    f'{nodeos_api_port}/tcp': nodeos_api_port,
-                    f'{history_port}/tcp': history_port
-                }
-                more_params['mem_limit'] = '6g'
+        if self.is_producer:
+            nodeos_cmd += ['-e', '-p', 'eosio']
 
-            # generate nodeos command
-            nodeos_cmd = [
-                config['nodeos_bin'],
-                '--config=/root/config.ini',
-                f'--data-dir={config["data_dir_guest"]}',
-                '--disable-replay-opts',
-                '--logconf=/root/logging.json'
-            ]
+        nodeos_cmd += ['>>', config['log_path'], '2>&1']
+        nodeos_cmd_str = ' '.join(nodeos_cmd)
 
-            if not self.is_nodeos_relaunch:
-                if 'snapshot' in config:
-                    nodeos_cmd += [f'--snapshot={config["snapshot"]}']
+        cmd = ['/bin/bash', '-c', nodeos_cmd_str]
 
-                elif 'genesis' in config:
-                    nodeos_cmd += [
-                        f'--genesis-json=/root/genesis/{config["genesis"]}.json'
-                    ]
+        self.logger.info(f'running nodeos container with command:')
+        self.logger.info(' '.join(cmd))
 
-            if not space_monitor:
-                nodeos_cmd += ['--resource-monitor-not-shutdown-on-threshold-exceeded']
-
-            if self.is_producer:
-                nodeos_cmd += ['-e', '-p', 'eosio']
-
-            nodeos_cmd += ['>>', config['log_path'], '2>&1']
-            nodeos_cmd_str = ' '.join(nodeos_cmd)
-
-            cmd = ['/bin/bash', '-c', nodeos_cmd_str]
-
-            self.logger.info(f'running nodeos container with command:')
-            self.logger.info(' '.join(cmd))
-
-            # open container
-            self.containers['nodeos'] = self.exit_stack.enter_context(
-                self.open_container(
-                    f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{self.chain_name}',
-                    command=cmd,
-                    environment=env,
-                    mounts=self.mounts['nodeos'],
-                    **more_params
-                )
+        # open container
+        self.containers['nodeos'] = self.exit_stack.enter_context(
+            self.open_container(
+                f'{config["name"]}-{self.pid}-{self.chain_name}',
+                f'{config["tag"]}-{self.chain_name}',
+                command=cmd,
+                environment=env,
+                mounts=self.mounts['nodeos'],
+                **more_params
             )
-            self.containers['nodeos'].reload()
+        )
+        self.containers['nodeos'].reload()
+
+        if not do_init:
+            return
 
         with self.must_keep_running('nodeos'):
             exec_id, exec_stream = docker_open_process(
@@ -611,7 +630,6 @@ class TEVMController:
                         for msg in self.stream_logs('nodeos'):
                             self.logger.critical(msg.rstrip())
                         sys.exit(1)
-
             else:
                 cleos.wait_received(from_file=config['log_path'])
 
@@ -638,6 +656,36 @@ class TEVMController:
         time.sleep(4)
 
         self.start_nodeos()
+
+    def _stream_nodeos(
+        self,
+        lines: int = 100,
+        timeout: int = 60
+    ):
+        log_path = self.docker_wd
+        log_path /= self.config['nodeos']['docker_path']
+        log_path /= self.config['nodeos']['conf_dir']
+        log_path /= Path(self.config['nodeos']['log_path']).name
+        log_path = log_path.resolve()
+
+        process = subprocess.Popen(
+            ['bash', '-c',
+                f'timeout {timeout}s tail -n {lines} -f {log_path}'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+
+        for line in iter(process.stdout.readline, b''):
+            msg = line.decode('utf-8')
+            yield msg
+            self.logger.info(msg.rstrip())
+
+        process.stdout.close()
+        process.wait()
+
+        if process.returncode != 0:
+            raise ValueError(
+                'tail returned {process.returncode}\n'
+                f'{process.stderr.read().decode("utf-8")}')
 
     def _get_head_block(self):
         if 'testnet' in self.chain_name:
@@ -1014,10 +1062,14 @@ class TEVMController:
 
     def stop(self):
         if 'nodeos' in self.services:
-            self.cleos.stop_nodeos(
-                from_file=self.config['nodeos']['log_path'])
+            try:
+                self.cleos.stop_nodeos(
+                    from_file=self.config['nodeos']['log_path'])
 
-            self.containers['nodeos'].kill(signal='SIGINT')
+                self.containers['nodeos'].kill(signal='SIGINT')
+
+            except docker.errors.NotFound:
+                ...
 
             self.is_nodeos_relaunch = True
 

@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 def package_files(directory):
     paths = []
-    for (path, directories, filenames) in os.walk(directory):
+    for (path, _, filenames) in os.walk(directory):
         for filename in filenames:
             paths.append(os.path.join('..', path, filename))
     return paths
@@ -19,7 +19,8 @@ setup(
     package_data={'': templates},
     install_requires=[
         'rlp',
-        'web3',
+        'web3>=5.31.0',
+        'tdqm',
         'asks',
         'flask',
         'click',
@@ -31,8 +32,9 @@ setup(
         'iterators',
         'simplejson',
         'simple_rlp',
+        'elasticsearch',
         'requests-unixsocket',
-        'py-leap@git+https://github.com/guilledk/py-leap@v0.1a14'
+        'py-leap@git+https://github.com/guilledk/py-leap@v0.1a15'
     ],
     include_package_data=True,
     entry_points={

@@ -33,7 +33,7 @@ from .cli import cli, get_docker_client
     ],
     help='Services to launch')
 @click.option(
-    '--wait/--no-wait', default=True,
+    '--wait/--no-wait', default=False,
     help='Wait until caught up to sync before launching RPC api.')
 @click.option(
     '--sync/--head', default=True,
