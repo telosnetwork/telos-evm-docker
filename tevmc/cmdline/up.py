@@ -2,7 +2,6 @@
 
 import sys
 import json
-import time
 import logging
 
 from pathlib import Path
@@ -12,6 +11,7 @@ import docker
 import requests
 
 from ..tevmc import TEVMController
+
 from ..config import *
 
 from .cli import cli, get_docker_client
@@ -30,7 +30,6 @@ from .cli import cli, get_docker_client
         'nodeos',
         'indexer',
         'rpc',
-        'beats'
     ],
     help='Services to launch')
 @click.option(
@@ -42,9 +41,6 @@ from .cli import cli, get_docker_client
 @click.option(
     '--config', default='tevmc.json',
     help='Unified config file name.')
-@click.option(
-    '--logpath', default='tevmc.log',
-    help='Log file path.')
 @click.option(
     '--loglevel', default='info',
     help='Provide logging level. Example --loglevel debug, default=warning')
@@ -60,13 +56,14 @@ def up(
     wait,
     sync,
     config,
-    logpath,
     loglevel,
     target_dir,
     docker_timeout
 ):
     """Bring tevmc daemon up.
     """
+    from ..tevmc import TEVMController
+
     try:
         config = load_config(target_dir, config)
 
@@ -85,21 +82,21 @@ def up(
             'with \'tevmc build\' before running.')
         sys.exit(1)
 
-    # config logging to file
-    loglevel = loglevel.upper()
 
     fmt = logging.Formatter(
         fmt='%(asctime)s:%(levelname)s:%(message)s',
         datefmt='%H:%M:%S'
     )
-
+    loglevel = loglevel.upper()
     logger = logging.getLogger('tevmc')
     logger.setLevel(loglevel)
-    # logger.propagate = False
-    fh = logging.FileHandler(logpath, 'w')
-    fh.setLevel(loglevel)
-    fh.setFormatter(fmt)
-    logger.addHandler(fh)
+    logger.propagate = False
+
+    # config logging to stdout
+    oh = logging.StreamHandler(sys.stdout)
+    oh.setLevel(loglevel)
+    oh.setFormatter(fmt)
+    logger.addHandler(oh)
 
     # create image manifest ie images needed to run daemon
     try:
@@ -128,11 +125,10 @@ def up(
             wait=wait,
             services=services,
             from_latest=not sync
-        ):
+        ) as _tevmc:
             logger.critical('control point reached')
             try:
-                while True:
-                    time.sleep(90)
+                _tevmc.serve_api()
 
             except KeyboardInterrupt:
                 logger.warning('interrupt catched.')

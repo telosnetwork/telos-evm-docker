@@ -15,7 +15,6 @@ from contextlib import contextmanager
 
 from web3 import Web3
 
-from tevmc import TEVMController
 from tevmc.config import (
     build_docker_manifest,
     randomize_conf_ports,
@@ -50,6 +49,7 @@ def get_marker(request, mark_name: str, field: str):
 
 @contextmanager
 def bootstrap_test_stack(request, tmp_path_factory):
+    from tevmc import TEVMController
     config = get_marker(request, 'config', 'kwargs')
     tevmc_params = maybe_get_marker(
         request, 'tevmc_params', 'kwargs', {})

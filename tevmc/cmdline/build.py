@@ -338,47 +338,49 @@ def build(always_conf, target_dir, config, full_build):
         perform_config_build(target_dir, config)
         print('done.')
 
-    docker_dir = target_dir / 'docker'
-    docker_dir.mkdir(exist_ok=True)
-
     if not full_build:
         return
 
     # docker build
-    client = get_docker_client()
-    chain_name = config['telos-evm-rpc']['elastic_prefix']
-
-    builds = []
-    for container, conf in config.items():
+    for name, conf in config.items():
         if 'docker_path' in conf:
-            builds.append({
-                'tag': f'{conf["tag"]}-{chain_name}',
-                'path': str(docker_dir / conf['docker_path'] / 'build')
-            })
+            build_service(target_dir, name, config)
 
 
-    for build_args in builds:
+def build_service(target_dir: Path, service_name: str, config: dict, **kwargs):
+    docker_dir = target_dir / 'docker'
+    docker_dir.mkdir(exist_ok=True)
 
-        for chunk in client.api.build(**build_args):
-            update = None
-            _str = chunk.decode('utf-8').rstrip()
+    chain_name = config['telos-evm-rpc']['elastic_prefix']
+    client = get_docker_client()
 
-            # sometimes several json packets are sent per chunk
-            splt_str = _str.split('\n')
+    if service_name not in config:
+        service_name = service_alias_to_fullname(service_name)
 
-            for packet in splt_str:
-                msg = json.loads(packet)
-                status = msg.get('status', None)
-                status = msg.get('stream', None)
+    config = config[service_name]
 
-                if status:
-                    print(status, end='')
+    image_tag = f'{config["tag"]}-{chain_name}'
+    build_path = str(docker_dir / config['docker_path'] / 'build')
 
-        try:
-            client.images.get(build_args['tag'])
+    for chunk in client.api.build(
+        tag=image_tag, path=build_path, **kwargs):
+        _str = chunk.decode('utf-8').rstrip()
 
-        except docker.errors.NotFound:
-            print(
-                f'couldn\'t build container {build_args["tag"]} at '
-                f'{build_args["path"]}')
-            sys.exit(1)
+        # sometimes several json packets are sent per chunk
+        splt_str = _str.split('\n')
+
+        for packet in splt_str:
+            msg = json.loads(packet)
+            status = msg.get('status', None)
+            status = msg.get('stream', None)
+
+            if status:
+                print(status, end='')
+
+    try:
+        client.images.get(image_tag)
+
+    except docker.errors.NotFound:
+        raise TEVMCBuildException(
+            f'couldn\'t build container {image_tag} at '
+            f'{build_path}')
