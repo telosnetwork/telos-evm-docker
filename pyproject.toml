@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "tevmc"
+version = "0.1a5"
+description = "Telos EVM Docker controller / framework"
+authors = ["Guillermo Rodriguez <guillermo@telos.net>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+web3 = "^6.8.0"
+tdqm = "^0.0.1"
+asks = "^3.0.0"
+flask = "^2.3.3"
+click = "^8.1.7"
+pytest = "^7.4.0"
+psutil = "^5.9.5"
+docker = "^6.1.3"
+natsort = "^8.4.0"
+requests = "^2.31.0"
+iterators = "^0.2.0"
+simplejson = "^3.19.1"
+elasticsearch = "^8.9.0"
+requests-unixsocket = "^0.3.0"
+py-leap = {git = "https://github.com/guilledk/py-leap", rev = "v0.1a15"}
+rlp = "3.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+tevmc = "tevmc.cmdline:cli"
+
+[build]
+include = ["tevmc/templates/**/*"]
