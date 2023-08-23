@@ -46,9 +46,6 @@ from .cli import cli, get_docker_client
 @click.option(
     '--target-dir', default='.',
     help='target')
-@click.option(
-    '--docker-timeout', default=60,
-    help='Docker client command timeout.')
 def up(
     pid,
     services,
@@ -57,7 +54,6 @@ def up(
     config,
     loglevel,
     target_dir,
-    docker_timeout
 ):
     """Bring tevmc daemon up.
     """
@@ -74,14 +70,6 @@ def up(
         print('Daemon pid file exists. Abort.')
         sys.exit(1)
 
-    # simple build check
-    if 'metadata' not in config:
-        print(
-            'No metadata in temvc.json, please build '
-            'with \'tevmc build\' before running.')
-        sys.exit(1)
-
-
     fmt = logging.Formatter(
         fmt='%(asctime)s:%(levelname)s:%(message)s',
         datefmt='%H:%M:%S'
@@ -97,25 +85,13 @@ def up(
     oh.setFormatter(fmt)
     logger.addHandler(oh)
 
-    # create image manifest ie images needed to run daemon
-    try:
-        manifest = build_docker_manifest(config)
+    if isinstance(services, str):
+        try:
+            services = json.loads(services)
 
-    except ValueError as err:
-        print(err.message)
-        sys.exit(1)
-
-    logger.info(
-        f'container manifest: {json.dumps(manifest, indent=4)}')
-
-    # check images are present in local docker repo
-    client = get_docker_client(timeout=docker_timeout)
-    try:
-        check_docker_manifest(client, manifest)
-
-    except docker.errors.NotFound as err:
-        logger.critical(err.message)
-        sys.exit(1)
+        except json.JSONDecodeError:
+            print('--services value must be a json list encoded in a string')
+            sys.exit(1)
 
     with open(pid, 'w+') as pidfile:
         pidfile.write(str(os.getpid()))
