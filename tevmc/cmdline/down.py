@@ -26,7 +26,7 @@ def down(pid):
         tevmcd.send_signal(signal.SIGINT)
         tevmcd.wait()
 
-        Path(pid_path).unlink()
+        Path(pid_path).unlink(missing_ok=True)
 
     except FileNotFoundError:
         print(f'Couldn\'t open pid file at {pid}')

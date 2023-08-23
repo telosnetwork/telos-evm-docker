@@ -11,7 +11,7 @@ import docker
 from docker.types import Mount
 
 from leap.sugar import download_snapshot
-from tevmc.cmdline.build import perform_docker_build
+from tevmc.cmdline.build import build_service
 from tevmc.config import load_config
 from tevmc.testing.database import ElasticDataEmptyError, ElasticDriver
 
@@ -82,10 +82,8 @@ def perform_data_repair(config_path, progress=True):
 
     logging.info('rebuild nodeos image...')
 
-    build_logger = logging.getLogger('repair-build')
-    build_logger.setLevel('INFO')
-    perform_docker_build(
-        root_pwd, config, build_logger, ['nodeos'])
+    build_service(
+        root_pwd, 'nodeos', config)
 
 
 @cli.command()

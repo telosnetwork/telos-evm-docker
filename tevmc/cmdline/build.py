@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import logging
 import os
 import sys
 import json
@@ -233,121 +234,14 @@ def service_alias_to_fullname(alias: str):
     return alias
 
 
-def perform_docker_build(target_dir, config, logger, services):
-    perform_config_build(target_dir, config)
-
-    docker_dir = target_dir / 'docker'
-    docker_dir.mkdir(exist_ok=True)
-
-    # docker build
-    client = get_docker_client()
-    chain_name = config['telos-evm-rpc']['elastic_prefix']
-
-    builds = []
-    for service in services:
-        fullname = service_alias_to_fullname(service)
-        conf = config[fullname]
-        if 'docker_path' in conf:
-            builds.append({
-                'tag': f'{conf["tag"]}-{chain_name}',
-                'path': str(docker_dir / conf['docker_path'] / 'build')
-            })
-
-    for build_args in builds:
-        stream = ''
-        logger.info(f'building {build_args}...')
-
-        for chunk in client.api.build(**build_args):
-            update = None
-            _str = chunk.decode('utf-8').rstrip()
-
-            # sometimes several json packets are sent per chunk
-            splt_str = _str.split('\n')
-
-            for packet in splt_str:
-                msg = json.loads(packet)
-                status = msg.get('status', None)
-                status = msg.get('stream', None)
-                if status:
-                    strp_status = status.rstrip()
-                    stream += status
-
-        try:
-            client.images.get(build_args['tag'])
-
-        except docker.errors.NotFound:
-            msg_ex = (
-                f'couldn\'t build container {build_args["tag"]} at '
-                f'{build_args["path"]}')
-            logger.critical(msg_ex)
-            logger.critical(stream)
-            raise TEVMCBuildException(msg_ex)
-
-        logger.info('building complete.')
-
-
 @cli.command()
-@click.option(
-    '--always-conf/--smart-conf', default=False,
-    help='Force configuration files rebuild from templates.')
-@click.option(
-    '--target-dir', default='.',
-    help='target')
-@click.option(
-    '--config', default='tevmc.json',
-    help='Unified config file name.')
-@click.option(
-    '--full-build/--templates-only', default=True,
-    help='Perform docker build or only setup files.')
-def build(always_conf, target_dir, config, full_build):
-    """Build in-repo docker containers.
-    """
-    config_fname = config
-    try:
-        config = load_config(target_dir, config)
-
-    except FileNotFoundError:
-        print('Config not found.')
-        sys.exit(1)
-
-    target_dir = Path(target_dir).resolve()
-
-    rebuild_conf = False
-    prev_hash = None
-    cfg = config.copy()
-    if 'metadata' in cfg:
-        cfg.pop('metadata', None)
-        prev_hash = config['metadata']['phash']
-        print(f'Previous hash: {prev_hash}')
-
-    hasher = sha1(json.dumps(cfg, sort_keys=True).encode('utf-8'))
-    curr_hash = hasher.hexdigest()
-
-    print(f'Current hash: {curr_hash}')
-
-    rebuild_conf = (prev_hash != curr_hash) or always_conf
-
-    if rebuild_conf:
-        config['metadata'] = {}
-        config['metadata']['phash'] = curr_hash
-
-        with open(target_dir / config_fname, 'w+') as uni_conf:
-            uni_conf.write(json.dumps(config, indent=4))
-
-        print('Rebuilding config files...', end='', flush=True)
-        perform_config_build(target_dir, config)
-        print('done.')
-
-    if not full_build:
-        return
-
-    # docker build
-    for name, conf in config.items():
-        if 'docker_path' in conf:
-            build_service(target_dir, name, config)
+def build():
+    print(
+        'no need to run \"tevmc build\" command anymore, has been incorporated'
+        'into \"tevmc up\" command.')
 
 
-def build_service(target_dir: Path, service_name: str, config: dict, **kwargs):
+def build_service(target_dir: Path, service_name: str, config: dict, logger, **kwargs):
     docker_dir = target_dir / 'docker'
     docker_dir.mkdir(exist_ok=True)
 
@@ -362,20 +256,23 @@ def build_service(target_dir: Path, service_name: str, config: dict, **kwargs):
     image_tag = f'{config["tag"]}-{chain_name}'
     build_path = str(docker_dir / config['docker_path'] / 'build')
 
+    accumulated_status = ''
     for chunk in client.api.build(
         tag=image_tag, path=build_path, **kwargs):
         _str = chunk.decode('utf-8').rstrip()
-
-        # sometimes several json packets are sent per chunk
         splt_str = _str.split('\n')
 
         for packet in splt_str:
             msg = json.loads(packet)
-            status = msg.get('status', None)
-            status = msg.get('stream', None)
+            status = msg.get('stream', '')
 
             if status:
-                print(status, end='')
+                accumulated_status += status
+                if '\n' in accumulated_status:
+                    lines = accumulated_status.split('\n')
+                    for line in lines[:-1]:
+                        logger.info(line)
+                    accumulated_status = lines[-1]
 
     try:
         client.images.get(image_tag)

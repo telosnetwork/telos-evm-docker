@@ -22,8 +22,6 @@ from tevmc.config import (
     add_virtual_networking
 )
 from tevmc.cmdline.init import touch_node_dir
-from tevmc.cmdline.build import perform_docker_build
-from tevmc.cmdline.clean import clean
 from tevmc.cmdline.cli import get_docker_client
 
 
@@ -78,8 +76,6 @@ def bootstrap_test_stack(request, tmp_path_factory):
     chain_name = config['telos-evm-rpc']['elastic_prefix']
 
     tmp_path = tmp_path_factory.getbasetemp() / chain_name
-    build_docker_manifest(config)
-
     tmp_path.mkdir(parents=True, exist_ok=True)
     touch_node_dir(tmp_path, config, 'tevmc.json')
 
@@ -111,9 +107,6 @@ def bootstrap_test_stack(request, tmp_path_factory):
         assert (host_config_path / binary).is_file()
 
         config['nodeos']['nodeos_bin'] = '/root/' + binary
-
-    perform_docker_build(
-        tmp_path, config, logging, services)
 
     containers = None
 

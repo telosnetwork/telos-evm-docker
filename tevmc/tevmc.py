@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from copy import deepcopy
+from hashlib import sha1
 import re
 import os
 import sys
@@ -27,6 +29,7 @@ from leap.sugar import (
     docker_wait_process,
     download_latest_snapshot
 )
+from tevmc.cmdline.build import build_service, perform_config_build, service_alias_to_fullname
 
 from tevmc.routes import add_routes
 
@@ -1009,7 +1012,57 @@ class TEVMController:
                 self.chain_name, 'bridge', ipam=ipam_config
             )
 
+    def build(
+        self,
+        force_conf_rebuild: bool = False,
+        templates_only: bool = False,
+        use_cache: bool = True
+    ):
+        self.logger.info('starting build...')
+        rebuild_conf = False
+        prev_hash = None
+        cfg = deepcopy(self.config.copy())
+        if 'metadata' in cfg:
+            cfg.pop('metadata', None)
+            prev_hash = self.config['metadata']['phash']
+            self.logger.info(f'previous hash: {prev_hash}')
+
+        hasher = sha1(json.dumps(cfg, sort_keys=True).encode('utf-8'))
+        curr_hash = hasher.hexdigest()
+
+        self.logger.info(f'current hash: {curr_hash}')
+
+        rebuild_conf = (prev_hash != curr_hash) or force_conf_rebuild
+
+        if rebuild_conf:
+            cfg['metadata'] = {}
+            cfg['metadata']['phash'] = curr_hash
+
+            with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
+                uni_conf.write(json.dumps(cfg, indent=4))
+
+            self.logger.info('Rebuilding config files...')
+            perform_config_build(self.root_pwd, cfg)
+            self.logger.info('done.')
+
+            self.config = cfg
+
+        if templates_only:
+            return
+
+        # docker build
+        for service in self.services:
+            name = service_alias_to_fullname(service)
+            conf = self.config[name]
+            if 'docker_path' in conf:
+                build_service(
+                    self.root_pwd, name,
+                    self.config, self.logger,
+                    nocache=not use_cache)
+
     def start(self):
+
+        self.build()
 
         if sys.platform == 'darwin':
             self.darwin_network_setup()
@@ -1088,6 +1141,10 @@ class TEVMController:
             self.nodeos_logfile.close()
 
         self.exit_stack.pop_all().close()
+
+        pid_path = self.root_pwd / 'tevmc.pid'
+        if pid_path.is_file():
+            pid_path.unlink(missing_ok=True)
 
     def __enter__(self):
         self.start()
