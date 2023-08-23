@@ -13,7 +13,7 @@ from docker.types import Mount
 from leap.sugar import download_snapshot
 from tevmc.cmdline.build import perform_docker_build
 from tevmc.config import load_config
-from tevmc.testing.database import ElasticDriver
+from tevmc.testing.database import ElasticDataEmptyError, ElasticDriver
 
 from .cli import cli
 
@@ -93,4 +93,8 @@ def perform_data_repair(config_path, progress=True):
     '--config', default='tevmc.json',
     help='Path to config file.')
 def repair(config):
-    perform_data_repair(Path(config))
+    try:
+        perform_data_repair(Path(config))
+
+    except ElasticDataEmptyError:
+        logging.info('no data to repair')
