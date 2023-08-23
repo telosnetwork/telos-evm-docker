@@ -22,29 +22,21 @@ container can consume to serve the ethereum compatible API.
 ## Dependencies
 You will need `docker` & `python3`.
 
-#### small python heads up
+## Installation:
 
-It's good practice to not modify the python envoirment that comes with the system, as it is sometimes used for system scripts.
-A good practice is to use a virtual envoirment:
+    git clone https://github.com/telosnetwork/telos-evm-docker.git -b v1.5.0
+    cd telos-evm-docker
 
-    1. linux: https://mothergeo-py.readthedocs.io/en/latest/development/how-to/venv.html
-    2. windows:https://mothergeo-py.readthedocs.io/en/latest/development/how-to/venv-win.html
+    # Two posibilities:
+    # 1) Recommended: Install poetry python package manager dependecy to /usr/local (REQUIRES SUDO)
+    sudo ./install.sh
 
-
-To install python dependencies:
-
-    pip install -U --no-cache-dir -e . -r requirements.txt
-
-If in your system you have both a `python` and `python3` binary, corresponding to `python2.7` and `python3.x`
-respectively. You'll need to specify which version of `pip` to use:
-
-    pip3 install -U --no-cache-dir -e . -r requirements.txt
-
-Or if not found:
-
-    python3 -m pip install -U --no-cache-dir -e . -r requirements.txt
+    # 2) Install dependency to another $DIRECTORY that is already on $PATH
+    ./install.sh $DIRECTORY
 
 ## Execution
+
+    source ./activate.sh
     tevmc init local
     cd local
     tevmc build
@@ -65,7 +57,7 @@ Or if not found:
 - The `eosio` superuser account for the Telos native has the following keypair for both active and owner:
   - Public: `EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L`
   - Private: `5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL`
-- You can access kibana at http://localhost:5601/ with username `elastic` and password `password`
+- You can access kibana at http://localhost:5601/
 
 ## Running Tests
 
