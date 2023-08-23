@@ -2,7 +2,7 @@ import json
 import math
 import locale
 import logging
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 from elasticsearch import Elasticsearch, NotFoundError
 
@@ -103,6 +103,10 @@ def index_to_suffix_num(index: str) -> int:
     return int(suffix)
 
 
+class ElasticDataEmptyError(BaseException):
+    ...
+
+
 class ElasticDataIntegrityError(BaseException):
     ...
 
@@ -112,8 +116,8 @@ class ESDuplicatesFound(ElasticDataIntegrityError):
     def __init__(
         self,
         message: str,
-        delta_dups: list[int],
-        action_dups: list[int]
+        delta_dups: List[int],
+        action_dups: List[int]
     ):
         super().__init__(message)
         self.delta_dups = delta_dups
@@ -536,7 +540,11 @@ class ElasticDriver:
         try:
             self.full_integrity_check()
             doc = self.get_last_indexed_block()
-            return doc.block_num, doc.global_block_num
+            if doc:
+                return doc.block_num, doc.global_block_num
+
+            else:
+                raise ElasticDataEmptyError()
 
         except ESGapFound as err:
             logging.info(err)

@@ -351,7 +351,7 @@ class CLEOSEVM(CLEOS):
 
     def eth_get_block_by_number(
         self,
-        block_number: int | str,
+        block_number: Union[int, str],
         full_transactions: bool= False,
         url: Optional[str] = None
     ):
