@@ -22,14 +22,14 @@ from .cli import cli, get_docker_client
     help='Path to lock file for daemon')
 @click.option(
     '--services',
-    default=[
+    default=json.dumps([
         'redis',
         'elastic',
         'kibana',
         'nodeos',
         'indexer',
         'rpc',
-    ],
+    ]),
     help='Services to launch')
 @click.option(
     '--wait/--no-wait', default=False,
