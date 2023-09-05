@@ -925,11 +925,15 @@ class TEVMController:
     def restart_translator(self):
         if 'telosevm-translator' in self.containers:
             container = self.containers['telosevm-translator']
-            container.reload()
+            try:
+                container.reload()
 
-            if container.status == 'running':
-                container.stop()
-                container.remove()
+                if container.status == 'running':
+                    container.stop()
+                    container.remove()
+
+            except docker.errors.NotFound:
+                ...
 
         self.start_telosevm_translator()
 
@@ -978,11 +982,15 @@ class TEVMController:
     def restart_rpc(self):
         if 'telos-evm-rpc' in self.containers:
             container = self.containers['telos-evm-rpc']
-            container.reload()
+            try:
+                container.reload()
 
-            if container.status == 'running':
-                container.stop()
-                container.remove()
+                if container.status == 'running':
+                    container.stop()
+                    container.remove()
+
+            except docker.errors.NotFound:
+                ...
 
         self.start_evm_rpc()
 
