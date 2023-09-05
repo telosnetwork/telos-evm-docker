@@ -62,7 +62,8 @@ class TEVMController:
         ],
         from_latest: bool = False,
         is_producer: bool = True,
-        skip_init: bool = False
+        skip_init: bool = False,
+        additional_nodeos_params: List[str] = []
     ):
         self.pid = os.getpid()
         self.config = config
@@ -72,6 +73,7 @@ class TEVMController:
         self.services = services
         self.nodeos_logfile = None
         self.nodeos_logproc = None
+        self.additional_nodeos_params = additional_nodeos_params
 
         if not root_pwd:
             self.root_pwd = Path().resolve()
@@ -459,7 +461,11 @@ class TEVMController:
                     ipv4_address=config['virtual_ip']
                 )
 
-    def start_nodeos(self, space_monitor=True, do_init=True):
+    def start_nodeos(
+        self,
+        space_monitor=True,
+        do_init=True
+    ):
         """Start eosio_nodeos container.
 
         - Initialize CLEOS wrapper and setup keosd & wallet.
@@ -551,6 +557,8 @@ class TEVMController:
         if self.is_producer:
             nodeos_cmd += ['-e', '-p', 'eosio']
 
+        nodeos_cmd += self.additional_nodeos_params
+
         nodeos_cmd += ['>>', config['log_path'], '2>&1']
         nodeos_cmd_str = ' '.join(nodeos_cmd)
 
@@ -639,20 +647,21 @@ class TEVMController:
             else:
                 cleos.wait_received(from_file=config['log_path'])
 
-            # wait until nodeos apis are up
-            for i in range(60):
-                try:
-                    cleos.get_info()
-                    break
+            if not self.skip_init:
+                # wait until nodeos apis are up
+                for i in range(60):
+                    try:
+                        cleos.get_info()
+                        break
 
-                except requests.exceptions.ConnectionError:
-                    self.logger.warning('connection error trying to get chain info...')
-                    time.sleep(1)
+                    except requests.exceptions.ConnectionError:
+                        self.logger.warning('connection error trying to get chain info...')
+                        time.sleep(1)
 
-            genesis_block = self.config['telosevm-translator']['start_block'] - 1
-            self.logger.info(f'nodeos has started, waiting until blocks.log contains evm genesis block number {genesis_block}')
-            cleos.wait_blocks(
-                genesis_block - cleos.get_info()['head_block_num'], sleep_time=10)
+                genesis_block = int(self.config['telosevm-translator']['start_block']) - 1
+                self.logger.info(f'nodeos has started, waiting until blocks.log contains evm genesis block number {genesis_block}')
+                cleos.wait_blocks(
+                    genesis_block - int(cleos.get_info()['head_block_num']), sleep_time=10)
 
     def restart_nodeos(self):
         self.cleos.stop_nodeos(
@@ -914,12 +923,17 @@ class TEVMController:
                     break
 
     def restart_translator(self):
-        container = self.containers['telosevm-translator']
-        container.reload()
+        if 'telosevm-translator' in self.containers:
+            container = self.containers['telosevm-translator']
+            try:
+                container.reload()
 
-        if container.status == 'running':
-            container.stop()
-            container.remove()
+                if container.status == 'running':
+                    container.stop()
+                    container.remove()
+
+            except docker.errors.NotFound:
+                ...
 
         self.start_telosevm_translator()
 
@@ -966,12 +980,17 @@ class TEVMController:
                     break
 
     def restart_rpc(self):
-        container = self.containers['telos-evm-rpc']
-        container.reload()
+        if 'telos-evm-rpc' in self.containers:
+            container = self.containers['telos-evm-rpc']
+            try:
+                container.reload()
 
-        if container.status == 'running':
-            container.stop()
-            container.remove()
+                if container.status == 'running':
+                    container.stop()
+                    container.remove()
+
+            except docker.errors.NotFound:
+                ...
 
         self.start_evm_rpc()
 

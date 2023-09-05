@@ -36,17 +36,17 @@ def add_routes(tevmc: 'TEVMController'):
 
         elif service == 'nodeos':
             build_service(
-                Path('.'), 'nodeos', tevmc.config, nocache=must_update)
+                Path('.'), 'nodeos', tevmc.config, tevmc.logger, nocache=must_update)
             tevmc.restart_nodeos()
 
         elif service == 'indexer':
             build_service(
-                Path('.'), 'indexer', tevmc.config, nocache=must_update)
+                Path('.'), 'indexer', tevmc.config, tevmc.logger, nocache=must_update)
             tevmc.restart_translator()
 
         elif service == 'rpc':
             build_service(
-                Path('.'), 'rpc', tevmc.config, nocache=must_update)
+                Path('.'), 'rpc', tevmc.config, tevmc.logger, nocache=must_update)
             tevmc.restart_rpc()
 
         return jsonify(success=True), 200
