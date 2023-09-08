@@ -16,6 +16,6 @@ run npx tsc
 
 env LOG_LEVEL debug
 
-cmd ["node", "--expose-gc", "build/main.js"]
+cmd ["/bin/bash", "-c", "node --expose-gc build/main.js >> /logs/telosevm-translator.log 2>&1"]
 
 expose $broadcast_port

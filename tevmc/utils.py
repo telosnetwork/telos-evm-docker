@@ -366,3 +366,26 @@ def docker_stream_logs(container, timeout=30.0, from_latest=False):
 
     except Timeout:
         raise StopIteration(f'No logs received for {timeout} seconds.')
+
+
+# recursive compare two dicts
+def deep_dict_equal(dict1, dict2):
+    if set(dict1.keys()) != set(dict2.keys()):
+        return False
+    for key, value1 in dict1.items():
+        value2 = dict2[key]
+        if isinstance(value1, dict) and isinstance(value2, dict):
+            if not deep_dict_equal(value1, value2):
+                return False
+        elif isinstance(value1, list) and isinstance(value2, list):
+            if len(value1) != len(value2):
+                return False
+            for item1, item2 in zip(value1, value2):
+                if isinstance(item1, dict) and isinstance(item2, dict):
+                    if not deep_dict_equal(item1, item2):
+                        return False
+                elif item1 != item2:
+                    return False
+        elif value1 != value2:
+            return False
+    return True

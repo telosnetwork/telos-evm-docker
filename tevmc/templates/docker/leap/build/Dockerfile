@@ -10,7 +10,6 @@ RUN apt-get update && \
         wget \
         zstd \
         binutils \
-        logrotate \
         ca-certificates
 
 # install snapshots from latest evm deployments

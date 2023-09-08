@@ -26,6 +26,31 @@ class TEVMCBuildException(Exception):
     ...
 
 
+def patch_config(template_dict, current_dict):
+    new_dict = {}
+    for key, value in template_dict.items():
+        if key in current_dict:
+            if isinstance(value, dict) and isinstance(current_dict[key], dict):
+                new_dict[key] = patch_config(value, current_dict[key])
+            elif isinstance(value, list) and isinstance(current_dict[key], list):
+                for i in range(min(len(value), len(current_dict[key]))):
+                    if isinstance(value[i], dict) and isinstance(current_dict[key][i], dict):
+                        new_dict[key] = [patch_config(value[i], current_dict[key][i]) for value[i], current_dict[key][i] in zip(value, current_dict[key])]
+            else:
+                new_dict[key] = current_dict[key]
+        else:
+            new_dict[key] = value
+
+    # Remove keys in current_dict that are not in template_dict
+    keys_to_remove = set(current_dict.keys()) - set(template_dict.keys())
+    for key in keys_to_remove:
+        del current_dict[key]
+
+    current_dict.clear()
+    current_dict.update(new_dict)
+    return current_dict
+
+
 def perform_config_build(target_dir, config):
     target_dir = Path(target_dir).resolve()
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -124,12 +149,6 @@ def perform_config_build(target_dir, config):
         'nodeos_history_port': ini_conf['history_endpoint'].split(':')[-1]
     }
     write_docker_template(f'{nodeos_build_dir}/Dockerfile', subst)
-
-    # logrotate.conf
-    write_config_file(
-        'logrotate.conf',
-        nodeos_conf_dir,
-        {'nodeos_log_path': get_config('nodeos.log_path', config)})
 
     # nodeos.config.ini
     subst = {}

@@ -21,7 +21,7 @@ RUN npx tsc
 
 COPY config.json config.json
 
-CMD ["node", "dist/main.js"]
+CMD ["/bin/bash", "-c", "node dist/main.js >> /logs/telos-evm-rpc.log 2>&1"]
 
 EXPOSE $api_port
 EXPOSE $ws_port
