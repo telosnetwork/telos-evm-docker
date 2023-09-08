@@ -391,13 +391,9 @@ class TEVMController:
             docker_dir = self.docker_wd / config['docker_path']
 
             data_dir = docker_dir / config['data_dir']
-            logs_dir = docker_dir / config['logs_dir']
-
             data_dir.mkdir(parents=True, exist_ok=True)
-            logs_dir.mkdir(parents=True, exist_ok=True)
 
             self.mounts['elasticsearch'] = [
-                Mount('/home/elasticsearch/logs', str(logs_dir.resolve()), 'bind'),
                 Mount('/home/elasticsearch/data', str(data_dir.resolve()), 'bind')
             ]
 

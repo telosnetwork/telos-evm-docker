@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from copy import deepcopy
 import logging
 import os
 import sys
@@ -27,28 +28,30 @@ class TEVMCBuildException(Exception):
 
 
 def patch_config(template_dict, current_dict):
+    diffs = []
     new_dict = {}
+
     for key, value in template_dict.items():
         if key in current_dict:
             if isinstance(value, dict) and isinstance(current_dict[key], dict):
-                new_dict[key] = patch_config(value, current_dict[key])
-            elif isinstance(value, list) and isinstance(current_dict[key], list):
-                for i in range(min(len(value), len(current_dict[key]))):
-                    if isinstance(value[i], dict) and isinstance(current_dict[key][i], dict):
-                        new_dict[key] = [patch_config(value[i], current_dict[key][i]) for value[i], current_dict[key][i] in zip(value, current_dict[key])]
+                new_dict[key], inner_diffs = patch_config(value, current_dict[key])
+                diffs += inner_diffs
             else:
                 new_dict[key] = current_dict[key]
         else:
             new_dict[key] = value
+            diffs.append(f'Added: {key}={value}')
 
-    # Remove keys in current_dict that are not in template_dict
+    final_dict = deepcopy(current_dict)
     keys_to_remove = set(current_dict.keys()) - set(template_dict.keys())
-    for key in keys_to_remove:
-        del current_dict[key]
 
-    current_dict.clear()
-    current_dict.update(new_dict)
-    return current_dict
+    for key in keys_to_remove:
+        del final_dict[key]
+        diffs.append(f'Removed: {key}')
+
+    final_dict.update(new_dict)
+
+    return final_dict, diffs
 
 
 def perform_config_build(target_dir, config):
