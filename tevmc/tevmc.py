@@ -694,6 +694,13 @@ class TEVMController:
         log_path /= f'{service}.log'
         log_path = log_path.resolve()
 
+        for _ in range(3):
+            if not log_path.is_file():
+                time.sleep(1)
+
+            else:
+                break
+
         process = subprocess.Popen(
             ['bash', '-c',
                 f'timeout {timeout}s tail -n {lines} -f {log_path}'],
@@ -712,7 +719,7 @@ class TEVMController:
 
         if process.returncode != 0:
             raise ValueError(
-                'tail returned {process.returncode}\n'
+                f'tail returned {process.returncode}\n'
                 f'{process.stderr.read().decode("utf-8")}')
 
     def _get_head_block(self):
