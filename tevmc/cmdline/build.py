@@ -263,7 +263,10 @@ def build():
         'into \"tevmc up\" command.')
 
 
-def build_service(target_dir: Path, service_name: str, config: dict, logger, **kwargs):
+def build_service(target_dir: Path, service_name: str, config: dict, logger = None, **kwargs):
+    if not logger:
+        logger = logging.getLogger(f'build-{service_name}')
+
     docker_dir = target_dir / 'docker'
     docker_dir.mkdir(exist_ok=True)
 

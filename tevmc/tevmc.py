@@ -702,6 +702,8 @@ class TEVMController:
 
         for line in iter(process.stdout.readline, b''):
             msg = line.decode('utf-8')
+            if 'clear_expired_input_' in msg:
+                continue
             yield msg
             self.logger.info(msg.rstrip())
 

@@ -25,7 +25,7 @@ def test_repair_dirty_db(tevmc_mainnet):
     tevmc.is_nodeos_relaunch = True
     tevmc.start_nodeos(do_init=False)
     is_dirty = False
-    for line in tevmc._stream_nodeos(lines=10):
+    for line in tevmc._stream_logs_from_main_dir('nodeos', lines=10):
         logging.info(line)
         if 'database dirty flag set (likely due to unclean shutdown)' in line:
             is_dirty = True
