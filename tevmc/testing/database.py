@@ -6,6 +6,9 @@ from typing import List, Optional
 
 from elasticsearch import Elasticsearch, NotFoundError
 
+import traceback
+import sys
+
 
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
@@ -167,7 +170,9 @@ class ElasticDriver:
 
             return StorageEosioAction(result.get('hits', {}).get('hits', [])[0].get('_source'))
 
-        except Exception as error:
+        except BaseException as error:
+            logging.error(traceback.format_exc())
+            logging.error(error)
             return None
 
     def block_from_evm_num(self, num: int):
@@ -187,7 +192,9 @@ class ElasticDriver:
 
             return StorageEosioDelta(result.get('hits', {}).get('hits', [])[0].get('_source'))
 
-        except Exception as error:
+        except BaseException as error:
+            logging.error(traceback.format_exc())
+            logging.error(error)
             return None
 
     def get_ordered_delta_indices(self):
@@ -219,7 +226,9 @@ class ElasticDriver:
 
             return StorageEosioDelta(result.get('hits', {}).get('hits', [])[0].get('_source'))
 
-        except Exception as error:
+        except BaseException as error:
+            logging.error(traceback.format_exc())
+            logging.error(error)
             return None
 
     def get_last_indexed_block(self):
@@ -247,9 +256,10 @@ class ElasticDriver:
 
                 return StorageEosioDelta(block_doc)
 
-            except Exception as error:
+            except BaseException as error:
+                logging.error(traceback.format_exc())
                 logging.error(error)
-                raise error
+                return None
 
         return None
 
