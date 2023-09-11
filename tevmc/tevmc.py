@@ -676,8 +676,13 @@ class TEVMController:
                     genesis_block - int(cleos.get_info()['head_block_num']), sleep_time=10)
 
     def restart_nodeos(self):
-        self.cleos.stop_nodeos(
-            from_file='/logs/nodeos.log')
+        try:
+            self.cleos.stop_nodeos(
+                from_file='/logs/nodeos.log')
+
+        except docker.errors.NotFound:
+            self.logger.info('tried to stop nodeos process but container not running')
+
         self.is_nodeos_relaunch = True
 
         time.sleep(4)
@@ -943,7 +948,6 @@ class TEVMController:
                 )
 
             for msg in self.stream_logs('telosevm-translator', timeout=60*10):
-                self.logger.info(msg.rstrip())
                 if 'drained' in msg:
                     break
 
