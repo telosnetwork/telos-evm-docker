@@ -1,3 +1,4 @@
+import time
 import json
 import math
 import locale
@@ -7,7 +8,6 @@ from typing import List, Optional
 from elasticsearch import Elasticsearch, NotFoundError
 
 import traceback
-import sys
 
 
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
@@ -576,7 +576,17 @@ class ElasticDriver:
 
         except ESGapFound as err:
             logging.info(err)
-            doc = self.block_from_evm_num(err.start)
+
+            bnum = err.start
+            doc = self.block_from_evm_num(bnum)
+            backstep = 10
+            exp = 1
+            while not doc:
+                logging.info(f'block #{bnum} query returned None, trying older block...')
+                bnum -= backstep ** exp
+                exp += 1
+                time.sleep(1)
+                doc = self.block_from_evm_num(bnum)
 
         except ESDuplicatesFound as err:
             logging.info(err)
