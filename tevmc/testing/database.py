@@ -165,6 +165,9 @@ class ElasticDriver:
                 }
             )
 
+            logging.info(f'tx_from_hash: {h}')
+            logging.info(result)
+
             if 'hits' not in result:
                 return None
 
@@ -192,6 +195,9 @@ class ElasticDriver:
                     }
                 }
             )
+
+            logging.info(f'block_from_evm_num: {num}')
+            logging.info(result)
 
             if 'hits' not in result:
                 return None
