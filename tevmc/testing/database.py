@@ -581,12 +581,15 @@ class ElasticDriver:
             doc = self.block_from_evm_num(bnum)
             backstep = 10
             exp = 1
-            while not doc:
+            while not doc and exp < 6:
                 logging.info(f'block #{bnum} query returned None, trying older block...')
                 bnum -= backstep ** exp
                 exp += 1
                 time.sleep(1)
                 doc = self.block_from_evm_num(bnum)
+
+            if not doc:
+                raise ElasticDataIntegrityError('Gap found but couldn\'t find last valid block!')
 
         except ESDuplicatesFound as err:
             logging.info(err)
