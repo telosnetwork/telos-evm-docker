@@ -165,10 +165,16 @@ class ElasticDriver:
                 }
             )
 
-            if result.get('hits', {}).get('hits') and len(result.get('hits', {}).get('hits')) == 0:
+            if 'hits' not in result:
                 return None
 
-            return StorageEosioAction(result.get('hits', {}).get('hits', [])[0].get('_source'))
+            if 'hits' not in result['hits']:
+                return None
+
+            if len(result['hits']['hits']) == 0:
+                return None
+
+            return StorageEosioAction(result['hits']['hits'][0]['_source'])
 
         except BaseException as error:
             logging.error(traceback.format_exc())
@@ -187,10 +193,16 @@ class ElasticDriver:
                 }
             )
 
-            if result.get('hits', {}).get('hits') and len(result.get('hits', {}).get('hits')) == 0:
+            if 'hits' not in result:
                 return None
 
-            return StorageEosioDelta(result.get('hits', {}).get('hits', [])[0].get('_source'))
+            if 'hits' not in result['hits']:
+                return None
+
+            if len(result['hits']['hits']) == 0:
+                return None
+
+            return StorageEosioDelta(result['hits']['hits'][0]['_source'])
 
         except BaseException as error:
             logging.error(traceback.format_exc())
