@@ -930,7 +930,7 @@ class TEVMController:
                         'INDEXER_STOP_BLOCK': config['stop_block'],
                         'EVM_DEPLOY_BLOCK': config['deploy_block'],
                         'EVM_PREV_HASH': config['prev_hash'],
-                        'EVM_START_BLOCK': config['evm_start_block'],
+                        'EVM_BLOCK_DELTA': config['evm_block_delta'],
                         'EVM_VALIDATE_HASH': config['evm_validate_hash'],
                         'BROADCAST_HOST': bc_host,
                         'BROADCAST_PORT': bc_port,
