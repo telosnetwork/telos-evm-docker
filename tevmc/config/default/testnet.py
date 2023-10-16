@@ -160,7 +160,7 @@ telosevm_translator = {
     'docker_path': 'telosevm-translator',
     'start_block': 136393814,
     'evm_block_delta': 57,
-    'evm_validate_hash': '3ba6f4ac4f5b74e8e62622b9d8c75d1e4ad10abb3b7e4770cbab7338a861a4f9',
+    'evm_validate_hash': '',
     'stop_block': 4294967295,
     'deploy_block': 136393814,
     'prev_hash': '',
