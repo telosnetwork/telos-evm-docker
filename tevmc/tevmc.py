@@ -258,7 +258,7 @@ class TEVMController:
                 log_config=LogConfig(
                     type=LogConfig.types.JSON,
                     config={'max-size': '100m' }),
-                # remove=True,
+                remove=True,
                 labels=DEFAULT_DOCKER_LABEL)
 
             container.reload()
@@ -270,6 +270,7 @@ class TEVMController:
             self.logger.info(f'stopping container \"{name}\"')
             try:
                 if container:
+                    container.kill(signal='SIGTERM')
                     for i in range(3):
                         container.stop()
             except docker.errors.APIError as e:
@@ -277,15 +278,15 @@ class TEVMController:
 
             self.logger.info('stopped.')
 
-            self.logger.info(f'removing container \"{name}\"')
-            try:
-                if container:
-                    for i in range(3):
-                        container.remove()
-            except docker.errors.APIError as e:
-                ...
+            # self.logger.info(f'removing container \"{name}\"')
+            # try:
+            #     if container:
+            #         for i in range(3):
+            #             container.remove()
+            # except docker.errors.APIError as e:
+            #     ...
 
-            self.logger.info('removed.')
+            # self.logger.info('removed.')
 
 
     def stream_logs(self, container, timeout=30.0, from_latest=False):
@@ -1167,14 +1168,14 @@ class TEVMController:
             try:
                 self.cleos.stop_nodeos(
                     from_file='/logs/nodeos.log')
-
+                self.containers['nodeos'].kill(signal='SIGTERM')
                 self.containers['nodeos'].wait(timeout=30)
 
             except docker.errors.NotFound:
                 ...
 
             except docker.errors.APIError:
-                self.containers['nodeos'].stop()
+                ...
 
             self.is_nodeos_relaunch = True
 
