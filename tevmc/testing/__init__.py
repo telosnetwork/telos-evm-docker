@@ -5,6 +5,7 @@ import time
 import docker
 import logging
 import tarfile
+from leap.sugar import download_snapshot
 import requests
 
 import pytest
@@ -58,6 +59,8 @@ def bootstrap_test_stack(request, tmp_path_factory):
         request, 'custom_subst_wasm', 'args', [None])[0]
     custom_nodeos_tar = maybe_get_marker(
         request, 'custom_nodeos_tar', 'args', [None])[0]
+    from_snap = maybe_get_marker(
+        request, 'from_snapshot', 'args', [None])[0]
 
     randomize = maybe_get_marker(request, 'randomize', 'args', [True])[0]
 
@@ -107,6 +110,29 @@ def bootstrap_test_stack(request, tmp_path_factory):
         assert (host_config_path / binary).is_file()
 
         config['nodeos']['nodeos_bin'] = '/root/' + binary
+
+    if from_snap:
+        chain_name = config['telos-evm-rpc']['elastic_prefix']
+
+        if ('mainnet' not in chain_name and
+            'testnet' not in chain_name):
+            raise ValueError(
+                'from_snaphost should only be used against '
+                'mainnet or testnet nodes'
+            )
+
+        chain_type = 'mainnet' if 'mainnet' in chain_name else 'testnet'
+
+        nodeos_conf_dir = tmp_path / 'docker'
+        nodeos_conf_dir /= config['nodeos']['docker_path']
+        nodeos_conf_dir /= config['nodeos']['conf_dir']
+        snap_path = download_snapshot(
+            nodeos_conf_dir, from_snap,
+            network=chain_type, progress=True)
+
+        config['nodeos']['snapshot'] = f'/root/{snap_path.name}'
+        config['telosevm-translator']['start_block'] = from_snap
+
 
     containers = None
 
