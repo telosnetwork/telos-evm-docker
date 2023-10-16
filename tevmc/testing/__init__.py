@@ -2,10 +2,9 @@
 
 import sys
 import time
+import json
 import docker
-import logging
 import tarfile
-from leap.sugar import download_snapshot
 import requests
 
 import pytest
@@ -15,9 +14,9 @@ from pathlib import Path
 from contextlib import contextmanager
 
 from web3 import Web3
+from leap.sugar import download_snapshot
 
 from tevmc.config import (
-    build_docker_manifest,
     randomize_conf_ports,
     randomize_conf_creds,
     add_virtual_networking
@@ -132,6 +131,10 @@ def bootstrap_test_stack(request, tmp_path_factory):
 
         config['nodeos']['snapshot'] = f'/root/{snap_path.name}'
         config['telosevm-translator']['start_block'] = from_snap
+        config['telosevm-translator']['deploy_block'] = from_snap
+
+        with open(tmp_path / 'tevmc.json', 'w+') as uni_conf:
+            uni_conf.write(json.dumps(config, indent=4))
 
 
     containers = None
