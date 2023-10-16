@@ -50,6 +50,7 @@ def get_marker(request, mark_name: str, field: str):
 def bootstrap_test_stack(request, tmp_path_factory):
     from tevmc import TEVMController
     config = get_marker(request, 'config', 'kwargs')
+    chain_name = config['telos-evm-rpc']['elastic_prefix']
     tevmc_params = maybe_get_marker(
         request, 'tevmc_params', 'kwargs', {})
 
@@ -61,6 +62,8 @@ def bootstrap_test_stack(request, tmp_path_factory):
         request, 'custom_nodeos_tar', 'args', [None])[0]
     from_snap = maybe_get_marker(
         request, 'from_snapshot', 'args', [None])[0]
+    tmp_path = Path(maybe_get_marker(
+        request, 'tmp_path', 'args', [tmp_path_factory.getbasetemp() / chain_name])[0])
 
     randomize = maybe_get_marker(request, 'randomize', 'args', [True])[0]
 
@@ -76,9 +79,6 @@ def bootstrap_test_stack(request, tmp_path_factory):
 
     client = get_docker_client()
 
-    chain_name = config['telos-evm-rpc']['elastic_prefix']
-
-    tmp_path = tmp_path_factory.getbasetemp() / chain_name
     tmp_path.mkdir(parents=True, exist_ok=True)
     touch_node_dir(tmp_path, config, 'tevmc.json')
 
