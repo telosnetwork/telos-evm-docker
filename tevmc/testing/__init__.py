@@ -61,8 +61,8 @@ def bootstrap_test_stack(request, tmp_path_factory):
         request, 'custom_nodeos_tar', 'args', [None])[0]
     from_snap = maybe_get_marker(
         request, 'from_snapshot', 'args', [None])[0]
-    tmp_path = Path(maybe_get_marker(
-        request, 'tmp_path', 'args', [tmp_path_factory.getbasetemp() / chain_name])[0])
+    node_dir = Path(maybe_get_marker(
+        request, 'node_dir', 'args', [tmp_path_factory.getbasetemp() / chain_name])[0])
 
     randomize = maybe_get_marker(request, 'randomize', 'args', [True])[0]
 
@@ -78,19 +78,20 @@ def bootstrap_test_stack(request, tmp_path_factory):
 
     client = get_docker_client()
 
-    tmp_path.mkdir(parents=True, exist_ok=True)
-    touch_node_dir(tmp_path, config, 'tevmc.json')
+    node_dir.mkdir(parents=True, exist_ok=True)
+    if not (node_dir / 'tevmc.json').exists():
+        touch_node_dir(node_dir, config, 'tevmc.json')
 
     if custom_subst_wasm:
         copyfile(
             custom_subst_wasm,
-            tmp_path / 'docker/leap/contracts/eosio.evm/regular/regular.wasm'
+            node_dir / 'docker/leap/contracts/eosio.evm/regular/regular.wasm'
         )
 
     if custom_subst_abi:
         copyfile(
             custom_subst_abi,
-            tmp_path / 'docker/leap/contracts/eosio.evm/regular/regular.abi'
+            node_dir / 'docker/leap/contracts/eosio.evm/regular/regular.abi'
         )
 
     if custom_nodeos_tar:
@@ -99,7 +100,7 @@ def bootstrap_test_stack(request, tmp_path_factory):
 
         bin_name = str(extensionless_path)
 
-        host_config_path = tmp_path / 'docker/leap/config'
+        host_config_path = node_dir / 'docker/leap/config'
 
         with tarfile.open(custom_nodeos_tar, 'r:gz') as file:
             file.extractall(path=host_config_path)
@@ -122,7 +123,7 @@ def bootstrap_test_stack(request, tmp_path_factory):
 
         chain_type = 'mainnet' if 'mainnet' in chain_name else 'testnet'
 
-        nodeos_conf_dir = tmp_path / 'docker'
+        nodeos_conf_dir = node_dir / 'docker'
         nodeos_conf_dir /= config['nodeos']['docker_path']
         nodeos_conf_dir /= config['nodeos']['conf_dir']
         snap_path = download_snapshot(
@@ -133,8 +134,9 @@ def bootstrap_test_stack(request, tmp_path_factory):
         config['telosevm-translator']['start_block'] = from_snap
         config['telosevm-translator']['deploy_block'] = from_snap
 
-        with open(tmp_path / 'tevmc.json', 'w+') as uni_conf:
-            uni_conf.write(json.dumps(config, indent=4))
+
+    with open(node_dir / 'tevmc.json', 'w+') as uni_conf:
+        uni_conf.write(json.dumps(config, indent=4))
 
 
     containers = None
@@ -142,7 +144,7 @@ def bootstrap_test_stack(request, tmp_path_factory):
     try:
         with TEVMController(
             config,
-            root_pwd=tmp_path,
+            root_pwd=node_dir,
             services=services,
             **tevmc_params
         ) as _tevmc:

@@ -6,7 +6,6 @@ import json
 from string import Template
 from typing import Dict
 from pathlib import Path
-from datetime import datetime
 from distutils.dir_util import copy_tree
 
 import click
@@ -46,7 +45,7 @@ def load_docker_templates() -> Dict[str, Template]:
     return templ
 
 
-def touch_node_dir(target_dir, conf, fname):
+def touch_node_dir(target_dir: Path, conf: dict, fname: str):
     # dump default config file
     with open(target_dir / fname, 'w+') as uni_conf:
         uni_conf.write(json.dumps(conf, indent=4))
@@ -55,6 +54,9 @@ def touch_node_dir(target_dir, conf, fname):
     copy_tree(
         str(template_dir / 'docker'),
         str(target_dir / 'docker'))
+
+    # create logs dir
+    (target_dir / 'logs').mkdir()
 
 
 @cli.command()

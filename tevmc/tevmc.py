@@ -1167,10 +1167,9 @@ class TEVMController:
         if 'nodeos' in self.services:
             try:
                 self.containers['nodeos'].exec_run('pkill -f nodeos')
-                self.cleos.wait_stopped(
-                    from_file='/logs/nodeos.logs', timeout=120)
+                self.containers['nodeos'].wait(timeout=120)
                 self.containers['nodeos'].kill(signal='SIGTERM')
-                self.containers['nodeos'].wait(timeout=30)
+                self.containers['nodeos'].wait(timeout=20)
 
             except docker.errors.NotFound:
                 ...
