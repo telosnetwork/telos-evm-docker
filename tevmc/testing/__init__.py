@@ -53,8 +53,6 @@ def bootstrap_test_stack(request, tmp_path_factory):
     tevmc_params = maybe_get_marker(
         request, 'tevmc_params', 'kwargs', {})
 
-    custom_subst_abi = maybe_get_marker(
-        request, 'custom_subst_abi', 'args', [None])[0]
     custom_subst_wasm = maybe_get_marker(
         request, 'custom_subst_wasm', 'args', [None])[0]
     custom_nodeos_tar = maybe_get_marker(
@@ -76,23 +74,16 @@ def bootstrap_test_stack(request, tmp_path_factory):
     if sys.platform == 'darwin':
         config = add_virtual_networking(config)
 
-    client = get_docker_client()
-
-    node_dir.mkdir(parents=True, exist_ok=True)
-    if not (node_dir / 'tevmc.json').exists():
-        touch_node_dir(node_dir, config, 'tevmc.json')
-
     if custom_subst_wasm:
+        (node_dir / 'docker/leap/contracts/eosio.evm/regular'
+        ).mkdir(exist_ok=True, parents=True)
+
         copyfile(
             custom_subst_wasm,
             node_dir / 'docker/leap/contracts/eosio.evm/regular/regular.wasm'
         )
-
-    if custom_subst_abi:
-        copyfile(
-            custom_subst_abi,
-            node_dir / 'docker/leap/contracts/eosio.evm/regular/regular.abi'
-        )
+        config['nodeos']['ini']['subst'] = {}
+        config['nodeos']['ini']['subst']['eosio.evm'] = '/opt/eosio/bin/contracts/eosio.evm/regular/regular.wasm'
 
     if custom_nodeos_tar:
         tar_path = Path(custom_nodeos_tar)
@@ -126,6 +117,7 @@ def bootstrap_test_stack(request, tmp_path_factory):
         nodeos_conf_dir = node_dir / 'docker'
         nodeos_conf_dir /= config['nodeos']['docker_path']
         nodeos_conf_dir /= config['nodeos']['conf_dir']
+        nodeos_conf_dir.mkdir(exist_ok=True, parents=True)
         snap_path = download_snapshot(
             nodeos_conf_dir, from_snap,
             network=chain_type, progress=True)
@@ -135,8 +127,15 @@ def bootstrap_test_stack(request, tmp_path_factory):
         config['telosevm-translator']['deploy_block'] = from_snap
 
 
-    with open(node_dir / 'tevmc.json', 'w+') as uni_conf:
-        uni_conf.write(json.dumps(config, indent=4))
+    client = get_docker_client()
+
+    node_dir.mkdir(parents=True, exist_ok=True)
+    if not (node_dir / 'tevmc.json').exists():
+        touch_node_dir(node_dir, config, 'tevmc.json')
+
+    else:
+        with open(node_dir / 'tevmc.json', 'w+') as uni_conf:
+            uni_conf.write(json.dumps(config, indent=4))
 
 
     containers = None
