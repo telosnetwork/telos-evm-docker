@@ -48,6 +48,7 @@ def get_marker(request, mark_name: str, field: str):
 @contextmanager
 def bootstrap_test_stack(request, tmp_path_factory):
     from tevmc import TEVMController
+
     config = get_marker(request, 'config', 'kwargs')
     chain_name = config['telos-evm-rpc']['elastic_prefix']
     tevmc_params = maybe_get_marker(
@@ -75,15 +76,15 @@ def bootstrap_test_stack(request, tmp_path_factory):
         config = add_virtual_networking(config)
 
     if custom_subst_wasm:
-        (node_dir / 'docker/leap/contracts/eosio.evm/regular'
+        (node_dir / 'docker/leap/contracts/eosio.evm/custom'
         ).mkdir(exist_ok=True, parents=True)
 
         copyfile(
             custom_subst_wasm,
-            node_dir / 'docker/leap/contracts/eosio.evm/regular/regular.wasm'
+            node_dir / 'docker/leap/contracts/eosio.evm/custom/custom.wasm'
         )
         config['nodeos']['ini']['subst'] = {}
-        config['nodeos']['ini']['subst']['eosio.evm'] = '/opt/eosio/bin/contracts/eosio.evm/regular/regular.wasm'
+        config['nodeos']['ini']['subst']['eosio.evm'] = '/opt/eosio/bin/contracts/eosio.evm/custom/custom.wasm'
 
     if custom_nodeos_tar:
         tar_path = Path(custom_nodeos_tar)
