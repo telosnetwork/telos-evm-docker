@@ -62,7 +62,7 @@ def bootstrap_test_stack(request, tmp_path_factory):
     from_snap = maybe_get_marker(
         request, 'from_snapshot', 'args', [None])[0]
     from_snap_file = maybe_get_marker(
-        request, 'from_snapshot_file', 'args', [None,None])
+        request, 'from_snapshot_file', 'kwargs', None)
     node_dir = Path(maybe_get_marker(
         request, 'node_dir', 'args', [tmp_path_factory.getbasetemp() / chain_name])[0])
 
@@ -107,10 +107,11 @@ def bootstrap_test_stack(request, tmp_path_factory):
         config['nodeos']['nodeos_bin'] = '/root/' + binary
 
     if from_snap:
-        if from_snap_file[1]:
+        if from_snap_file:
             raise ValueError(
                 'You cannot specify both from_snapshot and from_snapshot_file'
             )
+
         chain_name = config['telos-evm-rpc']['elastic_prefix']
 
         if ('mainnet' not in chain_name and
@@ -133,18 +134,31 @@ def bootstrap_test_stack(request, tmp_path_factory):
         config['nodeos']['snapshot'] = f'/root/{snap_path.name}'
         config['telosevm-translator']['start_block'] = from_snap
         config['telosevm-translator']['deploy_block'] = from_snap
-    
-    if from_snap_file[1]:
+
+    if from_snap_file:
+        if from_snap:
+            raise ValueError(
+                'You cannot specify both from_snapshot and from_snapshot_file'
+            )
+
+        snap_start_block = from_snap_file['block']
+        snap_path = from_snap_file['path']
+
         nodeos_conf_dir = node_dir / 'docker'
         nodeos_conf_dir /= config['nodeos']['docker_path']
         nodeos_conf_dir /= config['nodeos']['conf_dir']
         nodeos_conf_dir.mkdir(exist_ok=True, parents=True)
-        
-        snap_path = Path(shutil.copy2(from_snap_file[1], nodeos_conf_dir))
+
+        copyfile(
+            snap_path,
+            nodeos_conf_dir / snap_path.name
+        )
+
+        assert (nodeos_conf_dir / snap_path.name).is_file()
 
         config['nodeos']['snapshot'] = f'/root/{snap_path.name}'
-        config['telosevm-translator']['start_block'] = from_snap_file[0]
-        config['telosevm-translator']['deploy_block'] = from_snap_file[0]
+        config['telosevm-translator']['start_block'] = snap_start_block
+        config['telosevm-translator']['deploy_block'] = snap_start_block
 
 
     client = get_docker_client()
