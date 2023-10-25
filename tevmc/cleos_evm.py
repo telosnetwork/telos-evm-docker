@@ -61,7 +61,6 @@ class CLEOSEVM(CLEOS):
         self.evm_url = evm_url
         self.chain_id = chain_id
 
-        self.__jsonrpc_id = 0
 
     def deploy_evm(
         self,

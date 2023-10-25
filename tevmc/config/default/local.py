@@ -23,8 +23,7 @@ elasticsearch = {
     'elastic_pass': 'password',
     'user': 'hyper',
     'pass': 'password',
-    'data_dir': 'data',
-    'logs_dir': 'logs'
+    'data_dir': 'data'
 }
 
 kibana = {
@@ -46,7 +45,6 @@ nodeos = {
     'conf_dir': 'config',
     'contracts_dir': 'contracts',
     'genesis': 'local',
-    'log_path': '/root/nodeos.log',
     'v2_api': 'disabled',
     'nodeos_bin': 'nodeos',
     'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/receiptless',
@@ -120,7 +118,7 @@ telosevm_translator = {
     'tag': 'tevm:telosevm-translator',
     'docker_path': 'telosevm-translator',
     'start_block': 'override',
-    'evm_start_block': -1,
+    'evm_block_delta': 2,
     'evm_validate_hash': '',
     'stop_block': 4294967295,
     'deploy_block': 'override',
@@ -134,7 +132,6 @@ telos_evm_rpc = {
     'name': 'telos-evm-rpc',
     'tag': 'tevm:telos-evm-rpc',
     'docker_path': 'telos-evm-rpc',
-    'logs_dir': 'logs',
     'chain_id': 41,
     'debug': True,
     'api_host': '0.0.0.0',
@@ -155,8 +152,15 @@ telos_evm_rpc = {
     'elasitc_index_version': 'v1.5'
 }
 
+logrotator = {
+    'name': 'logrotator',
+    'tag': 'tevm:logrotator',
+    'docker_path': 'logrotator'
+}
+
 default_config = {
     'daemon': daemon,
+    'logrotator': logrotator,
 
     'redis': redis,
     'elasticsearch': elasticsearch,

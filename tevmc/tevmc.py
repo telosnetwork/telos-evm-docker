@@ -58,7 +58,7 @@ class TEVMController:
             'nodeos',
             'indexer',
             'rpc',
-            'beats'
+            'logrotator'
         ],
         from_latest: bool = False,
         is_producer: bool = True,
@@ -79,6 +79,9 @@ class TEVMController:
             self.root_pwd = Path().resolve()
         else:
             self.root_pwd = root_pwd
+
+        self.main_logs_dir = self.root_pwd / 'logs'
+        self.main_logs_dir.mkdir(parents=True, exist_ok=True)
 
         self.docker_wd = self.root_pwd / 'docker'
 
@@ -255,7 +258,7 @@ class TEVMController:
                 log_config=LogConfig(
                     type=LogConfig.types.JSON,
                     config={'max-size': '100m' }),
-                # remove=True,
+                remove=True,
                 labels=DEFAULT_DOCKER_LABEL)
 
             container.reload()
@@ -267,6 +270,7 @@ class TEVMController:
             self.logger.info(f'stopping container \"{name}\"')
             try:
                 if container:
+                    container.kill(signal='SIGTERM')
                     for i in range(3):
                         container.stop()
             except docker.errors.APIError as e:
@@ -274,15 +278,15 @@ class TEVMController:
 
             self.logger.info('stopped.')
 
-            self.logger.info(f'removing container \"{name}\"')
-            try:
-                if container:
-                    for i in range(3):
-                        container.remove()
-            except docker.errors.APIError as e:
-                ...
+            # self.logger.info(f'removing container \"{name}\"')
+            # try:
+            #     if container:
+            #         for i in range(3):
+            #             container.remove()
+            # except docker.errors.APIError as e:
+            #     ...
 
-            self.logger.info('removed.')
+            # self.logger.info('removed.')
 
 
     def stream_logs(self, container, timeout=30.0, from_latest=False):
@@ -290,13 +294,14 @@ class TEVMController:
             self.logger.critical("container is None")
             raise StopIteration
 
-        elif container == 'nodeos':
+        elif container in ['nodeos', 'telosevm-translator', 'telos-evm-rpc']:
             if from_latest:
                 lines = 1
             else:
                 lines = 1000
 
-            for line in self._stream_nodeos(lines, timeout=int(timeout)):
+            for line in self._stream_logs_from_main_dir(
+                container, lines, timeout=int(timeout)):
                 yield line
 
         else:
@@ -323,6 +328,22 @@ class TEVMController:
                 self.logger.critical('couldn\'t access logs.')
 
             raise TEVMCException(f'{container.name} is not running')
+
+    def start_logrotator(self):
+        with self.must_keep_running('logrotator'):
+            config = self.config['logrotator']
+
+            self.mounts['logrotator'] = [
+                Mount('/logs', str(self.main_logs_dir.resolve()), 'bind'),
+            ]
+
+            self.containers['logrotator'] = self.exit_stack.enter_context(
+                self.open_container(
+                    f'{config["name"]}-{self.pid}-{self.chain_name}',
+                    f'{config["tag"]}-{self.chain_name}',
+                    mounts=self.mounts['logrotator']
+                )
+            )
 
     def start_redis(self):
         with self.must_keep_running('redis'):
@@ -371,13 +392,9 @@ class TEVMController:
             docker_dir = self.docker_wd / config['docker_path']
 
             data_dir = docker_dir / config['data_dir']
-            logs_dir = docker_dir / config['logs_dir']
-
             data_dir.mkdir(parents=True, exist_ok=True)
-            logs_dir.mkdir(parents=True, exist_ok=True)
 
             self.mounts['elasticsearch'] = [
-                Mount('/home/elasticsearch/logs', str(logs_dir.resolve()), 'bind'),
                 Mount('/home/elasticsearch/data', str(data_dir.resolve()), 'bind')
             ]
 
@@ -497,7 +514,8 @@ class TEVMController:
         self.mounts['nodeos'] = [
             Mount('/root', str(conf_dir.resolve()), 'bind'),
             Mount('/opt/eosio/bin/contracts', str(contracts_dir.resolve()), 'bind'),
-            Mount(data_dir_guest, str(data_dir_host.resolve()), 'bind')
+            Mount(data_dir_guest, str(data_dir_host.resolve()), 'bind'),
+            Mount('/logs', str(self.main_logs_dir.resolve()), 'bind')
         ]
 
         if 'mounts' in config:
@@ -507,7 +525,7 @@ class TEVMController:
         env = {
             'NODEOS_DATA_DIR': config['data_dir_guest'],
             'NODEOS_CONFIG': f'/root/config.ini',
-            'NODEOS_LOG_PATH': config['log_path'],
+            'NODEOS_LOG_PATH': '/logs/nodeos.log',
             'NODEOS_LOGCONF': '/root/logging.json',
             'KEOSD_LOG_PATH': '/root/keosd.log',
             'KEOSD_CONFIG': '/root/keosd_config.ini'
@@ -559,7 +577,7 @@ class TEVMController:
 
         nodeos_cmd += self.additional_nodeos_params
 
-        nodeos_cmd += ['>>', config['log_path'], '2>&1']
+        nodeos_cmd += ['>>', '/logs/nodeos.log', '2>&1']
         nodeos_cmd_str = ' '.join(nodeos_cmd)
 
         cmd = ['/bin/bash', '-c', nodeos_cmd_str]
@@ -584,11 +602,6 @@ class TEVMController:
             return
 
         with self.must_keep_running('nodeos'):
-            exec_id, exec_stream = docker_open_process(
-                self.client, self.containers['nodeos'],
-                ['/bin/bash', '-c',
-                    'while true; do logrotate /root/logrotate.conf; sleep 60; done'])
-
             if sys.platform == 'darwin':
                 self._vnet.connect(
                     self.containers['nodeos'],
@@ -611,7 +624,7 @@ class TEVMController:
             self.cleos = cleos
 
             if self.is_local and not self.skip_init:
-                output = cleos.wait_produced(from_file=config['log_path'])
+                output = cleos.wait_produced(from_file='/logs/nodeos.log')
                 # await for nodeos to produce a block
                 cleos.wait_blocks(4)
 
@@ -645,7 +658,7 @@ class TEVMController:
                             self.logger.critical(msg.rstrip())
                         sys.exit(1)
             else:
-                cleos.wait_received(from_file=config['log_path'])
+                cleos.wait_received(from_file='/logs/nodeos.log')
 
             if not self.skip_init:
                 # wait until nodeos apis are up
@@ -664,24 +677,35 @@ class TEVMController:
                     genesis_block - int(cleos.get_info()['head_block_num']), sleep_time=10)
 
     def restart_nodeos(self):
-        self.cleos.stop_nodeos(
-            from_file=self.config['nodeos']['log_path'])
+        try:
+            self.cleos.stop_nodeos(
+                from_file='/logs/nodeos.log')
+
+        except docker.errors.NotFound:
+            self.logger.info('tried to stop nodeos process but container not running')
+
         self.is_nodeos_relaunch = True
 
         time.sleep(4)
 
         self.start_nodeos()
 
-    def _stream_nodeos(
+    def _stream_logs_from_main_dir(
         self,
+        service: str,
         lines: int = 100,
         timeout: int = 60
     ):
-        log_path = self.docker_wd
-        log_path /= self.config['nodeos']['docker_path']
-        log_path /= self.config['nodeos']['conf_dir']
-        log_path /= Path(self.config['nodeos']['log_path']).name
+        log_path = self.main_logs_dir
+        log_path /= f'{service}.log'
         log_path = log_path.resolve()
+
+        for _ in range(3):
+            if not log_path.is_file():
+                time.sleep(1)
+
+            else:
+                break
 
         process = subprocess.Popen(
             ['bash', '-c',
@@ -691,6 +715,8 @@ class TEVMController:
 
         for line in iter(process.stdout.readline, b''):
             msg = line.decode('utf-8')
+            if 'clear_expired_input_' in msg:
+                continue
             yield msg
             self.logger.info(msg.rstrip())
 
@@ -699,7 +725,7 @@ class TEVMController:
 
         if process.returncode != 0:
             raise ValueError(
-                'tail returned {process.returncode}\n'
+                f'tail returned {process.returncode}\n'
                 f'{process.stderr.read().decode("utf-8")}')
 
     def _get_head_block(self):
@@ -856,6 +882,10 @@ class TEVMController:
             config_nodeos = self.config['nodeos']
             config_rpc = self.config['telos-evm-rpc']
 
+            self.mounts['telosevm-translator'] = [
+                Mount('/logs', str(self.main_logs_dir.resolve()), 'bind')
+            ]
+
             if sys.platform == 'darwin':
                 nodeos_host = self.config['nodeos']['virtual_ip']
 
@@ -901,12 +931,13 @@ class TEVMController:
                         'INDEXER_STOP_BLOCK': config['stop_block'],
                         'EVM_DEPLOY_BLOCK': config['deploy_block'],
                         'EVM_PREV_HASH': config['prev_hash'],
-                        'EVM_START_BLOCK': config['evm_start_block'],
+                        'EVM_BLOCK_DELTA': config['evm_block_delta'],
                         'EVM_VALIDATE_HASH': config['evm_validate_hash'],
                         'BROADCAST_HOST': bc_host,
                         'BROADCAST_PORT': bc_port,
                         'WORKER_AMOUNT': config['worker_amount']
                     },
+                    mounts=self.mounts['telosevm-translator'],
                     **more_params
                 )
             )
@@ -918,7 +949,6 @@ class TEVMController:
                 )
 
             for msg in self.stream_logs('telosevm-translator', timeout=60*10):
-                self.logger.info(msg.rstrip())
                 if 'drained' in msg:
                     break
 
@@ -937,18 +967,14 @@ class TEVMController:
 
         self.start_telosevm_translator()
 
-    def setup_rpc_log_mount(self):
-        docker_dir = self.docker_wd / self.config['telos-evm-rpc']['docker_path']
-        logs_dir = docker_dir / self.config['telos-evm-rpc']['logs_dir']
-        logs_dir.mkdir(parents=True, exist_ok=True)
-
-        self.mounts['telos-evm-rpc'] = [
-            Mount('/root/.pm2/logs', str(logs_dir.resolve()), 'bind')
-        ]
 
     def start_evm_rpc(self):
         with self.must_keep_running('telos-evm-rpc'):
             config = self.config['telos-evm-rpc']
+
+            self.mounts['telos-evm-rpc'] = [
+                Mount('/logs', str(self.main_logs_dir.resolve()), 'bind')
+            ]
 
             more_params = {}
             if sys.platform == 'darwin':
@@ -1115,7 +1141,6 @@ class TEVMController:
 
 
         if 'rpc' in self.services:
-            self.setup_rpc_log_mount()
             self.start_evm_rpc()
 
         else:
@@ -1131,6 +1156,9 @@ class TEVMController:
             'nodeos' in self.services):
             self.cleos.create_test_evm_account()
 
+        if 'logrotator' in self.services:
+            self.start_logrotator()
+
     def serve_api(self):
         add_routes(self)
         self.api.run(port=self.config['daemon']['port'])
@@ -1138,16 +1166,16 @@ class TEVMController:
     def stop(self):
         if 'nodeos' in self.services:
             try:
-                self.cleos.stop_nodeos(
-                    from_file=self.config['nodeos']['log_path'])
-
-                self.containers['nodeos'].wait(timeout=30)
+                self.containers['nodeos'].exec_run('pkill -f nodeos')
+                self.containers['nodeos'].wait(timeout=120)
+                self.containers['nodeos'].kill(signal='SIGTERM')
+                self.containers['nodeos'].wait(timeout=20)
 
             except docker.errors.NotFound:
                 ...
 
             except docker.errors.APIError:
-                self.containers['nodeos'].stop()
+                ...
 
             self.is_nodeos_relaunch = True
 

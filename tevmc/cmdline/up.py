@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+from copy import deepcopy
 import os
+import shutil
 import sys
 import json
 import logging
@@ -8,12 +10,14 @@ import logging
 from pathlib import Path
 
 import click
-import docker
 import requests
+
+from tevmc.cmdline.build import patch_config
+from tevmc.utils import deep_dict_equal
 
 from ..config import *
 
-from .cli import cli, get_docker_client
+from .cli import cli
 
 
 @cli.command()
@@ -46,6 +50,9 @@ from .cli import cli, get_docker_client
 @click.option(
     '--target-dir', default='.',
     help='target')
+@click.option(
+    '--conf-upgrade/--no-conf-upgrade', default=False,
+    help='Perform or ignore posible config upgrade.')
 def up(
     pid,
     services,
@@ -54,17 +61,63 @@ def up(
     config,
     loglevel,
     target_dir,
+    conf_upgrade
 ):
     """Bring tevmc daemon up.
     """
     from ..tevmc import TEVMController
 
+    config_filename = config
     try:
         config = load_config(target_dir, config)
 
     except FileNotFoundError:
         print('Config not found.')
         sys.exit(1)
+
+    # optionally upgrade conf
+    up_config = None
+    cmp_config = deepcopy(config)
+    if 'metadata' in cmp_config:
+        del cmp_config['metadata']
+    diffs = None
+    if 'local' in config['telos-evm-rpc']['elastic_prefix']:
+        up_config, diffs = patch_config(local.default_config, cmp_config)
+
+    elif 'testnet' in config['telos-evm-rpc']['elastic_prefix']:
+        up_config, diffs = patch_config(testnet.default_config, cmp_config)
+
+    elif 'mainnet' in config['telos-evm-rpc']['elastic_prefix']:
+        up_config, diffs = patch_config(mainnet.default_config, cmp_config)
+
+    # if config upgrade is posible and flag not passed
+    # print new conf and exit.
+    if (up_config and
+        not deep_dict_equal(up_config, cmp_config)):
+
+        if conf_upgrade:
+            # backup old conf
+            config_path = Path(target_dir) / config_filename
+            backup_path = config_path.with_name(f'{config_path.name}.backup')
+
+            if backup_path.is_file():
+                print('Backup file alredy exist, please move it before re-doing config upgrade...')
+                sys.exit(3)
+
+            shutil.copy(config_path, backup_path)
+
+            # write upgraded config
+            with open(config_path, 'w+') as conf:
+                conf.write(json.dumps(up_config, indent=4))
+
+            config = up_config
+
+        else:
+            print(json.dumps(up_config, indent=4))
+            print(f'Config upgrade posible and --conf-upgrade not passed!')
+            for diff in diffs:
+                print(diff)
+            sys.exit(2)
 
     if Path(pid).resolve().exists():
         print('Daemon pid file exists. Abort.')

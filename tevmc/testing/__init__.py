@@ -2,10 +2,11 @@
 
 import sys
 import time
+import json
 import docker
-import logging
 import tarfile
 import requests
+import shutil
 
 import pytest
 
@@ -14,9 +15,9 @@ from pathlib import Path
 from contextlib import contextmanager
 
 from web3 import Web3
+from leap.sugar import download_snapshot
 
 from tevmc.config import (
-    build_docker_manifest,
     randomize_conf_ports,
     randomize_conf_creds,
     add_virtual_networking
@@ -25,7 +26,7 @@ from tevmc.cmdline.init import touch_node_dir
 from tevmc.cmdline.cli import get_docker_client
 
 
-TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
+TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc', 'logrotator']
 
 
 def maybe_get_marker(request, mark_name: str, field: str, default):
@@ -48,16 +49,22 @@ def get_marker(request, mark_name: str, field: str):
 @contextmanager
 def bootstrap_test_stack(request, tmp_path_factory):
     from tevmc import TEVMController
+
     config = get_marker(request, 'config', 'kwargs')
+    chain_name = config['telos-evm-rpc']['elastic_prefix']
     tevmc_params = maybe_get_marker(
         request, 'tevmc_params', 'kwargs', {})
 
-    custom_subst_abi = maybe_get_marker(
-        request, 'custom_subst_abi', 'args', [None])[0]
     custom_subst_wasm = maybe_get_marker(
         request, 'custom_subst_wasm', 'args', [None])[0]
     custom_nodeos_tar = maybe_get_marker(
         request, 'custom_nodeos_tar', 'args', [None])[0]
+    from_snap = maybe_get_marker(
+        request, 'from_snapshot', 'args', [None])[0]
+    from_snap_file = maybe_get_marker(
+        request, 'from_snapshot_file', 'kwargs', None)
+    node_dir = Path(maybe_get_marker(
+        request, 'node_dir', 'args', [tmp_path_factory.getbasetemp() / chain_name])[0])
 
     randomize = maybe_get_marker(request, 'randomize', 'args', [True])[0]
 
@@ -71,25 +78,16 @@ def bootstrap_test_stack(request, tmp_path_factory):
     if sys.platform == 'darwin':
         config = add_virtual_networking(config)
 
-    client = get_docker_client()
-
-    chain_name = config['telos-evm-rpc']['elastic_prefix']
-
-    tmp_path = tmp_path_factory.getbasetemp() / chain_name
-    tmp_path.mkdir(parents=True, exist_ok=True)
-    touch_node_dir(tmp_path, config, 'tevmc.json')
-
     if custom_subst_wasm:
+        (node_dir / 'docker/leap/contracts/eosio.evm/custom'
+        ).mkdir(exist_ok=True, parents=True)
+
         copyfile(
             custom_subst_wasm,
-            tmp_path / 'docker/leap/contracts/eosio.evm/regular/regular.wasm'
+            node_dir / 'docker/leap/contracts/eosio.evm/custom/custom.wasm'
         )
-
-    if custom_subst_abi:
-        copyfile(
-            custom_subst_abi,
-            tmp_path / 'docker/leap/contracts/eosio.evm/regular/regular.abi'
-        )
+        config['nodeos']['ini']['subst'] = {}
+        config['nodeos']['ini']['subst']['eosio.evm'] = '/opt/eosio/bin/contracts/eosio.evm/custom/custom.wasm'
 
     if custom_nodeos_tar:
         tar_path = Path(custom_nodeos_tar)
@@ -97,7 +95,7 @@ def bootstrap_test_stack(request, tmp_path_factory):
 
         bin_name = str(extensionless_path)
 
-        host_config_path = tmp_path / 'docker/leap/config'
+        host_config_path = node_dir / 'docker/leap/config'
 
         with tarfile.open(custom_nodeos_tar, 'r:gz') as file:
             file.extractall(path=host_config_path)
@@ -108,12 +106,78 @@ def bootstrap_test_stack(request, tmp_path_factory):
 
         config['nodeos']['nodeos_bin'] = '/root/' + binary
 
+    if from_snap:
+        if from_snap_file:
+            raise ValueError(
+                'You cannot specify both from_snapshot and from_snapshot_file'
+            )
+
+        chain_name = config['telos-evm-rpc']['elastic_prefix']
+
+        if ('mainnet' not in chain_name and
+            'testnet' not in chain_name):
+            raise ValueError(
+                'from_snaphost should only be used against '
+                'mainnet or testnet nodes'
+            )
+
+        chain_type = 'mainnet' if 'mainnet' in chain_name else 'testnet'
+
+        nodeos_conf_dir = node_dir / 'docker'
+        nodeos_conf_dir /= config['nodeos']['docker_path']
+        nodeos_conf_dir /= config['nodeos']['conf_dir']
+        nodeos_conf_dir.mkdir(exist_ok=True, parents=True)
+        snap_path = download_snapshot(
+            nodeos_conf_dir, from_snap,
+            network=chain_type, progress=True)
+
+        config['nodeos']['snapshot'] = f'/root/{snap_path.name}'
+        config['telosevm-translator']['start_block'] = from_snap
+        config['telosevm-translator']['deploy_block'] = from_snap
+
+    if from_snap_file:
+        if from_snap:
+            raise ValueError(
+                'You cannot specify both from_snapshot and from_snapshot_file'
+            )
+
+        snap_start_block = from_snap_file['block']
+        snap_path = from_snap_file['path']
+
+        nodeos_conf_dir = node_dir / 'docker'
+        nodeos_conf_dir /= config['nodeos']['docker_path']
+        nodeos_conf_dir /= config['nodeos']['conf_dir']
+        nodeos_conf_dir.mkdir(exist_ok=True, parents=True)
+
+        copyfile(
+            snap_path,
+            nodeos_conf_dir / snap_path.name
+        )
+
+        assert (nodeos_conf_dir / snap_path.name).is_file()
+
+        config['nodeos']['snapshot'] = f'/root/{snap_path.name}'
+        config['telosevm-translator']['start_block'] = snap_start_block
+        config['telosevm-translator']['deploy_block'] = snap_start_block
+
+
+    client = get_docker_client()
+
+    node_dir.mkdir(parents=True, exist_ok=True)
+    if not (node_dir / 'tevmc.json').exists():
+        touch_node_dir(node_dir, config, 'tevmc.json')
+
+    else:
+        with open(node_dir / 'tevmc.json', 'w+') as uni_conf:
+            uni_conf.write(json.dumps(config, indent=4))
+
+
     containers = None
 
     try:
         with TEVMController(
             config,
-            root_pwd=tmp_path,
+            root_pwd=node_dir,
             services=services,
             **tevmc_params
         ) as _tevmc:

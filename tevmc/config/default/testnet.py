@@ -23,8 +23,7 @@ elasticsearch = {
     'elastic_pass': 'password',
     'user': 'hyper',
     'pass': 'password',
-    'data_dir': 'data',
-    'logs_dir': 'logs'
+    'data_dir': 'data'
 }
 
 kibana = {
@@ -47,7 +46,6 @@ nodeos = {
     'contracts_dir': 'contracts',
     'genesis': 'testnet',
     'snapshot': '/snapshot-testnet-20211020-blknum-136229794.bin',
-    'log_path': '/root/nodeos.log',
     'v2_api': 'https://testnet.telos.net',
     'nodeos_bin': 'nodeos',
     'ini': {
@@ -161,8 +159,8 @@ telosevm_translator = {
     'tag': 'tevm:telosevm-translator',
     'docker_path': 'telosevm-translator',
     'start_block': 136393814,
-    'evm_start_block': -1,
-    'evm_validate_hash': '3ba6f4ac4f5b74e8e62622b9d8c75d1e4ad10abb3b7e4770cbab7338a861a4f9',
+    'evm_block_delta': 57,
+    'evm_validate_hash': '',
     'stop_block': 4294967295,
     'deploy_block': 136393814,
     'prev_hash': '',
@@ -175,7 +173,6 @@ telos_evm_rpc = {
     'name': 'telos-evm-rpc',
     'tag': 'tevm:telos-evm-rpc',
     'docker_path': 'telos-evm-rpc',
-    'logs_dir': 'logs',
     'chain_id': 41,
     'debug': True,
     'api_host': '0.0.0.0',
@@ -196,8 +193,15 @@ telos_evm_rpc = {
     'elasitc_index_version': 'v1.5'
 }
 
+logrotator = {
+    'name': 'logrotator',
+    'tag': 'tevm:logrotator',
+    'docker_path': 'logrotator'
+}
+
 default_config = {
     'daemon': daemon,
+    'logrotator': logrotator,
 
     'redis': redis,
     'elasticsearch': elasticsearch,

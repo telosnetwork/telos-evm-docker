@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from copy import deepcopy
 import logging
 import os
 import sys
@@ -24,6 +25,33 @@ TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
 
 class TEVMCBuildException(Exception):
     ...
+
+
+def patch_config(template_dict, current_dict):
+    diffs = []
+    new_dict = {}
+
+    for key, value in template_dict.items():
+        if key in current_dict:
+            if isinstance(value, dict) and isinstance(current_dict[key], dict):
+                new_dict[key], inner_diffs = patch_config(value, current_dict[key])
+                diffs += inner_diffs
+            else:
+                new_dict[key] = current_dict[key]
+        else:
+            new_dict[key] = value
+            diffs.append(f'Added: {key}={value}')
+
+    final_dict = deepcopy(current_dict)
+    keys_to_remove = set(current_dict.keys()) - set(template_dict.keys())
+
+    for key in keys_to_remove:
+        del final_dict[key]
+        diffs.append(f'Removed: {key}')
+
+    final_dict.update(new_dict)
+
+    return final_dict, diffs
 
 
 def perform_config_build(target_dir, config):
@@ -124,12 +152,6 @@ def perform_config_build(target_dir, config):
         'nodeos_history_port': ini_conf['history_endpoint'].split(':')[-1]
     }
     write_docker_template(f'{nodeos_build_dir}/Dockerfile', subst)
-
-    # logrotate.conf
-    write_config_file(
-        'logrotate.conf',
-        nodeos_conf_dir,
-        {'nodeos_log_path': get_config('nodeos.log_path', config)})
 
     # nodeos.config.ini
     subst = {}
@@ -241,7 +263,10 @@ def build():
         'into \"tevmc up\" command.')
 
 
-def build_service(target_dir: Path, service_name: str, config: dict, logger, **kwargs):
+def build_service(target_dir: Path, service_name: str, config: dict, logger = None, **kwargs):
+    if not logger:
+        logger = logging.getLogger(f'build-{service_name}')
+
     docker_dir = target_dir / 'docker'
     docker_dir.mkdir(exist_ok=True)
 

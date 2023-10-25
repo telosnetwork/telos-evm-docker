@@ -1,3 +1,4 @@
+import time
 import json
 import math
 import locale
@@ -5,6 +6,8 @@ import logging
 from typing import List, Optional
 
 from elasticsearch import Elasticsearch, NotFoundError
+
+import traceback
 
 
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
@@ -162,12 +165,23 @@ class ElasticDriver:
                 }
             )
 
-            if result.get('hits', {}).get('hits') and len(result.get('hits', {}).get('hits')) == 0:
+            logging.info(f'tx_from_hash: {h}')
+            logging.info(result)
+
+            if 'hits' not in result:
                 return None
 
-            return StorageEosioAction(result.get('hits', {}).get('hits', [])[0].get('_source'))
+            if 'hits' not in result['hits']:
+                return None
 
-        except Exception as error:
+            if len(result['hits']['hits']) == 0:
+                return None
+
+            return StorageEosioAction(result['hits']['hits'][0]['_source'])
+
+        except BaseException as error:
+            logging.error(traceback.format_exc())
+            logging.error(error)
             return None
 
     def block_from_evm_num(self, num: int):
@@ -182,12 +196,23 @@ class ElasticDriver:
                 }
             )
 
-            if result.get('hits', {}).get('hits') and len(result.get('hits', {}).get('hits')) == 0:
+            logging.info(f'block_from_evm_num: {num}')
+            logging.info(result)
+
+            if 'hits' not in result:
                 return None
 
-            return StorageEosioDelta(result.get('hits', {}).get('hits', [])[0].get('_source'))
+            if 'hits' not in result['hits']:
+                return None
 
-        except Exception as error:
+            if len(result['hits']['hits']) == 0:
+                return None
+
+            return StorageEosioDelta(result['hits']['hits'][0]['_source'])
+
+        except BaseException as error:
+            logging.error(traceback.format_exc())
+            logging.error(error)
             return None
 
     def get_ordered_delta_indices(self):
@@ -219,7 +244,9 @@ class ElasticDriver:
 
             return StorageEosioDelta(result.get('hits', {}).get('hits', [])[0].get('_source'))
 
-        except Exception as error:
+        except BaseException as error:
+            logging.error(traceback.format_exc())
+            logging.error(error)
             return None
 
     def get_last_indexed_block(self):
@@ -247,9 +274,10 @@ class ElasticDriver:
 
                 return StorageEosioDelta(block_doc)
 
-            except Exception as error:
+            except BaseException as error:
+                logging.error(traceback.format_exc())
                 logging.error(error)
-                raise error
+                return None
 
         return None
 
@@ -548,7 +576,20 @@ class ElasticDriver:
 
         except ESGapFound as err:
             logging.info(err)
-            doc = self.block_from_evm_num(err.start)
+
+            bnum = err.start
+            doc = self.block_from_evm_num(bnum)
+            backstep = 10
+            exp = 1
+            while not doc and exp < 6:
+                logging.info(f'block #{bnum} query returned None, trying older block...')
+                bnum -= backstep ** exp
+                exp += 1
+                time.sleep(1)
+                doc = self.block_from_evm_num(bnum)
+
+            if not doc:
+                raise ElasticDataIntegrityError('Gap found but couldn\'t find last valid block!')
 
         except ESDuplicatesFound as err:
             logging.info(err)
