@@ -661,7 +661,8 @@ class TEVMController:
                             self.logger.critical(msg.rstrip())
                         sys.exit(1)
             else:
-                cleos.wait_received(from_file='/logs/nodeos.log')
+                if '--replay-blockchain' not in self.additional_nodeos_params:
+                    cleos.wait_received(from_file='/logs/nodeos.log')
 
             if not self.skip_init:
                 # wait until nodeos apis are up
