@@ -556,11 +556,14 @@ class TEVMController:
             config['nodeos_bin'],
             '--config=/root/config.ini',
             f'--data-dir={config["data_dir_guest"]}',
-            '--disable-replay-opts',
             '--logconf=/root/logging.json'
         ]
 
-        if not self.is_nodeos_relaunch:
+        if 'eosio::state_history_plugin' in config['ini']['plugins']:
+            nodeos_cmd += ['--disable-replay-opts']
+
+        if (not self.is_nodeos_relaunch or
+            '--replay-blockchain' in self.additional_nodeos_params):
             if 'snapshot' in config:
                 nodeos_cmd += [f'--snapshot={config["snapshot"]}']
 
@@ -658,7 +661,8 @@ class TEVMController:
                             self.logger.critical(msg.rstrip())
                         sys.exit(1)
             else:
-                cleos.wait_received(from_file='/logs/nodeos.log')
+                if '--replay-blockchain' not in self.additional_nodeos_params:
+                    cleos.wait_received(from_file='/logs/nodeos.log')
 
             if not self.skip_init:
                 # wait until nodeos apis are up
