@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
+import json
 import time
 import requests
 
 from typing import Optional, Dict
 
-import simple_rlp as rlp
+import rlp
 
 from py_eosio.cleos import CLEOS
 from py_eosio.sugar import Name, Asset
@@ -304,7 +305,7 @@ class CLEOSEVM(CLEOS):
     ):
         raw_tx = self.eth_raw_tx(
             sender,
-            0,
+            '',
             DEFAULT_GAS_LIMIT,
             to_wei(quantity.amount, 'ether'),
             to
@@ -313,10 +314,18 @@ class CLEOSEVM(CLEOS):
         sender = remove_0x_prefix(sender)
         raw_tx = remove_0x_prefix(raw_tx)
 
+        self.logger.info('doing eth transfer...')
+        self.logger.info(json.dumps({
+            'account': account,
+            'sender': sender,
+            'to': to,
+            'quantity': quantity.amount,
+            'wei': to_wei(quantity.amount, 'ether')
+        }, indent=4))
+
         return self.push_action(
             EVM_CONTRACT,
             'raw',
             [account, raw_tx, estimate_gas, sender],
             f'{account}@active'
         )
-        
