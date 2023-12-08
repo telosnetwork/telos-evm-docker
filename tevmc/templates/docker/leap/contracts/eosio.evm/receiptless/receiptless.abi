@@ -88,6 +88,10 @@
                 {
                     "name": "gas_price",
                     "type": "checksum256"
+                },
+                {
+                    "name": "revision",
+                    "type": "uint32$"
                 }
             ]
         },
@@ -177,12 +181,24 @@
                     "type": "bytes"
                 },
                 {
+                    "name": "code",
+                    "type": "bytes"
+                },
+                {
+                    "name": "init",
+                    "type": "bytes"
+                },
+                {
+                    "name": "address",
+                    "type": "string"
+                },
+                {
                     "name": "subtraces",
-                    "type": "uint8"
+                    "type": "uint16"
                 },
                 {
                     "name": "traceAddress",
-                    "type": "bytes"
+                    "type": "uint16[]"
                 },
                 {
                     "name": "type",
@@ -193,8 +209,16 @@
                     "type": "string"
                 },
                 {
+                    "name": "error",
+                    "type": "string"
+                },
+                {
                     "name": "extra",
                     "type": "pair_string_string[]"
+                },
+                {
+                    "name": "status",
+                    "type": "uint8"
                 }
             ]
         },
@@ -217,11 +241,11 @@
             "base": "",
             "fields": [
                 {
-                    "name": "key",
+                    "name": "first",
                     "type": "string"
                 },
                 {
-                    "name": "value",
+                    "name": "second",
                     "type": "string"
                 }
             ]
@@ -367,6 +391,16 @@
             ]
         },
         {
+            "name": "setrevision",
+            "base": "",
+            "fields": [
+                {
+                    "name": "new_revision",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
             "name": "withdraw",
             "base": "",
             "fields": [
@@ -385,12 +419,12 @@
         {
             "name": "call",
             "type": "call",
-            "ricardian_contract": ""
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: CALL\nsummary: 'call'\nicon:\n---"
         },
         {
             "name": "create",
             "type": "create",
-            "ricardian_contract": ""
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: CREATE\nsummary: 'Create'\nicon:\n---"
         },
         {
             "name": "doresources",
@@ -410,7 +444,7 @@
         {
             "name": "raw",
             "type": "raw",
-            "ricardian_contract": ""
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: RAW\nsummary: 'Raw'\nicon:\n---"
         },
         {
             "name": "receipt",
@@ -423,9 +457,14 @@
             "ricardian_contract": ""
         },
         {
+            "name": "setrevision",
+            "type": "setrevision",
+            "ricardian_contract": ""
+        },
+        {
             "name": "withdraw",
             "type": "withdraw",
-            "ricardian_contract": ""
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: WITHDRAW\nsummary: 'Withdraw'\nicon:\n---"
         }
     ],
     "tables": [
@@ -458,7 +497,6 @@
             "key_types": []
         }
     ],
-    "kv_tables": {},
     "ricardian_clauses": [],
     "variants": [],
     "action_results": []
