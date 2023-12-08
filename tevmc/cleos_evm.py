@@ -116,6 +116,9 @@ class CLEOSEVM(CLEOS):
             ], 'eosio.evm@active')
         assert ec == 0
 
+        ec, _ = self.push_action(
+            'eosio.evm', 'setrevision', [1], 'eosio.evm@active')
+        assert ec == 0
 
     def create_test_evm_account(
         self,
