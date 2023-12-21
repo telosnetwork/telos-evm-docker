@@ -5,17 +5,14 @@ workdir /root
 run git clone \
     https://github.com/telosnetwork/telosevm-translator.git \
     indexer \
-    -b v1.0.0-rc6
-
-run rm -rdf indexer/.git
+    -b mocha_testing
 
 workdir /root/indexer
 
-run yarn install
-run npx tsc
+run npm run build
 
 env LOG_LEVEL debug
 
-cmd ["/bin/bash", "-c", "node --expose-gc build/main.js >> /logs/telosevm-translator.log 2>&1"]
+cmd ["/bin/bash", "-c", "npm run start >> /logs/telosevm-translator.log 2>&1"]
 
 expose $broadcast_port

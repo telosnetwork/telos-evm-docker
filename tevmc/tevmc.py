@@ -647,11 +647,6 @@ class TEVMController:
 
                         cleos.deploy_evm(self.config['nodeos']['eosio.evm'])
 
-                        evm_deploy_block = cleos.evm_deploy_info['processed']['block_num']
-
-                        self.config['telosevm-translator']['start_block'] = evm_deploy_block
-                        self.config['telosevm-translator']['deploy_block'] = evm_deploy_block
-
                         # save evm deploy info for future runs
                         with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
                             uni_conf.write(json.dumps(self.config, indent=4))
@@ -933,7 +928,6 @@ class TEVMController:
                         'TELOS_WS_ENDPOINT': ws_endpoint,
                         'INDEXER_START_BLOCK': config['start_block'],
                         'INDEXER_STOP_BLOCK': config['stop_block'],
-                        'EVM_DEPLOY_BLOCK': config['deploy_block'],
                         'EVM_PREV_HASH': config['prev_hash'],
                         'EVM_BLOCK_DELTA': config['evm_block_delta'],
                         'EVM_VALIDATE_HASH': config['evm_validate_hash'],

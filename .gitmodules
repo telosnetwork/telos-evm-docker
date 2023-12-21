@@ -1,3 +1,0 @@
-[submodule "tests/ship-mock"]
-	path = tests/ship-mock
-	url = https://github.com/guilledk/ship-mock.git

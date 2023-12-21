@@ -162,11 +162,10 @@ telosevm_translator = {
     'evm_block_delta': 57,
     'evm_validate_hash': '',
     'stop_block': 4294967295,
-    'deploy_block': 136393814,
     'prev_hash': '',
     'worker_amount': 4,
     'elastic_dump_size': 4096,
-    'elastic_timeout': 1000 * 60 * 10
+    'elastic_timeout': 1000 * 20
 }
 
 telos_evm_rpc = {
@@ -189,7 +188,7 @@ telos_evm_rpc = {
     'indexer_websocket_uri': 'ws://127.0.0.1:7300/evm',
     'rpc_websocket_host': '0.0.0.0',
     'rpc_websocket_port': '7400',
-    'elastic_prefix': 'telos-testnet',
+    'elastic_prefix': 'telos-testnet-tevmc',
     'elasitc_index_version': 'v1.5'
 }
 
