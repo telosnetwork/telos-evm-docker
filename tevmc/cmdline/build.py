@@ -3,14 +3,12 @@
 from copy import deepcopy
 import logging
 import os
-import sys
 import json
 
-import click
 import docker
+from docker.types import Mount
 
 from typing import Dict, Any
-from hashlib import sha1
 from pathlib import Path
 from datetime import datetime
 
@@ -124,7 +122,13 @@ def perform_config_build(target_dir, config):
     host_dir = (docker_dir / elastic_data_dir)
     host_dir.mkdir(parents=True, exist_ok=True)
 
-    os.chown(host_dir, uid=os.getuid(), gid=os.getgid())
+    client = docker.from_env()
+    client.containers.run(
+        'bash',
+        f'bash -c \"chown -R {os.getuid()}:{os.getgid()} /root/target\"',
+        remove=True,
+        mounts=[Mount('/root/target', str(host_dir), 'bind')]
+    )
 
     # kibana
     kibana_conf = config['kibana']
