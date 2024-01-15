@@ -4,7 +4,6 @@ from leap.sugar import random_string, Asset
 from leap.tokens import tlos_token
 
 from tevmc.utils import to_wei
-from tevmc.config import local
 from tevmc.testing import open_web3
 
 
@@ -18,7 +17,7 @@ def test_cleos_evm_create(tevmc_local):
 
     account = tevmc.cleos.new_account()
 
-    ec, out = tevmc.cleos.create_evm_account(
+    ec, _ = tevmc.cleos.create_evm_account(
         account, random_string())
     assert ec == 0
 
