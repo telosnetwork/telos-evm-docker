@@ -22,7 +22,7 @@ iterators = '^0.2.0'
 simplejson = '^3.19.1'
 elasticsearch = '^8.9.0'
 requests-unixsocket = '^0.3.0'
-py-leap = {git = 'https://github.com/guilledk/py-leap', rev = 'v0.1a15'}
+py-leap = {git = 'https://github.com/guilledk/py-leap', rev = 'v0.1a16'}
 rlp = '3.0.0'
 pdbplus = "^1.5.0"
 
