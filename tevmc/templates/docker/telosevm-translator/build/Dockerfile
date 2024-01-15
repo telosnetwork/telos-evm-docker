@@ -5,7 +5,7 @@ workdir /root
 run git clone \
     https://github.com/telosnetwork/telosevm-translator.git \
     indexer \
-    -b mocha_testing
+    -b v1.0.0-rc7
 
 workdir /root/indexer
 
