@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from copy import deepcopy
-from hashlib import sha1
 import re
 import os
 import sys
@@ -10,9 +8,9 @@ import signal
 import logging
 import subprocess
 
-from typing import List, Dict, Optional
+from copy import deepcopy
+from hashlib import sha1
 from pathlib import Path
-from docker.errors import NotFound
 from websocket import create_connection
 from contextlib import contextmanager, ExitStack
 
@@ -23,18 +21,15 @@ import simplejson
 from web3 import Web3
 from flask import Flask
 from docker.types import LogConfig, Mount
+from docker.errors import NotFound
 from requests.auth import HTTPBasicAuth
-from leap.sugar import (
-    docker_open_process,
-    docker_wait_process,
-    download_latest_snapshot
-)
+from leap.sugar import download_latest_snapshot
 from tevmc.cmdline.build import build_service, perform_config_build, service_alias_to_fullname
 
 from tevmc.routes import add_routes
 
 from .config import *
-from .utils import docker_stream_logs
+from .utils import *
 from .cleos_evm import CLEOSEVM
 
 
@@ -46,12 +41,12 @@ class TEVMController:
 
     def __init__(
         self,
-        config: Dict[str, Dict],
+        config: dict[str, dict],
         logger = None,
         log_level: str = 'info',
-        root_pwd: Optional[Path] = None,
+        root_pwd: Path | None = None,
         wait: bool = False,
-        services: List[str] = [
+        services: list[str] = [
             'redis',
             'elastic',
             'kibana',
@@ -63,7 +58,7 @@ class TEVMController:
         from_latest: bool = False,
         is_producer: bool = True,
         skip_init: bool = False,
-        additional_nodeos_params: List[str] = []
+        additional_nodeos_params: list[str] = []
     ):
         self.pid = os.getpid()
         self.config = config
@@ -289,24 +284,20 @@ class TEVMController:
             # self.logger.info('removed.')
 
 
-    def stream_logs(self, container, timeout=30.0, from_latest=False):
+    def stream_logs(self, container, timeout=30.0, num=100, from_latest=False):
         if container is None:
             self.logger.critical("container is None")
             raise StopIteration
 
         elif container in ['nodeos', 'telosevm-translator', 'telos-evm-rpc']:
-            if from_latest:
-                lines = 1
-            else:
-                lines = 1000
-
             for line in self._stream_logs_from_main_dir(
-                container, lines, timeout=int(timeout)):
+                container, num, timeout=int(timeout)):
                 yield line
 
         else:
             for chunk in docker_stream_logs(
                 self.containers[container],
+                lines=num,
                 timeout=timeout,
                 from_latest=from_latest
             ):
@@ -478,6 +469,17 @@ class TEVMController:
                     ipv4_address=config['virtual_ip']
                 )
 
+    def _stop_nodeos(self):
+        # remove container if exists
+        if 'nodeos' in self.containers:
+            try:
+                self.containers['nodeos'].kill()
+                self.containers['nodeos'].wait()
+                self.containers['nodeos'].remove()
+
+            except NotFound:
+                ...
+
     def start_nodeos(
         self,
         space_monitor=True,
@@ -491,14 +493,7 @@ class TEVMController:
                     to produce blocks
         - Create evm accounts and deploy contract
         """
-        # remove container if exists
-        if 'nodeos' in self.containers:
-            try:
-                self.containers['nodeos'].stop()
-                self.containers['nodeos'].remove()
-
-            except NotFound:
-                ...
+        self._stop_nodeos()
 
         config = self.config['nodeos']
         docker_dir = self.docker_wd / config['docker_path']
@@ -508,6 +503,7 @@ class TEVMController:
 
         conf_dir = docker_dir / config['conf_dir']
         contracts_dir = docker_dir / config['contracts_dir']
+        contracts_dir = contracts_dir.resolve(strict=True)
 
         data_dir_host.mkdir(parents=True, exist_ok=True)
 
@@ -617,8 +613,6 @@ class TEVMController:
 
             # setup cleos wrapper
             cleos = CLEOSEVM(
-                self.client,
-                self.containers['nodeos'],
                 logger=self.logger,
                 url=cleos_url,
                 evm_url=cleos_evm_url,
@@ -626,30 +620,37 @@ class TEVMController:
 
             self.cleos = cleos
 
+            if 'sig_provider' in config['ini']:
+                key = config['ini']['sig_provider'].split('=KEY:')[-1]
+                cleos.import_key('eosio', key)
+
+            self.cleos.load_abi_file('eosio', contracts_dir / 'eosio.system/eosio.system.abi')
+            self.cleos.load_abi_file('eosio.evm', contracts_dir / 'eosio.evm/regular/regular.abi')
+            self.cleos.load_abi_file('eosio.token', contracts_dir / 'eosio.token/eosio.token.abi')
+
             if self.is_local and not self.skip_init:
-                output = cleos.wait_produced(from_file='/logs/nodeos.log')
+                output = ''
+                for msg in self.stream_logs('nodeos', timeout=60*10, from_latest=True):
+                    output += msg
+                    if 'Produced' in msg:
+                        break
+
                 # await for nodeos to produce a block
                 cleos.wait_blocks(4)
 
-                self.is_fresh = 'Starting fresh blockchain state using provided genesis state' in output
+                self.is_fresh = (
+                    'No existing chain state or fork database. '
+                    'Initializing fresh blockchain state and resetting fork database.' in output
+                )
 
                 if self.is_fresh:
-                    cleos.start_keosd(
-                        '-c',
-                        '/root/keosd_config.ini')
-
-                    cleos.setup_wallet(self.producer_key)
+                    cleos.import_key('eosio', self.producer_key)
 
                     try:
                         cleos.boot_sequence(
-                            sys_contracts_mount='/opt/eosio/bin/contracts',
-                            verify_hash=False)
+                            contracts=contracts_dir, verify_hash=False)
 
-                        cleos.deploy_evm(self.config['nodeos']['eosio.evm'])
-
-                        # save evm deploy info for future runs
-                        with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
-                            uni_conf.write(json.dumps(self.config, indent=4))
+                        cleos.deploy_evm(contracts_dir / self.config['nodeos']['eosio.evm'])
 
                     except AssertionError:
                         for msg in self.stream_logs('nodeos'):
@@ -657,7 +658,9 @@ class TEVMController:
                         sys.exit(1)
             else:
                 if '--replay-blockchain' not in self.additional_nodeos_params:
-                    cleos.wait_received(from_file='/logs/nodeos.log')
+                    for msg in self.stream_logs('nodeos', timeout=60*10, from_latest=True):
+                        if 'Received' in msg:
+                            break
 
             if not self.skip_init:
                 # wait until nodeos apis are up
@@ -671,17 +674,14 @@ class TEVMController:
                         time.sleep(1)
 
                 genesis_block = int(self.config['telosevm-translator']['start_block']) - 1
-                self.logger.info(f'nodeos has started, waiting until blocks.log contains evm genesis block number {genesis_block}')
-                cleos.wait_blocks(
-                    genesis_block - int(cleos.get_info()['head_block_num']), sleep_time=10)
+                self.logger.info(
+                    'nodeos has started, waiting until blocks.log '
+                    f'contains evm genesis block number {genesis_block}'
+                )
+                cleos.wait_blocks(genesis_block - int(cleos.get_info()['head_block_num']))
 
     def restart_nodeos(self):
-        try:
-            self.cleos.stop_nodeos(
-                from_file='/logs/nodeos.log')
-
-        except docker.errors.NotFound:
-            self.logger.info('tried to stop nodeos process but container not running')
+        self._stop_nodeos()
 
         self.is_nodeos_relaunch = True
 
@@ -760,7 +760,7 @@ class TEVMController:
                 remote_head_block = self._get_head_block()
                 last_update_time = now
 
-    def setup_index_patterns(self, patterns: List[str]):
+    def setup_index_patterns(self, patterns: list[str]):
         kibana_port = self.config['kibana']['port']
 
         if sys.platform == 'darwin':

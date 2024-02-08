@@ -2,7 +2,7 @@
 
 import pytest
 
-from leap.sugar import Asset
+from leap.protocol import Asset
 
 from web3 import Account
 
@@ -12,37 +12,90 @@ from web3 import Account
 def test_setcode_with_same_hash_subst(tevmc_local):
     tevmc = tevmc_local
 
-    regular_path = '/opt/eosio/bin/contracts/eosio.evm/regular'
-    receiptless_path = '/opt/eosio/bin/contracts/eosio.evm/receiptless'
-
-    tevmc.cleos.deploy_contract(
-        'eosio.evm', regular_path,
-        privileged=True,
-        create_account=False,
-        verify_hash=False)
-
-    tevmc.cleos.deploy_contract(
-        'eosio.evm', receiptless_path,
-        privileged=True,
-        create_account=False,
-        verify_hash=False)
-
-    tevmc.cleos.wait_blocks(10)
-
     eth_addr = tevmc.cleos.eth_account_from_name('evmuser1')
     assert eth_addr
-    ec, _ = tevmc.cleos.eth_transfer(
-        'evmuser1',
-        eth_addr,
-        Account.create().address,
-        Asset(1, tevmc.cleos.sys_token_supply.symbol)
+
+    def transfer_and_verify_receipt_happens():
+        tevmc.cleos.wait_blocks(1)
+        ec, _ = tevmc.cleos.eth_transfer(
+            eth_addr,
+            Account.create().address,
+            '1.0000 TLOS',
+            account='evmuser1'
+        )
+        assert ec == 0
+
+        nodeos_logs = ''
+        for msg in tevmc.stream_logs('nodeos', num=3, from_latest=True):
+            nodeos_logs += msg
+            if 'RCPT' in nodeos_logs:
+                break
+
+    # at this point blockchain is running with receiptless on chain
+    # and using subst to apply regular
+
+    regular_dir = (
+        tevmc.docker_wd /
+        'leap/contracts/eosio.evm/regular'
     )
-    assert ec == 0
-
-    nodeos_logs = tevmc.cleos.wait_for_phrase_in_nodeos_logs(
-        'RCPT', lines=5, timeout=4,
-        from_file=tevmc.config['nodeos']['log_path']
+    receiptless_dir = (
+        tevmc.docker_wd /
+        'leap/contracts/eosio.evm/receiptless'
     )
 
-    assert 'RCPT' in nodeos_logs
+    tevmc.cleos.deploy_contract_from_path(
+        'eosio.evm',
+        regular_dir,
+        privileged=True,
+        create_account=False,
+        verify_hash=False
+    )
 
+    transfer_and_verify_receipt_happens()
+
+    tevmc.cleos.deploy_contract_from_path(
+        'eosio.evm',
+        receiptless_dir,
+        privileged=True,
+        create_account=False,
+        verify_hash=False
+    )
+
+    transfer_and_verify_receipt_happens()
+
+
+    tevmc.cleos.deploy_contract_from_path(
+        'eosio.evm',
+        regular_dir,
+        privileged=True,
+        create_account=False,
+        verify_hash=False
+    )
+
+    transfer_and_verify_receipt_happens()
+
+    tevmc.cleos.deploy_contract_from_path(
+        'eosio.evm',
+        receiptless_dir,
+        privileged=True,
+        create_account=False,
+        verify_hash=False
+    )
+
+    tevmc.cleos.deploy_contract_from_path(
+        'eosio.evm',
+        regular_dir,
+        privileged=True,
+        create_account=False,
+        verify_hash=False
+    )
+
+    tevmc.cleos.deploy_contract_from_path(
+        'eosio.evm',
+        receiptless_dir,
+        privileged=True,
+        create_account=False,
+        verify_hash=False
+    )
+
+    transfer_and_verify_receipt_happens()

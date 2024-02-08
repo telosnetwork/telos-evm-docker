@@ -51,7 +51,7 @@ from .cli import cli
     '--target-dir', default='.',
     help='target')
 @click.option(
-    '--conf-upgrade/--no-conf-upgrade', default=False,
+    '--conf-upgrade/--no-conf-upgrade', default=None,
     help='Perform or ignore posible config upgrade.')
 def up(
     pid,
@@ -95,29 +95,30 @@ def up(
     if (up_config and
         not deep_dict_equal(up_config, cmp_config)):
 
-        if conf_upgrade:
-            # backup old conf
-            config_path = Path(target_dir) / config_filename
-            backup_path = config_path.with_name(f'{config_path.name}.backup')
+        if conf_upgrade != None:
+            if conf_upgrade:
+                # backup old conf
+                config_path = Path(target_dir) / config_filename
+                backup_path = config_path.with_name(f'{config_path.name}.backup')
 
-            if backup_path.is_file():
-                print('Backup file alredy exist, please move it before re-doing config upgrade...')
-                sys.exit(3)
+                if backup_path.is_file():
+                    print('Backup file alredy exist, please move it before re-doing config upgrade...')
+                    sys.exit(3)
 
-            shutil.copy(config_path, backup_path)
+                shutil.copy(config_path, backup_path)
 
-            # write upgraded config
-            with open(config_path, 'w+') as conf:
-                conf.write(json.dumps(up_config, indent=4))
+                # write upgraded config
+                with open(config_path, 'w+') as conf:
+                    conf.write(json.dumps(up_config, indent=4))
 
-            config = up_config
+                config = up_config
 
-        else:
-            print(json.dumps(up_config, indent=4))
-            print(f'Config upgrade posible and --conf-upgrade not passed!')
-            for diff in diffs:
-                print(diff)
-            sys.exit(2)
+            else:
+                print(json.dumps(up_config, indent=4))
+                print(f'Config upgrade posible and --conf-upgrade not passed!')
+                for diff in diffs:
+                    print(diff)
+                sys.exit(2)
 
     if Path(pid).resolve().exists():
         print('Daemon pid file exists. Abort.')

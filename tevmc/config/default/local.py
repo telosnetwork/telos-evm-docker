@@ -47,7 +47,7 @@ nodeos = {
     'genesis': 'local',
     'v2_api': 'disabled',
     'nodeos_bin': 'nodeos',
-    'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/receiptless',
+    'eosio.evm': 'eosio.evm/receiptless',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
@@ -120,7 +120,7 @@ telosevm_translator = {
     'start_block': 2,
     'evm_block_delta': 0,
     'evm_validate_hash': '',
-    'stop_block': 4294967295,
+    'stop_block': -1,
     'prev_hash': '',
     'worker_amount': 1,
     'elastic_dump_size': 1,

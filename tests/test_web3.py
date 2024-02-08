@@ -2,8 +2,9 @@
 
 from eth_account import Account
 
-from leap.sugar import random_string, Asset
+from leap.sugar import random_string
 from leap.tokens import tlos_token
+from leap.protocol import Asset
 from tevmc.testing import open_web3
 
 from tevmc.utils import to_wei

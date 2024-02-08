@@ -6,7 +6,6 @@ import json
 import docker
 import tarfile
 import requests
-import shutil
 
 import pytest
 

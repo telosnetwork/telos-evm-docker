@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
 
-import logging
-import time
-from typing import Dict, List
 import pdbp
-import subprocess
 
 from datetime import timedelta
 
 import pytest
-import requests
-
-from leap.sugar import get_free_port
 
 from tevmc.config import local, testnet, mainnet
-from tevmc.testing import bootstrap_test_stack, get_marker, maybe_get_marker
+from tevmc.testing import bootstrap_test_stack
 from tevmc.testing.database import get_suffix
 
 from elasticsearch import Elasticsearch

@@ -164,7 +164,7 @@ telosevm_translator = {
     'start_block': 180698860,
     'evm_block_delta': 36,
     'evm_validate_hash': '',
-    'stop_block': 4294967295,
+    'stop_block': -1,
     'prev_hash': 'cfa67996f5d4f1e9e2b8b13a8984e1d8997091060748c3345f160b39050809b6',
     'worker_amount': 4,
     'elastic_dump_size': 4096,
