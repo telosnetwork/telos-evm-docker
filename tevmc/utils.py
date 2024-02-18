@@ -91,6 +91,7 @@ units = {
     'szabo':        decimal.Decimal('1000000000000'),  # noqa: E241
     'microether':   decimal.Decimal('1000000000000'),  # noqa: E241
     'micro':        decimal.Decimal('1000000000000'),  # noqa: E241
+    'telos':        decimal.Decimal('100000000000000'),  # noqa: E241
     'finney':       decimal.Decimal('1000000000000000'),  # noqa: E241
     'milliether':   decimal.Decimal('1000000000000000'),  # noqa: E241
     'milli':        decimal.Decimal('1000000000000000'),  # noqa: E241
@@ -117,6 +118,7 @@ class denoms:
     szabo = int(units["szabo"])
     microether = int(units["microether"])
     micro = int(units["micro"])
+    telos = int(units["telos"])
     finney = int(units["finney"])
     milliether = int(units["milliether"])
     milli = int(units["milli"])

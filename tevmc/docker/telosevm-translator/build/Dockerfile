@@ -14,5 +14,3 @@ run npm run build
 env LOG_LEVEL debug
 
 cmd ["/bin/bash", "-c", "npm run start >> /logs/telosevm-translator.log 2>&1"]
-
-expose $broadcast_port

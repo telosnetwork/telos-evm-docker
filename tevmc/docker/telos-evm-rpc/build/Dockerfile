@@ -13,17 +13,10 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesourc
 
 RUN apt-get update && apt-get install -y yarn nodejs
 
-RUN git clone https://github.com/telosnetwork/telos-evm-rpc.git -b v1.1.6
+RUN git clone https://github.com/telosnetwork/telos-evm-rpc.git -b es_optimizations
 
 WORKDIR /telos-evm-rpc
 
-RUN yarn
+RUN npm run build
 
-RUN npx tsc
-
-COPY config.json config.json
-
-CMD ["/bin/bash", "-c", "node dist/main.js >> /logs/telos-evm-rpc.log 2>&1"]
-
-EXPOSE $api_port
-EXPOSE $ws_port
+CMD ["/bin/bash", "-c", "node /telos-evm-rpc/dist/main.js --config /root/target/config.json >> /logs/telos-evm-rpc.log 2>&1"]

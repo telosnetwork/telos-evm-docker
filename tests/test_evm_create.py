@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from leap.sugar import random_string
-from leap.tokens import tlos_token
 from leap.protocol import Asset
 
 from tevmc.utils import to_wei
@@ -25,7 +24,7 @@ def test_cleos_evm_create(tevmc_local):
     eth_addr = tevmc.cleos.eth_account_from_name(account)
     assert eth_addr
 
-    quantity = Asset(100, tlos_token)
+    quantity = Asset.from_str('100.0000 TLOS')
 
     tevmc.cleos.transfer_token('eosio', account, quantity, 'evm test')
     tevmc.cleos.transfer_token(account, 'eosio.evm', quantity, 'Deposit')
@@ -33,10 +32,14 @@ def test_cleos_evm_create(tevmc_local):
     # get balance by checking telos.evm table
     balance = tevmc.cleos.eth_get_balance(eth_addr)
 
-    assert balance == to_wei(quantity.amount, 'ether')
+    assert balance == to_wei(quantity.amount // (10 ** quantity.symbol.precision), 'ether')
 
     # get balance by hitting evm rpc api
     rpc_balance = local_w3.eth.get_balance(
         local_w3.to_checksum_address(eth_addr))
 
     assert balance == rpc_balance
+
+    # test getblockbynumber call with latest as param
+    latest = local_w3.eth.get_block('latest')
+    assert latest.number > 0

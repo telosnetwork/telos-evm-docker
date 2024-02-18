@@ -48,6 +48,7 @@ nodeos = {
     'v2_api': 'disabled',
     'nodeos_bin': 'nodeos',
     'eosio.evm': 'eosio.evm/receiptless',
+    'chain_id': 'override',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
@@ -131,6 +132,7 @@ telos_evm_rpc = {
     'name': 'telos-evm-rpc',
     'tag': 'tevm:telos-evm-rpc',
     'docker_path': 'telos-evm-rpc',
+    'conf_dir': 'config',
     'chain_id': 41,
     'debug': True,
     'api_host': '0.0.0.0',
@@ -151,15 +153,8 @@ telos_evm_rpc = {
     'elasitc_index_version': 'v1.5'
 }
 
-logrotator = {
-    'name': 'logrotator',
-    'tag': 'tevm:logrotator',
-    'docker_path': 'logrotator'
-}
-
 default_config = {
     'daemon': daemon,
-    'logrotator': logrotator,
 
     'redis': redis,
     'elasticsearch': elasticsearch,

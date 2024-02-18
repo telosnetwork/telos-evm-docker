@@ -8,16 +8,15 @@ import json
 import docker
 from docker.types import Mount
 
-from typing import Dict, Any
 from pathlib import Path
 from datetime import datetime
 
 from .cli import cli, get_docker_client
-from .init import load_config_templates, load_docker_templates
+from .init import load_docker_templates
 from ..config import *
 
 
-DEFAULT_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc', 'beats']
+DEFAULT_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
 TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
 
 
@@ -61,10 +60,9 @@ def perform_config_build(target_dir, config):
 
     # config build
     timestamp = {'timestamp': str(datetime.now())}
-    templates = load_config_templates()
     docker_templates = load_docker_templates()
 
-    def flatten(master_key, _dict, fkey=None) -> Dict:
+    def flatten(master_key, _dict, fkey=None) -> dict:
         ndict = {}
         if not fkey:
             fkey = master_key
@@ -74,23 +72,14 @@ def perform_config_build(target_dir, config):
 
         return ndict
 
-    def jsonize(_dict: Dict[str, Any], **kwargs) -> Dict[str, str]:
+    def jsonize(_dict: dict, **kwargs) -> dict[str, str]:
         ndict = {}
         for key, val in _dict.items():
             ndict[key] = json.dumps(val, **kwargs)
 
         return ndict
 
-    def write_config_file(
-        fname: str,
-        dir_target: str,
-        subst: Dict[str, Any]
-    ):
-        with open(docker_dir / Path(dir_target) / fname, 'w+') as target_file:
-            target_file.write(
-                templates[fname].substitute(**subst))
-
-    def write_docker_template(file, subst: Dict[str, Any]):
+    def write_docker_template(file, subst: dict):
         with open(docker_dir / file, 'w+') as conf_file:
             conf_file.write(
                 docker_templates[file].substitute(**subst))
@@ -167,10 +156,10 @@ def perform_config_build(target_dir, config):
         if isinstance(val, bool):
             subst[key] = str(val).lower()
 
-    conf_str = templates['nodeos.config.ini'].substitute(**subst) + '\n'
+    conf_str = docker_templates[f'{nodeos_conf_dir}/nodeos.config.ini'].substitute(**subst) + '\n'
 
     if 'local' in chain_name:
-        conf_str += templates['nodeos.local.config.ini'].substitute(**subst) + '\n'
+        conf_str += docker_templates[f'{nodeos_conf_dir}/nodeos.local.config.ini'].substitute(**subst) + '\n'
 
     for plugin in subst['plugins']:
         conf_str += f'plugin = {plugin}\n'
@@ -194,10 +183,6 @@ def perform_config_build(target_dir, config):
     with open(docker_dir / nodeos_conf_dir / 'config.ini', 'w+') as target_file:
         target_file.write(conf_str)
 
-    # beats
-    beats_conf = config['beats']
-    beats_dir = docker_dir / beats_conf['docker_path']
-
     # telosevm-translator
     tevmi_conf = config['telosevm-translator']
     tevmi_dir = tevmi_conf['docker_path']
@@ -211,14 +196,17 @@ def perform_config_build(target_dir, config):
 
     # telos-evm-rpc
     rpc_conf = config['telos-evm-rpc']
-
     rpc_dir = rpc_conf['docker_path']
-    rpc_build_dir = rpc_dir + '/' + 'build'
+
+    # rpc config.json gen
     subst = jsonize({
         'rpc_chain_id': rpc_conf['chain_id'],
+        'nodeos_chain_id': nodeos_conf['chain_id'],
+        'evm_block_delta': tevmi_conf['evm_block_delta'],
         'rpc_debug': rpc_conf['debug'],
         'rpc_host': rpc_conf['api_host'],
         'rpc_api': rpc_conf['api_port'],
+        'rpc_nodeos_write': f'http://127.0.0.1:{nodeos_http_port}',
         'rpc_nodeos_read': f'http://127.0.0.1:{nodeos_http_port}',
         'rpc_signer_account': rpc_conf['signer_account'],
         'rpc_signer_permission': rpc_conf['signer_permission'],
@@ -237,7 +225,14 @@ def perform_config_build(target_dir, config):
         'elasticsearch_prefix': rpc_conf['elastic_prefix'],
         'elasticsearch_index_version': rpc_conf['elasitc_index_version']
     })
-    write_docker_template(f'{rpc_build_dir}/config.json', subst)
+
+    rpc_conf_dir =  f'{rpc_dir}/{rpc_conf["conf_dir"]}'
+    (docker_dir / rpc_conf_dir).mkdir(exist_ok=True, parents=True)
+    write_docker_template(f'{rpc_conf_dir}/config.json', subst)
+
+    # rpc docker template
+    rpc_build_dir = rpc_dir + '/' + 'build'
+
     subst = {
         'api_port':
             config['telos-evm-rpc']['api_port'],

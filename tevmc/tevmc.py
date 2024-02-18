@@ -53,7 +53,6 @@ class TEVMController:
             'nodeos',
             'indexer',
             'rpc',
-            'logrotator'
         ],
         from_latest: bool = False,
         is_producer: bool = True,
@@ -169,16 +168,17 @@ class TEVMController:
                     prev_hash = prev_hash[2:]
 
                 self.config['telosevm-translator']['prev_hash'] = prev_hash
-
-                # dump edited config file
-                with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
-                    uni_conf.write(json.dumps(self.config, indent=4))
+                self._dump_config()
 
 
         self.containers = {}
         self.mounts = {}
 
         self.api = Flask(f'tevmc-{os.getpid()}')
+
+    def _dump_config(self):
+        with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
+            uni_conf.write(json.dumps(self.config, indent=4))
 
     @contextmanager
     def open_container(
@@ -319,22 +319,6 @@ class TEVMController:
                 self.logger.critical('couldn\'t access logs.')
 
             raise TEVMCException(f'{container.name} is not running')
-
-    def start_logrotator(self):
-        with self.must_keep_running('logrotator'):
-            config = self.config['logrotator']
-
-            self.mounts['logrotator'] = [
-                Mount('/logs', str(self.main_logs_dir.resolve()), 'bind'),
-            ]
-
-            self.containers['logrotator'] = self.exit_stack.enter_context(
-                self.open_container(
-                    f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{self.chain_name}',
-                    mounts=self.mounts['logrotator']
-                )
-            )
 
     def start_redis(self):
         with self.must_keep_running('redis'):
@@ -656,6 +640,7 @@ class TEVMController:
                         for msg in self.stream_logs('nodeos'):
                             self.logger.critical(msg.rstrip())
                         sys.exit(1)
+
             else:
                 if '--replay-blockchain' not in self.additional_nodeos_params:
                     for msg in self.stream_logs('nodeos', timeout=60*10, from_latest=True):
@@ -666,7 +651,20 @@ class TEVMController:
                 # wait until nodeos apis are up
                 for i in range(60):
                     try:
-                        cleos.get_info()
+                        self.nodeos_init_info = cleos.get_info()
+                        current_chain_id = self.nodeos_init_info['chain_id']
+                        config_chain_id = self.config['nodeos']['chain_id']
+
+                        if config_chain_id == 'override':
+                            self.config['nodeos']['chain_id'] = current_chain_id
+                            self.build(templates_only=True)
+
+                        else:
+                            if config_chain_id != current_chain_id:
+                                raise ValueError(
+                                    f'chain id returned ({current_chain_id}) '
+                                    f'from nodeos differs from one on config ({config_chain_id})')
+
                         break
 
                     except requests.exceptions.ConnectionError:
@@ -969,9 +967,12 @@ class TEVMController:
     def start_evm_rpc(self):
         with self.must_keep_running('telos-evm-rpc'):
             config = self.config['telos-evm-rpc']
+            docker_dir = self.docker_wd / config['docker_path']
+            conf_dir = docker_dir / config['conf_dir']
 
             self.mounts['telos-evm-rpc'] = [
-                Mount('/logs', str(self.main_logs_dir.resolve()), 'bind')
+                Mount('/logs', str(self.main_logs_dir.resolve()), 'bind'),
+                Mount('/root/target', str(conf_dir.resolve()), 'bind')
             ]
 
             more_params = {}
@@ -1153,9 +1154,6 @@ class TEVMController:
             not self.skip_init and
             'nodeos' in self.services):
             self.cleos.create_test_evm_account()
-
-        if 'logrotator' in self.services:
-            self.start_logrotator()
 
     def serve_api(self):
         add_routes(self)

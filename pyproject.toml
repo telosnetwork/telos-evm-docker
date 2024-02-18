@@ -25,6 +25,7 @@ requests-unixsocket = '^0.3.0'
 py-leap = {git = 'https://github.com/guilledk/py-leap', rev = 'v0.1a17'}
 rlp = '3.0.0'
 pdbplus = "^1.5.0"
+pydantic = "^2.6.1"
 
 [build-system]
 requires = ['poetry-core']
@@ -34,7 +35,7 @@ build-backend = 'poetry.core.masonry.api'
 tevmc = 'tevmc.cmdline:cli'
 
 [build]
-include = ['tevmc/templates/**/*']
+include = ['tevmc/docker/**/*']
 
 [tool.pytest.ini_options]
 log_cli = true
