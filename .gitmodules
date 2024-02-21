@@ -1,0 +1,3 @@
+[submodule "tests/evm-contracts/uniswap-v2-core"]
+	path = tests/evm-contracts/uniswap-v2-core
+	url = https://github.com/Uniswap/v2-core.git

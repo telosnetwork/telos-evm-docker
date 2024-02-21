@@ -13,7 +13,7 @@ DEFAULT_GAS_PRICE = 524799638144
 DEFAULT_GAS = 21000
 
 
-def test_all(tevmc_local):
+def test_all(compile_evm, tevmc_local):
     local_w3 = open_web3(tevmc_local)
 
     # Test connection
@@ -81,8 +81,8 @@ def test_all(tevmc_local):
     # test erc20 contract deploy
     total_supply_wei = to_wei(69, 'ether')
     erc20_contract = tevmc_local.cleos.eth_deploy_contract_from_json(
-        'tests/evm-contracts/ERC20.json',
-        'TestERC20Token',
+        'tests/evm-contracts/uniswap-v2-core/build/ERC20.json',
+        'UniswapV2Token',
         constructor_arguments=[total_supply_wei]
     )
     assert erc20_contract.functions.totalSupply().call() == total_supply_wei
