@@ -457,7 +457,7 @@ class TEVMController:
         # remove container if exists
         if 'nodeos' in self.containers:
             try:
-                self.containers['nodeos'].kill()
+                self.containers['nodeos'].kill('SIGINT')
                 self.containers['nodeos'].wait()
                 self.containers['nodeos'].remove()
 

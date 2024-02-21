@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-import time
 import json
+
+from pathlib import Path
 
 import rlp
 import requests
@@ -14,6 +15,10 @@ from rlp.sedes import (
 
 from leap.cleos import CLEOS
 from leap.protocol import Asset
+
+from web3 import Web3
+from eth_account import Account
+from eth_account.signers.local import LocalAccount
 
 from .utils import to_wei, to_int, decode_hex, remove_0x_prefix
 
@@ -59,6 +64,12 @@ class CLEOSEVM(CLEOS):
         self.evm_url = evm_url
         self.chain_id = chain_id
 
+        self._w3 = Web3(Web3.HTTPProvider(evm_url))
+
+        self.evm_contracts = {}
+
+        self.evm_default_account: LocalAccount = Account.from_key(
+            '0x87ef69a835f8cd0c44ab99b7609a20b2ca7f1c8470af4f0e5b44db927d542084')
 
     def deploy_evm(
         self,
@@ -389,3 +400,46 @@ class CLEOSEVM(CLEOS):
             url if url else self.evm_url,
             json=payload, headers=headers)
         return response.json() if response.status_code == 200 else None
+
+    def eth_deploy_contract_from_json(
+        self,
+        contract_path: str | Path,
+        contract_name: str,
+        constructor_arguments: list[str] = [],
+        account: LocalAccount | None = None,
+        max_gas: int = int(1e8)
+    ):
+        if not isinstance(account, LocalAccount):
+            account = self.evm_default_account
+
+        with open(contract_path, 'r') as contract_fp:
+            contract_interface = json.load(contract_fp)
+
+        # instantiate
+        Contract = self._w3.eth.contract(
+            abi=contract_interface['abi'],
+            bytecode=contract_interface['bytecode']
+        )
+
+        # create deploy tx
+        tx_args = {
+            'from': account.address,
+            'gas': max_gas,
+            'gasPrice': self._w3.eth.gas_price,
+            'nonce': self._w3.eth.get_transaction_count(account=account.address)
+        }
+
+        tx = Contract.constructor(*constructor_arguments).build_transaction(tx_args)
+
+        signed_tx = account.sign_transaction(tx)
+
+        tx_hash = self._w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+        tx_receipt = self._w3.eth.wait_for_transaction_receipt(tx_hash)
+
+        _contract = self._w3.eth.contract(
+            address=tx_receipt['contractAddress'], abi=contract_interface['abi'])
+
+        self.evm_contracts[contract_name] = _contract
+
+        return _contract
