@@ -2,6 +2,7 @@
 
 import json
 
+from base64 import b64encode
 from pathlib import Path
 
 import rlp
@@ -105,17 +106,18 @@ class CLEOSEVM(CLEOS):
             net='10000.0000 TLOS',
             ram=100000)
 
-        self.create_snapshot(self.url, {})
+        self.create_snapshot({})
+
+        self.logger.info('deploying evm contract')
 
         self.evm_deploy_info = self.deploy_contract_from_path(
             'eosio.evm',
             contract_path,
             privileged=True,
-            create_account=False,
-            verify_hash=False
+            create_account=False
         )
 
-        ec, self.evm_init_info = self.push_action(
+        self.evm_init_info = self.push_action(
             'eosio.evm',
             'init',
             [
@@ -128,11 +130,9 @@ class CLEOSEVM(CLEOS):
             ],
             'eosio.evm'
         )
-        assert ec == 0
 
-        ec, _ = self.push_action(
+        self.push_action(
             'eosio.evm', 'setrevision', [1], 'eosio.evm')
-        assert ec == 0
 
     def create_test_evm_account(
         self,
@@ -176,13 +176,12 @@ class CLEOSEVM(CLEOS):
         self.logger.info(f'{name}: {eth_addr}')
 
         for addr, amount in addr_amount_pairs:
-            ec, _ = self.eth_transfer(
+            self.eth_transfer(
                 eth_addr,
                 addr,
                 Asset.from_ints(amount * (10 ** 4), 4, 'TLOS'),
                 account='evmuser1'
             )
-            assert ec == 0
 
 
     """    eosio.evm interaction
@@ -443,3 +442,45 @@ class CLEOSEVM(CLEOS):
         self.evm_contracts[contract_name] = _contract
 
         return _contract
+
+    # substitution helpers
+
+    def subst_status(self, account: str | None = None) -> dict:
+        params = {}
+        if isinstance(account, str):
+            params['account'] = account
+
+        return self._post(
+            '/v1/subst/status', params=params)
+
+    def subst_upsert(self, account: str, from_block: int, code: bytes) -> dict:
+        return self._post(
+            '/v1/subst/upsert',
+            params={
+                'account': account,
+                'from_block': from_block,
+                'code': b64encode(code).decode('utf-8')
+            }
+        )
+
+    def subst_activate(self, account: str | None = None) -> dict:
+        params = {}
+        if isinstance(account, str):
+            params['account'] = account
+
+        return self._post('/v1/subst/activate', params=params)
+
+    def subst_deactivate(self, account: str | None = None) -> dict:
+        params = {}
+        if isinstance(account, str):
+            params['account'] = account
+
+        return self._post('/v1/subst/deactivate', params=params)
+
+    def subst_remove(self, account: str | None = None) -> dict:
+        params = {}
+        if isinstance(account, str):
+            params['account'] = account
+
+        return self._post('/v1/subst/remove', params=params)
+

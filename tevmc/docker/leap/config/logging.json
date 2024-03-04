@@ -83,6 +83,14 @@
         "stderr"
       ]
     },{
+      "name": "subst_plugin",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
       "name": "transaction_success_tracing",
       "level": "info",
       "enabled": true,
@@ -112,7 +120,7 @@
       "enabled": true,
       "additivity": false,
       "appenders": [
-        "stderr",
+        "stderr"
       ]
     },{
       "name": "transaction_trace_failure",
@@ -120,7 +128,7 @@
       "enabled": true,
       "additivity": false,
       "appenders": [
-        "stderr",
+        "stderr"
       ]
     },{
     "name": "state_history",
@@ -128,7 +136,7 @@
     "enabled": true,
     "additivity": false,
     "appenders": [
-      "stderr",
+      "stderr"
       ]
     },{
       "name": "transaction",
@@ -136,7 +144,7 @@
       "enabled": true,
       "additivity": false,
       "appenders": [
-        "stderr",
+        "stderr"
       ]
     }
   ]

@@ -5,7 +5,7 @@ workdir /root
 run git clone \
     https://github.com/telosnetwork/telosevm-translator.git \
     indexer \
-    -b v1.0.0-rc9
+    -b ws_block_hash_hotfix
 
 workdir /root/indexer
 

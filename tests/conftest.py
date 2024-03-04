@@ -4,6 +4,7 @@ import pdbp
 import logging
 import subprocess
 
+from copy import deepcopy
 from pathlib import Path
 from datetime import timedelta
 
@@ -20,6 +21,43 @@ from elasticsearch import Elasticsearch
 def tevmc_local(request, tmp_path_factory):
     request.applymarker(pytest.mark.config(**local.default_config))
     with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
+        yield tevmc
+
+
+@pytest.fixture()
+def subst_testing_nodeos(request, tmp_path_factory):
+    config = deepcopy(local.default_config)
+
+    config['nodeos']['ini']['subst'] = {}
+
+    request.applymarker(pytest.mark.config(**config))
+    request.applymarker(pytest.mark.services('nodeos'))
+    request.applymarker(pytest.mark.randomize(False))
+    request.applymarker(pytest.mark.tevmc_params(testing=True, skip_init=True))
+    with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
+        yield tevmc
+
+
+@pytest.fixture()
+def subst_testing_nodeos_testcontract(request, tmp_path_factory):
+    config = deepcopy(local.default_config)
+
+    config['nodeos']['ini']['subst'] = {
+        'testcontract': '/opt/eosio/bin/testcontracts/testcontract/variations/testcontract.var1.wasm'
+    }
+
+    request.applymarker(pytest.mark.config(**config))
+    request.applymarker(pytest.mark.services('nodeos'))
+    request.applymarker(pytest.mark.randomize(False))
+    request.applymarker(pytest.mark.tevmc_params(testing=True, skip_init=True))
+    with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
+
+        tevmc.cleos.deploy_contract_from_path(
+            'testcontract',
+            Path('tests/contracts/testcontract/base'),
+            contract_name='testcontract'
+        )
+
         yield tevmc
 
 
