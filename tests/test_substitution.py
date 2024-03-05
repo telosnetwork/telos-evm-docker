@@ -126,9 +126,9 @@ def test_subst_api(subst_testing_nodeos):
     assert upsert_result['original_hash'] == ZERO_SHA
     assert upsert_result['substitution_hash'] == var1_hash
 
-    assert subst_status['code_object']['code_hash'] == base_hash
-    assert subst_status['code_object']['actual_code_hash'] == base_hash
-    assert subst_status['account_metadata_object']['code_hash'] == base_hash
+    assert upsert_result['code_object']['code_hash'] == base_hash
+    assert upsert_result['code_object']['actual_code_hash'] == base_hash
+    assert upsert_result['account_metadata_object']['code_hash'] == base_hash
 
     # test subst is applied
     assert_testcontract_has_header(tevmc.cleos, 'VAR1')
