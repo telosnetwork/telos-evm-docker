@@ -29,8 +29,8 @@ RUN wget https://telos-snapshots.s3.amazonaws.com/mainnet/telos-mainet-20211026-
 
 WORKDIR /root
 
-# RUN wget https://github.com/telosnetwork/leap/releases/download/v4.0.4-1.0.1-dev/leap_4.0.4-1-0-1-ubuntu22.04_amd64.deb && \
-#     apt-get install -y -f ./leap_4.0.4-1-0-1-ubuntu22.04_amd64.deb
+RUN wget https://github.com/telosnetwork/leap/releases/download/v4.0.4-1.0.1-dev/leap_4.0.4-1-0-1-ubuntu22.04_amd64.deb && \
+    apt-get install -y -f ./leap_4.0.4-1-0-1-ubuntu22.04_amd64.deb
 
 # # install vanilla nodeos
 # RUN wget https://github.com/AntelopeIO/leap/releases/download/v4.0.4/leap_4.0.4-ubuntu20.04_amd64.deb && \
@@ -39,5 +39,5 @@ WORKDIR /root
 #     cp ./usr/bin/nodeos /usr/local/bin/nodeos-vanilla && \
 #     rm -rdf usr data.tar.gz control.tar.gz debian-binary *.deb
 
-COPY ./leap_4.0.4-1-0-2-ubuntu22.04_amd64.deb .
-RUN apt-get install -f -y ./leap_4.0.4-1-0-2-ubuntu22.04_amd64.deb
+# COPY ./leap_4.0.4-1-0-2-ubuntu22.04_amd64.deb .
+# RUN apt-get install -f -y ./leap_4.0.4-1-0-2-ubuntu22.04_amd64.deb

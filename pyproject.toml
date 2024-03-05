@@ -25,6 +25,7 @@ requests-unixsocket = '^0.3.0'
 py-leap = {git = 'https://github.com/guilledk/py-leap', rev = 'deploy_fix_error'}
 rlp = '3.0.0'
 pydantic = "^2.6.1"
+requests-mock = "^1.11.0"
 
 [build-system]
 requires = ['poetry-core']

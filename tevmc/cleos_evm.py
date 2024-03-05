@@ -453,13 +453,14 @@ class CLEOSEVM(CLEOS):
         return self._post(
             '/v1/subst/status', params=params)
 
-    def subst_upsert(self, account: str, from_block: int, code: bytes) -> dict:
+    def subst_upsert(self, account: str, from_block: int, code: bytes, must_activate: bool = True) -> dict:
         return self._post(
             '/v1/subst/upsert',
             params={
                 'account': account,
                 'from_block': from_block,
-                'code': b64encode(code).decode('utf-8')
+                'code': b64encode(code).decode('utf-8'),
+                'must_activate': must_activate
             }
         )
 
@@ -483,4 +484,7 @@ class CLEOSEVM(CLEOS):
             params['account'] = account
 
         return self._post('/v1/subst/remove', params=params)
+
+    def subst_fetch_manifest(self) -> dict:
+        return self._get('/v1/subst/fetch_manifest')
 

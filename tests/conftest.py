@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
 
-import pdbp
+import os
+import json
+import time
 import logging
+import tempfile
 import subprocess
 
 from copy import deepcopy
 from pathlib import Path
 from datetime import timedelta
+from contextlib import contextmanager
+import http.server
+import socketserver
+import threading
 
+import pdbp
 import pytest
+import requests
 
 from tevmc.config import local, testnet, mainnet
 from tevmc.testing import bootstrap_test_stack
@@ -59,6 +68,70 @@ def subst_testing_nodeos_testcontract(request, tmp_path_factory):
         )
 
         yield tevmc
+
+
+@contextmanager
+def mock_manifest_server():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        def handler_from(directory):
+            def _init(self, *args, **kwargs):
+                return http.server.SimpleHTTPRequestHandler.__init__(
+                    self, *args, directory=self.directory, **kwargs)
+
+            return type(f'HandlerFrom<{directory}>',
+                        (http.server.SimpleHTTPRequestHandler,),
+                        {'__init__': _init, 'directory': directory})
+
+        class CustomHTTPServer(socketserver.TCPServer):
+            allow_reuse_address = True
+
+        httpd = CustomHTTPServer(("", 5000), handler_from(temp_dir))
+
+        thread = threading.Thread(target=httpd.serve_forever)
+        thread.daemon = True  # This ensures the thread will be killed when the main thread dies
+        thread.start()
+
+        def register_file(name: str, _json=None, _bytes=None, sub_path: str = ''):
+
+            (Path(temp_dir) / sub_path).mkdir(exist_ok=True, parents=True)
+
+            with open(Path(temp_dir) / sub_path / name, 'wb') as file:
+                if isinstance(_json, dict):
+                    data = json.dumps(_json, indent=4).encode()
+
+                elif isinstance(_bytes, bytes):
+                    data = _bytes
+
+                file.write(data)
+
+        register_file('subst.json', _json={})
+
+        yield register_file
+
+        httpd.shutdown()
+        thread.join()
+
+@pytest.fixture()
+def subst_testing_nodeos_manifest(request, tmp_path_factory):
+    config = deepcopy(local.default_config)
+
+    config['nodeos']['ini']['subst'] = 'http://127.0.0.1:5000/subst.json'
+
+    request.applymarker(pytest.mark.config(**config))
+    request.applymarker(pytest.mark.services('nodeos'))
+    request.applymarker(pytest.mark.randomize(False))
+    request.applymarker(pytest.mark.tevmc_params(testing=True, skip_init=True))
+
+    with (
+        mock_manifest_server() as register_file,
+        bootstrap_test_stack(request, tmp_path_factory) as tevmc
+    ):
+        tevmc.cleos.deploy_contract_from_path(
+            'testcontract',
+            Path('tests/contracts/testcontract/base'),
+            contract_name='testcontract'
+        )
+        yield tevmc, register_file
 
 
 @pytest.fixture()
