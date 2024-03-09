@@ -166,6 +166,7 @@ def perform_config_build(target_dir, config):
 
     if 'subst' in subst:
         conf_str += f'plugin = eosio::subst_plugin\n'
+        conf_str += f'plugin = eosio::subst_api_plugin\n'
         conf_str += '\n'
         sinfo = subst['subst']
         if isinstance(sinfo, str):

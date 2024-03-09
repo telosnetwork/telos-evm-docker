@@ -102,7 +102,8 @@ nodeos = {
         'peers': [],
         'subst': {
             'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/regular/regular.wasm'
-        }
+        },
+        'subst_admin_apis': True
     }
 }
 

@@ -17,9 +17,8 @@ def test_cleos_evm_create(tevmc_local):
 
     account = tevmc.cleos.new_account()
 
-    ec, _ = tevmc.cleos.create_evm_account(
+    tevmc.cleos.create_evm_account(
         account, random_string())
-    assert ec == 0
 
     eth_addr = tevmc.cleos.eth_account_from_name(account)
     assert eth_addr

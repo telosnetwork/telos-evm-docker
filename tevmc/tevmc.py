@@ -573,6 +573,9 @@ class TEVMController:
         if self.is_producer:
             nodeos_cmd += ['-e', '-p', 'eosio']
 
+        if config['ini'].get('subst_admin_apis', False):
+            nodeos_cmd += ['--subst-admin-apis']
+
         nodeos_cmd += self.additional_nodeos_params
 
         nodeos_cmd += ['>>', '/logs/nodeos.log', '2>&1']
@@ -693,12 +696,13 @@ class TEVMController:
                         self.logger.warning('connection error trying to get chain info...')
                         time.sleep(1)
 
-                genesis_block = int(self.config['telosevm-translator']['start_block']) - 1
+                translator_start_block = int(self.config['telosevm-translator']['start_block']) - 1
                 self.logger.info(
                     'nodeos has started, waiting until blocks.log '
-                    f'contains evm genesis block number {genesis_block}'
+                    f'contains block number {translator_start_block}'
                 )
-                cleos.wait_blocks(genesis_block - int(cleos.get_info()['head_block_num']))
+                cleos.wait_block(
+                    translator_start_block, progress=True, interval=5)
 
     def restart_nodeos(self):
         self._stop_nodeos()

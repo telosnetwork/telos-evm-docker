@@ -218,7 +218,8 @@ class CLEOSEVM(CLEOS):
             'eosio.evm',
             'create',
             [account, salt],
-            account
+            account,
+            key=self.get_private_key(account)
         )
 
     """ EVM
