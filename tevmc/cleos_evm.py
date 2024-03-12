@@ -362,7 +362,8 @@ class CLEOSEVM(CLEOS):
                 estimate_gas,
                 sender
             ],
-            account
+            account,
+            key=self.get_private_key(account)
         )
 
     def eth_withdraw(self,
@@ -377,7 +378,8 @@ class CLEOSEVM(CLEOS):
             EVM_CONTRACT,
             'withdraw',
             [to, quantity],
-            account
+            account,
+            key=self.get_private_key(account)
         )
 
     def eth_get_block_by_number(

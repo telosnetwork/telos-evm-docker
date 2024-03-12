@@ -34,8 +34,7 @@ def test_all(compile_evm, tevmc_local):
     # Test transaction count
     tevmc = tevmc_local
     account = tevmc.cleos.new_account()
-    ec, out = tevmc.cleos.create_evm_account(account, random_string())
-    assert ec == 0
+    tevmc.cleos.create_evm_account(account, random_string())
     eth_addr = tevmc.cleos.eth_account_from_name(account)
     assert eth_addr
     quantity = Asset.from_str('100.0000 TLOS')
@@ -46,15 +45,13 @@ def test_all(compile_evm, tevmc_local):
     # Test get transaction receipt
     tevmc = tevmc_local
     account = tevmc.cleos.new_account()
-    ec, _ = tevmc.cleos.create_evm_account(account, random_string())
-    assert ec == 0
+    tevmc.cleos.create_evm_account(account, random_string())
     native_eth_addr = tevmc.cleos.eth_account_from_name(account)
     first_addr = Account.create()
     second_addr = Account.create()
     tevmc.cleos.transfer_token('eosio', account, Asset.from_str('100.0000 TLOS'), 'evm test')
     tevmc.cleos.transfer_token(account, 'eosio.evm', Asset.from_str('100.0000 TLOS'), 'Deposit')
-    ec, _ = tevmc.cleos.eth_transfer(native_eth_addr, first_addr.address, Asset.from_str('90.0000 TLOS'), account=account)
-    assert ec == 0
+    tevmc.cleos.eth_transfer(native_eth_addr, first_addr.address, Asset.from_str('90.0000 TLOS'), account=account)
 
     quantity = local_w3.eth.get_balance(first_addr.address) - to_wei(2, 'ether')
     tx_params = {
