@@ -62,6 +62,7 @@ def test_websocket_local_new_heads(tevmc_local):
     assert 'gasLimit' in result
     assert 'miner' in result
     assert 'nonce' in result
+    assert 'hash' in result
     assert 'parentHash' in result
     assert 'receiptsRoot' in result
     assert 'sha3Uncles' in result

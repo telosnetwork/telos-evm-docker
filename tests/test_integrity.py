@@ -6,8 +6,9 @@ import random
 from eth_account import Account
 from elasticsearch import Elasticsearch
 
-from leap.sugar import random_string, asset_from_str, Asset
+from leap.sugar import random_string
 from leap.tokens import tlos_token
+from leap.protocol import Asset
 from tevmc.testing import open_web3
 
 from tevmc.utils import to_wei, to_int, from_wei, decode_hex
@@ -141,7 +142,7 @@ def test_integrity_elastic(tevmc_local):
         internal_eth_addrs,
         initial_deposit_assets
     ):
-        ec, out = tevmc.cleos.eth_transfer(
+        ec, _ = tevmc.cleos.eth_transfer(
             account,
             native_eth_addr,
             eth_addr.address,
@@ -201,10 +202,10 @@ def test_integrity_elastic(tevmc_local):
     # now withdraw back to native
     for account, addr in zip(accounts, native_eth_addrs):
         addr = local_w3.to_checksum_address(addr)
-        ec, out = tevmc.cleos.eth_withdraw(
+        ec, _ = tevmc.cleos.eth_withdraw(
             account,
             Asset(
-                float(from_wei(local_w3.eth.get_balance(addr), 'ether')),
+                from_wei(local_w3.eth.get_balance(addr), 'ether'),
                 tevmc_local.cleos.sys_token_supply.symbol),
             account
         )
@@ -224,7 +225,7 @@ def test_integrity_elastic(tevmc_local):
 
     # make sure balances are inverted on the native side
     for i, account in enumerate(accounts):
-        balance = asset_from_str(tevmc.cleos.get_balance(account))
+        balance = Asset.from_str(tevmc.cleos.get_balance(account))
         asset = initial_deposit_assets[amount - i - 1]
 
         assert asset.amount - balance.amount < 1.005

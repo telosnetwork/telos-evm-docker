@@ -6,7 +6,7 @@ authors = ['Guillermo Rodriguez <guillermo@telos.net>']
 readme = 'README.md'
 
 [tool.poetry.dependencies]
-python = '^3.8'
+python = '^3.9'
 web3 = '^6.8.0'
 tdqm = '^0.0.1'
 asks = '^3.0.0'
@@ -22,9 +22,10 @@ iterators = '^0.2.0'
 simplejson = '^3.19.1'
 elasticsearch = '^8.9.0'
 requests-unixsocket = '^0.3.0'
-py-leap = {git = 'https://github.com/guilledk/py-leap', rev = 'v0.1a15'}
+py-leap = {git = 'https://github.com/guilledk/py-leap', tag = 'v0.1a20'}
 rlp = '3.0.0'
-pdbplus = "^1.5.0"
+pydantic = "^2.6.1"
+requests-mock = "^1.11.0"
 
 [build-system]
 requires = ['poetry-core']
@@ -34,7 +35,7 @@ build-backend = 'poetry.core.masonry.api'
 tevmc = 'tevmc.cmdline:cli'
 
 [build]
-include = ['tevmc/templates/**/*']
+include = ['tevmc/docker/**/*']
 
 [tool.pytest.ini_options]
 log_cli = true

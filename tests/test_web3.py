@@ -2,8 +2,8 @@
 
 from eth_account import Account
 
-from leap.sugar import random_string, Asset
-from leap.tokens import tlos_token
+from leap.sugar import random_string
+from leap.protocol import Asset
 from tevmc.testing import open_web3
 
 from tevmc.utils import to_wei
@@ -13,7 +13,7 @@ DEFAULT_GAS_PRICE = 524799638144
 DEFAULT_GAS = 21000
 
 
-def test_all(tevmc_local):
+def test_all(compile_evm, tevmc_local):
     local_w3 = open_web3(tevmc_local)
 
     # Test connection
@@ -34,11 +34,10 @@ def test_all(tevmc_local):
     # Test transaction count
     tevmc = tevmc_local
     account = tevmc.cleos.new_account()
-    ec, out = tevmc.cleos.create_evm_account(account, random_string())
-    assert ec == 0
+    tevmc.cleos.create_evm_account(account, random_string())
     eth_addr = tevmc.cleos.eth_account_from_name(account)
     assert eth_addr
-    quantity = Asset(100, tevmc.cleos.sys_token_supply.symbol)
+    quantity = Asset.from_str('100.0000 TLOS')
     tevmc.cleos.transfer_token('eosio', account, quantity, 'evm test')
     tevmc.cleos.transfer_token(account, 'eosio.evm', quantity, 'Deposit')
     assert local_w3.eth.get_transaction_count(local_w3.to_checksum_address(eth_addr)) == 1
@@ -46,17 +45,16 @@ def test_all(tevmc_local):
     # Test get transaction receipt
     tevmc = tevmc_local
     account = tevmc.cleos.new_account()
-    ec, _ = tevmc.cleos.create_evm_account(account, random_string())
-    assert ec == 0
+    tevmc.cleos.create_evm_account(account, random_string())
     native_eth_addr = tevmc.cleos.eth_account_from_name(account)
     first_addr = Account.create()
     second_addr = Account.create()
-    tevmc.cleos.transfer_token('eosio', account, Asset(100, tlos_token), 'evm test')
-    tevmc.cleos.transfer_token(account, 'eosio.evm', Asset(100, tlos_token), 'Deposit')
-    ec, _ = tevmc.cleos.eth_transfer(account, native_eth_addr, first_addr.address, Asset(90, tlos_token))
-    assert ec == 0
+    tevmc.cleos.transfer_token('eosio', account, Asset.from_str('100.0000 TLOS'), 'evm test')
+    tevmc.cleos.transfer_token(account, 'eosio.evm', Asset.from_str('100.0000 TLOS'), 'Deposit')
+    tevmc.cleos.eth_transfer(native_eth_addr, first_addr.address, Asset.from_str('90.0000 TLOS'), account=account)
+
     quantity = local_w3.eth.get_balance(first_addr.address) - to_wei(2, 'ether')
-    signed_tx = Account.sign_transaction({
+    tx_params = {
         'from': first_addr.address,
         'to': second_addr.address,
         'gas': DEFAULT_GAS,
@@ -65,7 +63,23 @@ def test_all(tevmc_local):
         'data': b'',
         'nonce': 0,
         'chainId': tevmc.cleos.chain_id
-    }, first_addr.key)
+    }
+
+    # test gas estimation
+    gas_est = local_w3.eth.estimate_gas(tx_params)
+    assert gas_est == 26250
+
+    # test actuall tx send & fetch receipt
+    signed_tx = Account.sign_transaction(tx_params, first_addr.key)
     tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
     receipt = local_w3.eth.wait_for_transaction_receipt(tx_hash)
     assert receipt
+
+    # test erc20 contract deploy
+    total_supply_wei = to_wei(69, 'ether')
+    erc20_contract = tevmc_local.cleos.eth_deploy_contract_from_json(
+        'tests/evm-contracts/uniswap-v2-core/build/ERC20.json',
+        'UniswapV2Token',
+        constructor_arguments=[total_supply_wei]
+    )
+    assert erc20_contract.functions.totalSupply().call() == total_supply_wei

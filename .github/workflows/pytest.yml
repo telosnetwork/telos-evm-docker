@@ -7,7 +7,7 @@ on:
 jobs:
   indexing_test:
     name: Pytest Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2

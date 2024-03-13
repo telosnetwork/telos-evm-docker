@@ -18,22 +18,13 @@ from ..config import (
 )
 
 
-source_dir = Path(__file__).parent
-template_dir = (source_dir / '../templates').resolve(strict=False)
-
-
-def load_config_templates() -> Dict[str, Template]:
-    templ = {}
-    for node in (template_dir / 'config').glob('*'):
-        if node.is_file():
-            with open(node, 'r') as templ_file:
-                templ[node.name] = Template(templ_file.read())
-    return templ
+source_dir = Path(__file__).parent.parent
+template_dir = (source_dir / 'docker').resolve(strict=False)
 
 
 def load_docker_templates() -> Dict[str, Template]:
     templ = {}
-    for node in (template_dir / 'docker').glob('**/*'):
+    for node in (template_dir).glob('**/*'):
         if node.is_file():
             with open(node, 'r') as templ_file:
                 try:
@@ -52,7 +43,7 @@ def touch_node_dir(target_dir: Path, conf: dict, fname: str):
 
     # copy new directory tree template
     copy_tree(
-        str(template_dir / 'docker'),
+        str(template_dir),
         str(target_dir / 'docker'))
 
     # create logs dir

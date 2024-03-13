@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
 
-import logging
+import os
+import json
 import time
-from typing import Dict, List
-import pdbp
+import logging
+import tempfile
 import subprocess
 
+from copy import deepcopy
+from pathlib import Path
 from datetime import timedelta
+from contextlib import contextmanager
+import http.server
+import socketserver
+import threading
 
+import pdbp
 import pytest
 import requests
 
-from leap.sugar import get_free_port
-
 from tevmc.config import local, testnet, mainnet
-from tevmc.testing import bootstrap_test_stack, get_marker, maybe_get_marker
+from tevmc.testing import bootstrap_test_stack
 from tevmc.testing.database import get_suffix
 
 from elasticsearch import Elasticsearch
@@ -25,6 +31,136 @@ def tevmc_local(request, tmp_path_factory):
     request.applymarker(pytest.mark.config(**local.default_config))
     with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
         yield tevmc
+
+
+@pytest.fixture()
+def subst_testing_nodeos(request, tmp_path_factory):
+    config = deepcopy(local.default_config)
+
+    config['nodeos']['ini']['subst'] = {}
+
+    request.applymarker(pytest.mark.config(**config))
+    request.applymarker(pytest.mark.services('nodeos'))
+    request.applymarker(pytest.mark.randomize(False))
+    request.applymarker(pytest.mark.tevmc_params(testing=True, skip_init=True))
+    with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
+        yield tevmc
+
+
+@pytest.fixture()
+def subst_testing_nodeos_testcontract(request, tmp_path_factory):
+    config = deepcopy(local.default_config)
+
+    config['nodeos']['ini']['subst'] = {
+        'testcontract': '/opt/eosio/bin/testcontracts/testcontract/variations/testcontract.var1.wasm'
+    }
+
+    request.applymarker(pytest.mark.config(**config))
+    request.applymarker(pytest.mark.services('nodeos'))
+    request.applymarker(pytest.mark.randomize(False))
+    request.applymarker(pytest.mark.tevmc_params(testing=True, skip_init=True))
+    with bootstrap_test_stack(request, tmp_path_factory) as tevmc:
+
+        tevmc.cleos.deploy_contract_from_path(
+            'testcontract',
+            Path('tests/contracts/testcontract/base'),
+            contract_name='testcontract'
+        )
+
+        yield tevmc
+
+
+@contextmanager
+def mock_manifest_server():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        def handler_from(directory):
+            def _init(self, *args, **kwargs):
+                return http.server.SimpleHTTPRequestHandler.__init__(
+                    self, *args, directory=self.directory, **kwargs)
+
+            return type(f'HandlerFrom<{directory}>',
+                        (http.server.SimpleHTTPRequestHandler,),
+                        {'__init__': _init, 'directory': directory})
+
+        class CustomHTTPServer(socketserver.TCPServer):
+            allow_reuse_address = True
+
+        httpd = CustomHTTPServer(("", 5000), handler_from(temp_dir))
+
+        thread = threading.Thread(target=httpd.serve_forever)
+        thread.daemon = True  # This ensures the thread will be killed when the main thread dies
+        thread.start()
+
+        def register_file(name: str, _json=None, _bytes=None, sub_path: str = ''):
+
+            (Path(temp_dir) / sub_path).mkdir(exist_ok=True, parents=True)
+
+            with open(Path(temp_dir) / sub_path / name, 'wb') as file:
+                if isinstance(_json, dict):
+                    data = json.dumps(_json, indent=4).encode()
+
+                elif isinstance(_bytes, bytes):
+                    data = _bytes
+
+                file.write(data)
+
+        register_file('subst.json', _json={})
+
+        yield register_file
+
+        httpd.shutdown()
+        thread.join()
+
+@pytest.fixture()
+def subst_testing_nodeos_manifest(request, tmp_path_factory):
+    config = deepcopy(local.default_config)
+
+    config['nodeos']['ini']['subst'] = 'http://127.0.0.1:5000/subst.json'
+
+    request.applymarker(pytest.mark.config(**config))
+    request.applymarker(pytest.mark.services('nodeos'))
+    request.applymarker(pytest.mark.randomize(False))
+    request.applymarker(pytest.mark.tevmc_params(testing=True, skip_init=True))
+
+    with (
+        mock_manifest_server() as register_file,
+        bootstrap_test_stack(request, tmp_path_factory) as tevmc
+    ):
+        tevmc.cleos.deploy_contract_from_path(
+            'testcontract',
+            Path('tests/contracts/testcontract/base'),
+            contract_name='testcontract'
+        )
+        yield tevmc, register_file
+
+
+@pytest.fixture()
+def compile_evm():
+    # maybe compile uniswap v2 core
+    uswap_v2_dir = Path('tests/evm-contracts/uniswap-v2-core')
+    if not (uswap_v2_dir / 'build').exists():
+
+        # run yarn & compile separate cause their script dies
+        # installing optional deps and this is ok
+        process = subprocess.run(
+            'yarn',
+            shell=True, cwd=uswap_v2_dir,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
+        if process.returncode != 0:
+            last_line = process.stdout.splitlines()[-1]
+            if 'you can safely ignore this error' not in last_line:
+                logging.error(process.stdout)
+                raise ChildProcessError(f'Failed to install uniswap v2 core deps')
+
+        process = subprocess.run(
+            'yarn compile',
+            shell=True, cwd=uswap_v2_dir,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
+        if process.returncode != 0:
+            logging.error(process.stdout)
+            raise ChildProcessError(f'Failed to compile uniswap v2 core')
 
 
 @pytest.fixture()
@@ -111,101 +247,3 @@ def prepare_db_for_test(
 
     es.bulk(operations=ops, refresh=True)
 
-
-
-class ShipMocker:
-
-    def __init__(
-        self,
-        control_endpoint: str,
-        ship_endpoint: str
-    ):
-        self.control_endpoint = control_endpoint
-        self.ship_endpoint = ship_endpoint
-
-    def set_block(self, num: int):
-        return requests.post(
-            f'{self.control_endpoint}/set_block',
-            json={'num': num}
-        )
-
-    def set_jumps(self, jumps: Dict[int, int], index: int = 0):
-        return requests.post(
-            f'{self.control_endpoint}/set_jumps',
-            json={'jumps': jumps, 'index': index}
-        )
-
-    def set_block_info(self, blocks: List[str], index: int):
-        return requests.post(
-            f'{self.control_endpoint}/set_block_info',
-            json={'blocks': blocks, 'index': index}
-        )
-
-
-@pytest.fixture
-def ship_mocker(request):
-    start_block = get_marker(
-        request, 'start_block', 'args')[0]
-    end_block = get_marker(
-        request, 'end_block', 'args')[0]
-
-    chain_id = maybe_get_marker(
-        request, 'chain_id', 'args', [None])[0]
-    start_time = maybe_get_marker(
-        request, 'start_time', 'args', [None])[0]
-
-    jumps = maybe_get_marker(
-        request, 'jumps', 'args', [()])[0]
-
-    blocks = maybe_get_marker(
-        request, 'blocks', 'args', [()])[0]
-
-    cmd = [
-        'node', 'shipMocker.js', 'run',
-        str(start_block), str(end_block)
-    ]
-
-    # ship_port = get_free_port()
-    # control_port = get_free_port()
-
-    # cmd += ['--shipPort', str(ship_port)]
-    # cmd += ['--controlPort', str(control_port)]
-
-    if chain_id:
-        cmd += ['--chainId', chain_id]
-
-    if start_time:
-        cmd += ['--startTime', start_time]
-
-    proc = subprocess.Popen(
-        cmd, cwd='tests/ship-mock/build',
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    time.sleep(1)
-
-    exit_code = proc.poll()
-    if exit_code:
-        stdout, stderr = proc.communicate()
-        stdout = stdout.decode()
-        stderr = stderr.decode()
-        raise subprocess.SubprocessError(
-            f'Couldn\'t start ship mocker:\nstdout:\n{stdout}\nstderr:\n{stderr}')
-
-    client = ShipMocker(
-        f'http://127.0.0.1:6970', f'http://127.0.0.1:29999')
-
-    if len(blocks) > 0:
-        for i, block_sequence in enumerate(blocks):
-            client.set_block_info(block_sequence, i)
-
-    if len(jumps) > 0:
-        client.set_jumps(jumps)
-
-    yield client
-
-    proc.terminate()
-    stdout, stderr = proc.communicate()
-    stdout = stdout.decode()
-    stderr = stderr.decode()
-    logging.info(stdout)
-    logging.info(stderr)

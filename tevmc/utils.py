@@ -1,5 +1,6 @@
 
 from decimal import localcontext
+from pathlib import Path
 
 import re
 import decimal
@@ -9,9 +10,12 @@ import collections.abc
 
 from typing import (
     Any,
+    List,
     AnyStr,
     NewType,
     Union,
+    Tuple,
+    Iterator
 )
 
 from docker.errors import DockerException
@@ -87,6 +91,7 @@ units = {
     'szabo':        decimal.Decimal('1000000000000'),  # noqa: E241
     'microether':   decimal.Decimal('1000000000000'),  # noqa: E241
     'micro':        decimal.Decimal('1000000000000'),  # noqa: E241
+    'telos':        decimal.Decimal('100000000000000'),  # noqa: E241
     'finney':       decimal.Decimal('1000000000000000'),  # noqa: E241
     'milliether':   decimal.Decimal('1000000000000000'),  # noqa: E241
     'milli':        decimal.Decimal('1000000000000000'),  # noqa: E241
@@ -113,6 +118,7 @@ class denoms:
     szabo = int(units["szabo"])
     microether = int(units["microether"])
     micro = int(units["micro"])
+    telos = int(units["telos"])
     finney = int(units["finney"])
     milliether = int(units["milliether"])
     milli = int(units["milli"])
@@ -284,8 +290,14 @@ def is_hex(value: Any) -> bool:
 
 
 import struct
+import logging
+
 import requests_unixsocket
+
 from requests.exceptions import Timeout
+
+from docker.models.containers import Container
+
 
 def _parse_docker_log(data):
     '''Parses Docker logs by handling Docker's log protocol.
@@ -314,7 +326,7 @@ def _parse_docker_log(data):
         yield message
 
 
-def docker_stream_logs(container, timeout=30.0, from_latest=False):
+def docker_stream_logs(container, timeout=30.0, lines=0, from_latest=False):
     '''Streams logs from a running Docker container.
 
     Args:
@@ -349,7 +361,7 @@ def docker_stream_logs(container, timeout=30.0, from_latest=False):
 
     # If only logs from the latest are required
     if from_latest:
-        params['tail'] = '0'
+        params['tail'] = str(lines)
 
     response = session.get(
         url, params=params, stream=True, timeout=timeout)
@@ -366,6 +378,108 @@ def docker_stream_logs(container, timeout=30.0, from_latest=False):
 
     except Timeout:
         raise StopIteration(f'No logs received for {timeout} seconds.')
+
+
+def docker_open_process(
+    client,
+    cntr,
+    cmd: List[str],
+    **kwargs
+) -> Tuple[str, Iterator[str]]:
+    """Begin running the command inside the container, return the
+    internal docker process id, and a stream for the standard output.
+    :param cmd: List of individual string forming the command to execute in
+        the testnet container shell.
+    :param kwargs: A variable number of key word arguments can be
+        provided, as this function uses `exec_create & exec_start docker APIs
+        <https://docker-py.readthedocs.io/en/stable/api.html#module-dock
+        er.api.exec_api>`_.
+    :return: A tuple with the process execution id and the output stream to
+        be consumed.
+    :rtype: :ref:`typing_exe_stream`
+    """
+    exec_id = client.api.exec_create(cntr.id, cmd, **kwargs)
+    exec_stream = client.api.exec_start(exec_id=exec_id, stream=True)
+    return exec_id['Id'], exec_stream
+
+def docker_wait_process(
+    client,
+    exec_id: str,
+    exec_stream: Iterator[str],
+    logger=None
+) -> Tuple[int, str]:
+    """Collect output from process stream, then inspect process and return
+    exitcode.
+    :param exec_id: Process execution id provided by docker engine.
+    :param exec_stream: Process output stream to be consumed.
+    :return: Exitcode and process output.
+    :rtype: :ref:`typing_exe_result`
+    """
+    if logger is None:
+        logger = logging.getLogger()
+
+    out = ''
+    for chunk in exec_stream:
+        msg = chunk.decode('utf-8')
+        out += msg
+
+    info = client.api.exec_inspect(exec_id)
+
+    ec = info['ExitCode']
+    if ec != 0:
+        logger.warning(out.rstrip())
+
+    return ec, out
+
+import tarfile
+
+
+def docker_move_into(
+    client,
+    container: Union[str, Container],
+    src: Union[str, Path],
+    dst: Union[str, Path]
+):
+    tmp_name = random_string(size=32)
+    archive_loc = Path(f'/tmp/{tmp_name}.tar.gz').resolve()
+
+    with tarfile.open(archive_loc, mode='w:gz') as archive:
+        archive.add(src, recursive=True)
+
+    with open(archive_loc, 'rb') as archive:
+        binary_data = archive.read()
+
+    archive_loc.unlink()
+
+    if isinstance(container, Container):
+        container = container.id
+
+    client.api.put_archive(container, dst, binary_data)
+
+
+def docker_move_out(
+    container: Union[str, Container],
+    src: Union[str, Path],
+    dst: Union[str, Path]
+):
+    tmp_name = random_string(size=32)
+    archive_loc = Path(f'/tmp/{tmp_name}.tar.gz').resolve()
+
+    bits, _ = container.get_archive(src, encode_stream=True)
+
+    with open(archive_loc, mode='wb+') as archive:
+        for chunk in bits:
+            archive.write(chunk)
+
+    extract_path = Path(dst).resolve()
+
+    if extract_path.is_file():
+        extract_path = extract_path.parent
+
+    with tarfile.open(archive_loc, 'r') as archive:
+        archive.extractall(path=extract_path)
+
+    archive_loc.unlink()
 
 
 # recursive compare two dicts

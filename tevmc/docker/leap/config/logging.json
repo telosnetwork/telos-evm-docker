@@ -1,0 +1,151 @@
+{
+  "includes": [],
+  "appenders": [{
+      "name": "stderr",
+      "type": "console",
+      "args": {
+        "format": "${timestamp} ${thread_name} ${context} ${file}:${line} ${method} ${level}]  ${message}",
+        "stream": "std_error",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ],
+        "flush": true
+      },
+      "enabled": true
+    },{
+      "name": "stdout",
+      "type": "console",
+      "args": {
+        "stream": "std_out",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ],
+        "flush": true
+      },
+      "enabled": true
+    },{
+      "name": "net",
+      "type": "gelf",
+      "args": {
+        "endpoint": "10.10.10.10:12201",
+        "host": "host_name",
+        "_network": "mainnet"
+      },
+      "enabled": false
+    }
+  ],
+  "loggers": [{
+      "name": "default",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "net_plugin_impl",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "http_plugin",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "producer_plugin",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "subst_plugin",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "transaction_success_tracing",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "transaction_failure_tracing",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "trace_api",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "transaction_trace_success",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+      "name": "transaction_trace_failure",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    },{
+    "name": "state_history",
+    "level": "info",
+    "enabled": true,
+    "additivity": false,
+    "appenders": [
+      "stderr"
+      ]
+    },{
+      "name": "transaction",
+      "level": "info",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    }
+  ]
+}

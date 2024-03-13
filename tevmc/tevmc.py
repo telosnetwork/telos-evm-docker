@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from copy import deepcopy
-from hashlib import sha1
 import re
 import os
 import sys
@@ -10,9 +8,9 @@ import signal
 import logging
 import subprocess
 
-from typing import List, Dict, Optional
+from copy import deepcopy
+from hashlib import sha1
 from pathlib import Path
-from docker.errors import NotFound
 from websocket import create_connection
 from contextlib import contextmanager, ExitStack
 
@@ -23,18 +21,16 @@ import simplejson
 from web3 import Web3
 from flask import Flask
 from docker.types import LogConfig, Mount
+from docker.errors import NotFound, APIError
 from requests.auth import HTTPBasicAuth
-from leap.sugar import (
-    docker_open_process,
-    docker_wait_process,
-    download_latest_snapshot
-)
+from leap.cleos import CLEOS
+from leap.sugar import download_latest_snapshot
 from tevmc.cmdline.build import build_service, perform_config_build, service_alias_to_fullname
 
 from tevmc.routes import add_routes
 
 from .config import *
-from .utils import docker_stream_logs
+from .utils import *
 from .cleos_evm import CLEOSEVM
 
 
@@ -46,24 +42,24 @@ class TEVMController:
 
     def __init__(
         self,
-        config: Dict[str, Dict],
+        config: dict[str, dict],
         logger = None,
         log_level: str = 'info',
-        root_pwd: Optional[Path] = None,
+        root_pwd: Path | None = None,
         wait: bool = False,
-        services: List[str] = [
+        services: list[str] = [
             'redis',
             'elastic',
             'kibana',
             'nodeos',
             'indexer',
             'rpc',
-            'logrotator'
         ],
         from_latest: bool = False,
         is_producer: bool = True,
         skip_init: bool = False,
-        additional_nodeos_params: List[str] = []
+        additional_nodeos_params: list[str] = [],
+        testing: bool = False
     ):
         self.pid = os.getpid()
         self.config = config
@@ -71,6 +67,7 @@ class TEVMController:
         self.exit_stack = ExitStack()
         self.wait = wait
         self.services = services
+        self.testing = testing
         self.nodeos_logfile = None
         self.nodeos_logproc = None
         self.additional_nodeos_params = additional_nodeos_params
@@ -118,6 +115,8 @@ class TEVMController:
             self.chain_type = 'testnet'
         elif 'mainnet' in self.chain_name:
             self.chain_type = 'mainnet'
+
+        self.cleos: CLEOSEVM = None
 
         if self.is_local:
             self.producer_key = config['nodeos']['ini']['sig_provider'].split(':')[-1]
@@ -174,16 +173,17 @@ class TEVMController:
                     prev_hash = prev_hash[2:]
 
                 self.config['telosevm-translator']['prev_hash'] = prev_hash
-
-                # dump edited config file
-                with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
-                    uni_conf.write(json.dumps(self.config, indent=4))
+                self._dump_config()
 
 
         self.containers = {}
         self.mounts = {}
 
         self.api = Flask(f'tevmc-{os.getpid()}')
+
+    def _dump_config(self):
+        with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
+            uni_conf.write(json.dumps(self.config, indent=4))
 
     @contextmanager
     def open_container(
@@ -273,7 +273,8 @@ class TEVMController:
                     container.kill(signal='SIGTERM')
                     for i in range(3):
                         container.stop()
-            except docker.errors.APIError as e:
+
+            except APIError as e:
                 ...
 
             self.logger.info('stopped.')
@@ -289,24 +290,20 @@ class TEVMController:
             # self.logger.info('removed.')
 
 
-    def stream_logs(self, container, timeout=30.0, from_latest=False):
+    def stream_logs(self, container, timeout=30.0, num=100, from_latest=False):
         if container is None:
             self.logger.critical("container is None")
             raise StopIteration
 
         elif container in ['nodeos', 'telosevm-translator', 'telos-evm-rpc']:
-            if from_latest:
-                lines = 1
-            else:
-                lines = 1000
-
             for line in self._stream_logs_from_main_dir(
-                container, lines, timeout=int(timeout)):
+                container, num, timeout=int(timeout)):
                 yield line
 
         else:
             for chunk in docker_stream_logs(
                 self.containers[container],
+                lines=num,
                 timeout=timeout,
                 from_latest=from_latest
             ):
@@ -328,22 +325,6 @@ class TEVMController:
                 self.logger.critical('couldn\'t access logs.')
 
             raise TEVMCException(f'{container.name} is not running')
-
-    def start_logrotator(self):
-        with self.must_keep_running('logrotator'):
-            config = self.config['logrotator']
-
-            self.mounts['logrotator'] = [
-                Mount('/logs', str(self.main_logs_dir.resolve()), 'bind'),
-            ]
-
-            self.containers['logrotator'] = self.exit_stack.enter_context(
-                self.open_container(
-                    f'{config["name"]}-{self.pid}-{self.chain_name}',
-                    f'{config["tag"]}-{self.chain_name}',
-                    mounts=self.mounts['logrotator']
-                )
-            )
 
     def start_redis(self):
         with self.must_keep_running('redis'):
@@ -478,6 +459,22 @@ class TEVMController:
                     ipv4_address=config['virtual_ip']
                 )
 
+    def _stop_nodeos(self):
+        # remove container if exists
+        cntr = self.containers.get('nodeos', None)
+        if cntr is not None:
+            try:
+                cntr.exec_run('pkill -f nodeos')
+                cntr.wait(timeout=120)
+                cntr.kill(signal='SIGTERM')
+                cntr.wait(timeout=20)
+
+            except NotFound:
+                ...
+
+            except APIError:
+                ...
+
     def start_nodeos(
         self,
         space_monitor=True,
@@ -491,14 +488,7 @@ class TEVMController:
                     to produce blocks
         - Create evm accounts and deploy contract
         """
-        # remove container if exists
-        if 'nodeos' in self.containers:
-            try:
-                self.containers['nodeos'].stop()
-                self.containers['nodeos'].remove()
-
-            except NotFound:
-                ...
+        self._stop_nodeos()
 
         config = self.config['nodeos']
         docker_dir = self.docker_wd / config['docker_path']
@@ -508,6 +498,7 @@ class TEVMController:
 
         conf_dir = docker_dir / config['conf_dir']
         contracts_dir = docker_dir / config['contracts_dir']
+        contracts_dir = contracts_dir.resolve(strict=True)
 
         data_dir_host.mkdir(parents=True, exist_ok=True)
 
@@ -521,6 +512,10 @@ class TEVMController:
         if 'mounts' in config:
             self.mounts['nodeos'] += [
                 Mount(m['target'], m['source'], 'bind') for m in config['mounts']]
+
+        if self.testing:
+            self.mounts['nodeos'] += [
+                Mount('/opt/eosio/bin/testcontracts', str(Path('tests/contracts').resolve()), 'bind')]
 
         env = {
             'NODEOS_DATA_DIR': config['data_dir_guest'],
@@ -578,6 +573,9 @@ class TEVMController:
         if self.is_producer:
             nodeos_cmd += ['-e', '-p', 'eosio']
 
+        if config['ini'].get('subst_admin_apis', False):
+            nodeos_cmd += ['--subst-admin-apis']
+
         nodeos_cmd += self.additional_nodeos_params
 
         nodeos_cmd += ['>>', '/logs/nodeos.log', '2>&1']
@@ -615,78 +613,99 @@ class TEVMController:
 
             cleos_evm_url = f'http://127.0.0.1:{self.config["telos-evm-rpc"]["api_port"]}/evm'
 
-            # setup cleos wrapper
-            cleos = CLEOSEVM(
-                self.client,
-                self.containers['nodeos'],
-                logger=self.logger,
-                url=cleos_url,
-                evm_url=cleos_evm_url,
-                chain_id=self.config['telos-evm-rpc']['chain_id'])
 
-            self.cleos = cleos
+            # maybe setup cleos wrapper, if its already setup indicates an inplace restart and cleos
+            # data should be mantained
+            if not isinstance(self.cleos, CLEOSEVM):
+                cleos = CLEOSEVM(
+                    cleos_url,
+                    logger=self.logger,
+                    evm_url=cleos_evm_url,
+                    chain_id=self.config['telos-evm-rpc']['chain_id'])
 
-            if self.is_local and not self.skip_init:
-                output = cleos.wait_produced(from_file='/logs/nodeos.log')
+                self.cleos = cleos
+
+                if 'sig_provider' in config['ini']:
+                    key = config['ini']['sig_provider'].split('=KEY:')[-1]
+                    cleos.import_key('eosio', key)
+
+                self.cleos.load_abi_file('eosio', contracts_dir / 'eosio.system/eosio.system.abi')
+                self.cleos.load_abi_file('eosio.evm', contracts_dir / 'eosio.evm/regular/regular.abi')
+                self.cleos.load_abi_file('eosio.token', contracts_dir / 'eosio.token/eosio.token.abi')
+
+            if self.is_local:
+
+                if self.skip_init:
+                    return
+
+                output = ''
+                for msg in self.stream_logs('nodeos', timeout=60*10, from_latest=True):
+                    output += msg
+                    if 'Produced' in msg:
+                        break
+
                 # await for nodeos to produce a block
                 cleos.wait_blocks(4)
 
-                self.is_fresh = 'Starting fresh blockchain state using provided genesis state' in output
+                self.is_fresh = (
+                    'No existing chain state or fork database. '
+                    'Initializing fresh blockchain state and resetting fork database.' in output
+                )
 
                 if self.is_fresh:
-                    cleos.start_keosd(
-                        '-c',
-                        '/root/keosd_config.ini')
-
-                    cleos.setup_wallet(self.producer_key)
+                    cleos.import_key('eosio', self.producer_key)
 
                     try:
                         cleos.boot_sequence(
-                            sys_contracts_mount='/opt/eosio/bin/contracts',
-                            verify_hash=False)
+                            contracts=contracts_dir, remote_node=CLEOS('https://testnet.telos.net'))
 
-                        cleos.deploy_evm(self.config['nodeos']['eosio.evm'])
-
-                        evm_deploy_block = cleos.evm_deploy_info['processed']['block_num']
-
-                        self.config['telosevm-translator']['start_block'] = evm_deploy_block
-                        self.config['telosevm-translator']['deploy_block'] = evm_deploy_block
-
-                        # save evm deploy info for future runs
-                        with open(self.root_pwd / 'tevmc.json', 'w+') as uni_conf:
-                            uni_conf.write(json.dumps(self.config, indent=4))
+                        cleos.deploy_evm(contracts_dir / self.config['nodeos']['eosio.evm'])
 
                     except AssertionError:
                         for msg in self.stream_logs('nodeos'):
                             self.logger.critical(msg.rstrip())
                         sys.exit(1)
+
             else:
                 if '--replay-blockchain' not in self.additional_nodeos_params:
-                    cleos.wait_received(from_file='/logs/nodeos.log')
+                    for msg in self.stream_logs('nodeos', timeout=60*10, from_latest=True):
+                        if 'Received' in msg:
+                            break
 
             if not self.skip_init:
                 # wait until nodeos apis are up
                 for i in range(60):
                     try:
-                        cleos.get_info()
+                        self.nodeos_init_info = cleos.get_info()
+                        current_chain_id = self.nodeos_init_info['chain_id']
+                        config_chain_id = self.config['nodeos']['chain_id']
+
+                        if config_chain_id == 'override':
+                            self.config['nodeos']['chain_id'] = current_chain_id
+                            self.build(templates_only=True)
+
+                        else:
+                            if config_chain_id != current_chain_id:
+                                raise ValueError(
+                                    f'chain id returned ({current_chain_id}) '
+                                    f'from nodeos differs from one on config ({config_chain_id})')
+
                         break
 
                     except requests.exceptions.ConnectionError:
                         self.logger.warning('connection error trying to get chain info...')
                         time.sleep(1)
 
-                genesis_block = int(self.config['telosevm-translator']['start_block']) - 1
-                self.logger.info(f'nodeos has started, waiting until blocks.log contains evm genesis block number {genesis_block}')
-                cleos.wait_blocks(
-                    genesis_block - int(cleos.get_info()['head_block_num']), sleep_time=10)
+                translator_start_block = int(self.config['telosevm-translator']['start_block']) - 1
+                self.logger.info(
+                    'nodeos has started, waiting until blocks.log '
+                    f'contains block number {translator_start_block}'
+                )
+                cleos.wait_block(
+                    translator_start_block, progress=True, interval=5)
 
     def restart_nodeos(self):
-        try:
-            self.cleos.stop_nodeos(
-                from_file='/logs/nodeos.log')
-
-        except docker.errors.NotFound:
-            self.logger.info('tried to stop nodeos process but container not running')
+        self._stop_nodeos()
 
         self.is_nodeos_relaunch = True
 
@@ -765,7 +784,7 @@ class TEVMController:
                 remote_head_block = self._get_head_block()
                 last_update_time = now
 
-    def setup_index_patterns(self, patterns: List[str]):
+    def setup_index_patterns(self, patterns: list[str]):
         kibana_port = self.config['kibana']['port']
 
         if sys.platform == 'darwin':
@@ -933,7 +952,6 @@ class TEVMController:
                         'TELOS_WS_ENDPOINT': ws_endpoint,
                         'INDEXER_START_BLOCK': config['start_block'],
                         'INDEXER_STOP_BLOCK': config['stop_block'],
-                        'EVM_DEPLOY_BLOCK': config['deploy_block'],
                         'EVM_PREV_HASH': config['prev_hash'],
                         'EVM_BLOCK_DELTA': config['evm_block_delta'],
                         'EVM_VALIDATE_HASH': config['evm_validate_hash'],
@@ -975,9 +993,12 @@ class TEVMController:
     def start_evm_rpc(self):
         with self.must_keep_running('telos-evm-rpc'):
             config = self.config['telos-evm-rpc']
+            docker_dir = self.docker_wd / config['docker_path']
+            conf_dir = docker_dir / config['conf_dir']
 
             self.mounts['telos-evm-rpc'] = [
-                Mount('/logs', str(self.main_logs_dir.resolve()), 'bind')
+                Mount('/logs', str(self.main_logs_dir.resolve()), 'bind'),
+                Mount('/root/target', str(conf_dir.resolve()), 'bind')
             ]
 
             more_params = {}
@@ -1160,27 +1181,13 @@ class TEVMController:
             'nodeos' in self.services):
             self.cleos.create_test_evm_account()
 
-        if 'logrotator' in self.services:
-            self.start_logrotator()
-
     def serve_api(self):
         add_routes(self)
         self.api.run(port=self.config['daemon']['port'])
 
     def stop(self):
         if 'nodeos' in self.services:
-            try:
-                self.containers['nodeos'].exec_run('pkill -f nodeos')
-                self.containers['nodeos'].wait(timeout=120)
-                self.containers['nodeos'].kill(signal='SIGTERM')
-                self.containers['nodeos'].wait(timeout=20)
-
-            except docker.errors.NotFound:
-                ...
-
-            except docker.errors.APIError:
-                ...
-
+            self._stop_nodeos()
             self.is_nodeos_relaunch = True
 
         if 'elastic' in self.services:

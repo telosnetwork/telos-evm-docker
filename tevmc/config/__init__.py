@@ -4,14 +4,13 @@ import json
 import socket
 import random
 
-from typing import Dict, List, Any
 from pathlib import Path
 
 import docker
 
 from leap.sugar import random_string
 
-from .default import local, testnet, mainnet
+from .default import local, mainnet, testnet
 
 
 DEFAULT_DOCKER_LABEL = {'created-by': 'tevmc'}
@@ -35,7 +34,7 @@ def get_config(key, _dict):
             raise KeyError(f'{key} not in {_dict.keys()}')
 
 
-def load_config(location: str, name: str) -> Dict[str, Dict]:
+def load_config(location: str, name: str) -> dict[str, dict]:
     target_dir = (Path(location)).resolve()
     config_file = (target_dir / name).resolve()
 
@@ -43,7 +42,7 @@ def load_config(location: str, name: str) -> Dict[str, Dict]:
         return json.loads(config_file.read())
 
 
-def build_docker_manifest(config: Dict) -> List[str]:
+def build_docker_manifest(config: dict) -> list[str]:
     chain_name = config['telos-evm-rpc']['elastic_prefix']
     manifest = []
     for container_name, conf in config.items():
@@ -64,7 +63,7 @@ def build_docker_manifest(config: Dict) -> List[str]:
     return manifest
 
 
-def check_docker_manifest(client, manifest: List):
+def check_docker_manifest(client, manifest: list):
     for repo, tag in manifest:
         try:
             client.images.get(f'{repo}:{tag}')
@@ -76,15 +75,14 @@ def check_docker_manifest(client, manifest: List):
             )
 
 
-def randomize_conf_ports(config: Dict) -> Dict:
+def randomize_conf_ports(config: dict) -> dict:
     ret = config.copy()
 
     def get_free_port(tries=10):
         _min = 10000
         _max = 60000
-        found = False
 
-        for i in range(tries):
+        for _ in range(tries):
             port_num = random.randint(_min, _max)
 
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -99,9 +97,6 @@ def randomize_conf_ports(config: Dict) -> Dict:
 
             else:
                 return port_num
-
-    def get_free_local_addr():
-        return f'127.0.0.1:{get_free_port()}'
 
     def get_free_remote_addr():
         return f'0.0.0.0:{get_free_port()}'
@@ -135,9 +130,12 @@ def randomize_conf_ports(config: Dict) -> Dict:
     if '127.0.0.1' in ret['telos-evm-rpc']['remote_endpoint']:
         ret['telos-evm-rpc']['remote_endpoint'] = f'http://127.0.0.1:{nodeos_http_port}/evm'
 
+    # daemon control api_port
+    ret['daemon']['port'] = get_free_port();
+
     return ret
 
-def randomize_conf_creds(config: Dict) -> Dict:
+def randomize_conf_creds(config: dict) -> dict:
     ret = config.copy()
 
     ret['elasticsearch']['user'] = random_string(size=16)
@@ -146,7 +144,7 @@ def randomize_conf_creds(config: Dict) -> Dict:
 
     return ret
 
-def add_virtual_networking(config: Dict) -> Dict:
+def add_virtual_networking(config: dict) -> dict:
     ret = config.copy()
 
     ips = [

@@ -48,6 +48,7 @@ nodeos = {
     'snapshot': '/snapshot-testnet-20211020-blknum-136229794.bin',
     'v2_api': 'https://testnet.telos.net',
     'nodeos_bin': 'nodeos',
+    'chain_id': '1eaa0824707c8c16bd25145493bf062aecddfeb56c736f6ba6397f3195f33c9f',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
@@ -92,6 +93,7 @@ nodeos = {
 
         'plugins': [
             'eosio::http_plugin',
+            'eosio::producer_plugin',
             'eosio::chain_api_plugin',
             'eosio::state_history_plugin'
         ],
@@ -161,18 +163,18 @@ telosevm_translator = {
     'start_block': 136393814,
     'evm_block_delta': 57,
     'evm_validate_hash': '',
-    'stop_block': 4294967295,
-    'deploy_block': 136393814,
-    'prev_hash': '',
+    'stop_block': -1,
+    'prev_hash': '8e149fd918bad5a4adfe6f17478e46643f7db7292a2b7b9247f48dc85bdeec94',
     'worker_amount': 4,
     'elastic_dump_size': 4096,
-    'elastic_timeout': 1000 * 60 * 10
+    'elastic_timeout': 1000 * 20
 }
 
 telos_evm_rpc = {
     'name': 'telos-evm-rpc',
     'tag': 'tevm:telos-evm-rpc',
     'docker_path': 'telos-evm-rpc',
+    'conf_dir': 'config',
     'chain_id': 41,
     'debug': True,
     'api_host': '0.0.0.0',
@@ -189,19 +191,12 @@ telos_evm_rpc = {
     'indexer_websocket_uri': 'ws://127.0.0.1:7300/evm',
     'rpc_websocket_host': '0.0.0.0',
     'rpc_websocket_port': '7400',
-    'elastic_prefix': 'telos-testnet',
+    'elastic_prefix': 'telos-testnet-tevmc',
     'elasitc_index_version': 'v1.5'
-}
-
-logrotator = {
-    'name': 'logrotator',
-    'tag': 'tevm:logrotator',
-    'docker_path': 'logrotator'
 }
 
 default_config = {
     'daemon': daemon,
-    'logrotator': logrotator,
 
     'redis': redis,
     'elasticsearch': elasticsearch,
