@@ -224,7 +224,8 @@ def perform_config_build(target_dir, config):
         'elasticsearch_user': elastic_conf['user'],
         'elasticsearch_pass': elastic_conf['pass'],
         'elasticsearch_prefix': rpc_conf['elastic_prefix'],
-        'elasticsearch_index_version': rpc_conf['elasitc_index_version']
+        'elasticsearch_index_version': rpc_conf['elasitc_index_version'],
+        'elasticsearch_docs_per_index': tevmi_conf['elastic_docs_per_index']
     })
 
     rpc_conf_dir =  f'{rpc_dir}/{rpc_conf["conf_dir"]}'

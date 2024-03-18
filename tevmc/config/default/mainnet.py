@@ -169,7 +169,8 @@ telosevm_translator = {
     'prev_hash': 'cfa67996f5d4f1e9e2b8b13a8984e1d8997091060748c3345f160b39050809b6',
     'worker_amount': 4,
     'elastic_dump_size': 4096,
-    'elastic_timeout': 1000 * 20
+    'elastic_timeout': 1000 * 20,
+    'elastic_docs_per_index': 1e7
 }
 
 telos_evm_rpc = {

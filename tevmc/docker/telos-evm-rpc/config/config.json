@@ -24,5 +24,6 @@
   "elasticUser": $elasticsearch_user,
   "elasticPass": $elasticsearch_pass,
   "elasticIndexPrefix": $elasticsearch_prefix,
-  "elasticIndexVersion": $elasticsearch_index_version
+  "elasticIndexVersion": $elasticsearch_index_version,
+  "elasticIndexDocsAmount": $elasticsearch_docs_per_index
 }
