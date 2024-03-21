@@ -39,7 +39,7 @@ from eth_account import Account
 DEFAULT_GAS_PRICE = 1491547668281186
 DEFAULT_GAS = 21000
 
-def test_sir_merge_a_lot_upgrade(tevmc_local):
+def test_latest_backported_evm_contract(tevmc_local):
     tevmc = tevmc_local
     evm_port = tevmc.config['hyperion']['api']['server_port']
     chain_id = tevmc.config['hyperion']['chain']['chain_id']
@@ -120,7 +120,7 @@ def test_sir_merge_a_lot_upgrade(tevmc_local):
     on_chain_balance = tevmc.cleos.eth_get_balance(native_eth_addr_second.address)
     assert on_chain_balance == to_wei(5, 'ether')
 
-    # deploy latest sir_merge_a_lot_v2
+    # deploy latest evm contract
     contract_path = '/opt/eosio/bin/contracts/eosio.evm-v2'
 
     tevmc.cleos.deploy_contract(
@@ -140,7 +140,7 @@ def test_sir_merge_a_lot_upgrade(tevmc_local):
         }).json()
 
     assert 'code_hash' in resp
-    assert resp['code_hash'] == '94813d8cd238bcebc71a94cadd576f4ce5dc1cea1ed963e9673049c63ea583b3'
+    assert resp['code_hash'] == 'ab297836a718f08d91e0270d74f11c2e9233b132d90123d558f48594639aa49a'
 
     # perform a second transfer from first eth addr to second
     from_addr = native_eth_addr.address
@@ -165,3 +165,37 @@ def test_sir_merge_a_lot_upgrade(tevmc_local):
     # verify balance makes sense
     on_chain_balance = tevmc.cleos.eth_get_balance(native_eth_addr_second.address)
     assert on_chain_balance == to_wei(10, 'ether')
+
+
+    # increment revision
+    ec, _ = self.push_action(
+        'eosio.evm',
+        'setrevision',
+        [1],
+        'eosio.evm@active'
+    )
+    assert ec == 0
+
+    # perform a third transfer
+    from_addr = native_eth_addr.address
+    to_addr = native_eth_addr_second.address
+    quantity = to_wei(5, 'ether')
+
+    signed_tx = Account.sign_transaction({
+        'from': from_addr,
+        'to': to_addr,
+        'gas': DEFAULT_GAS,
+        'gasPrice': DEFAULT_GAS_PRICE,
+        'value': quantity,
+        'data': b'',
+        'nonce': 2,
+        'chainId': chain_id
+    }, native_eth_addr.key)
+
+    w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    tevmc.cleos.wait_blocks(1)
+
+    # verify balance makes sense
+    on_chain_balance = tevmc.cleos.eth_get_balance(native_eth_addr_second.address)
+    assert on_chain_balance == to_wei(15, 'ether')

@@ -32,20 +32,22 @@ class CLEOSEVM(CLEOS):
         **kwargs
     ):
         super().__init__(*args, **kwargs)
-        
+
         self.hyperion_api_endpoint = hyperion_api_endpoint
 
         self.__jsonrpc_id = 0
-    
+
     def deploy_evm(
         self,
         start_bytes: int = 1073741824,
         target_free: int = 1073741824,
         min_buy: int = 20000,
         fee_transfer_pct: int = 100,
-        gas_per_byte: int = 69
+        gas_per_byte: int = 69,
+        contract: str = 'eosio.evm',
+        revision: Optional[int] = None
     ):
-    
+
         # create evm accounts
         self.new_account(
             'eosio.evm',
@@ -68,7 +70,7 @@ class CLEOSEVM(CLEOS):
             net='10000.0000 TLOS',
             ram=100000)
 
-        contract_path = '/opt/eosio/bin/contracts/eosio.evm'
+        contract_path = f'/opt/eosio/bin/contracts/{contract}'
 
         self.deploy_contract(
             'eosio.evm', contract_path,
@@ -76,7 +78,7 @@ class CLEOSEVM(CLEOS):
             create_account=False,
             verify_hash=False)
 
-        ec, out = self.push_action(
+        ec, _ = self.push_action(
             'eosio.evm',
             'init',
             [
@@ -86,8 +88,19 @@ class CLEOSEVM(CLEOS):
                 min_buy,
                 fee_transfer_pct,
                 gas_per_byte
-            ], 'eosio.evm@active')
+            ],
+            'eosio.evm@active'
+        )
         assert ec == 0
+
+        if isinstance(revision, int):
+            ec, _ = self.push_action(
+                'eosio.evm',
+                'setrevision',
+                [revision],
+                'eosio.evm@active'
+            )
+            assert ec == 0
 
     def create_test_evm_account(
         self,
@@ -100,7 +113,7 @@ class CLEOSEVM(CLEOS):
             key='EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L')
         self.create_evm_account(name, data)
         quantity = Asset(111000000, sys_token)
-        
+
         self.transfer_token('eosio', name, quantity, ' ')
         self.transfer_token(name, 'eosio.evm', quantity, 'Deposit')
 
@@ -151,7 +164,7 @@ class CLEOSEVM(CLEOS):
             '--key-type', 'name', '--index', '3',
             '--lower', name,
             '--upper', name)
-        
+
         if len(rows) != 1:
             return None
 
@@ -224,7 +237,7 @@ class CLEOSEVM(CLEOS):
             '--key-type', 'sha256', '--index', '2',
             '--lower', addr,
             '--upper', addr)
-        
+
         if len(rows) != 1:
             return None
 
@@ -239,7 +252,7 @@ class CLEOSEVM(CLEOS):
             '--key-type', 'sha256', '--index', '2',
             '--lower', addr,
             '--upper', addr)
-        
+
         if len(rows) != 1:
             return None
 

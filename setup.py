@@ -29,8 +29,7 @@ setup(
         'daemonize',
         'simplejson',
         'simple_rlp',
-        'eth_account',
-        'py_eosio@git+https://github.com/guilledk/py-eosio.git@bios_backport'
+        'eth_account'
     ],
     include_package_data=True,
     entry_points={

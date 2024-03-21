@@ -52,7 +52,7 @@ kibana = {
 
 nodeos = {
     'name': 'nodeos',
-    'tag': 'tevm:nodeos-3.1.0-evm',
+    'tag': 'tevm:nodeos-4.0.6-evm',
     'docker_path': 'eosio',
     'data_dir_guest': '/mnt/dev/data',
     'data_dir_host': 'data',
@@ -90,7 +90,6 @@ nodeos = {
 
         'max_clients': 250,
         'cleanup_period': 30,
-        'txn_blok_lag': 0,
         'allowed_connection': 'any',
         'http_max_response_time': 100000,
         'http_max_body_size': 10000000,

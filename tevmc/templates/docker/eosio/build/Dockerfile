@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM --platform=linux/amd64 ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -6,8 +6,10 @@ RUN apt-get update && \
     apt-get install \
         -y \
         --no-install-recommends \
+        git \
         wget \
-        logrotate \
+        zstd \
+        binutils \
         ca-certificates
 
 # install snapshots from latest evm deployments
@@ -27,9 +29,8 @@ RUN wget https://telos-snapshots.s3.amazonaws.com/mainnet/telos-mainet-20211026-
 
 WORKDIR /root
 
-RUN wget https://github.com/AntelopeIO/leap/releases/download/v3.1.0/leap-3.1.0-ubuntu20.04-x86_64.deb && \
-    apt-get install -y ./leap-3.1.0-ubuntu20.04-x86_64.deb && \
-    rm -rf *.deb
+RUN wget https://github.com/AntelopeIO/leap/releases/download/v4.0.6/leap_4.0.6-ubuntu22.04_amd64.deb && \
+    apt-get install -y -f ./leap_4.0.6-ubuntu22.04_amd64.deb
 
 EXPOSE $nodeos_port
 EXPOSE $nodeos_history_port
