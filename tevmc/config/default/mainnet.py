@@ -45,7 +45,7 @@ nodeos = {
     'conf_dir': 'config',
     'contracts_dir': 'contracts',
     'genesis': 'mainnet',
-    'snapshot': '/snapshot-mainnet-20211026-blk-180635436.bin',
+    'snapshot': '/telos-mainnet-snapshot-evm-deploy.bin',
     'v2_api': 'https://mainnet.telos.net',
     'nodeos_bin': 'nodeos',
     'chain_id': '4667b205c6838ef70ff7988f6e8257e8be0e1284a2f59699054a018f743b1d11',
@@ -78,8 +78,6 @@ nodeos = {
         'sync_fetch_span': 2000,
 
         'max_clients': 250,
-
-        'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
 
         'disable_subjective_billing': True,
         'max_transaction_time': 500,

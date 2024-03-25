@@ -45,7 +45,7 @@ nodeos = {
     'conf_dir': 'config',
     'contracts_dir': 'contracts',
     'genesis': 'testnet',
-    'snapshot': '/snapshot-testnet-20211020-blknum-136229794.bin',
+    'snapshot': '/telos-testnet-snapshot-evm-deploy.bin',
     'v2_api': 'https://testnet.telos.net',
     'nodeos_bin': 'nodeos',
     'chain_id': '1eaa0824707c8c16bd25145493bf062aecddfeb56c736f6ba6397f3195f33c9f',
@@ -85,8 +85,6 @@ nodeos = {
         'http_max_body_size': 10000000,
 
         'enable_stale_production': False,
-
-        'sig_provider': 'EOS5GnobZ231eekYUJHGTcmy2qve1K23r5jSFQbMfwWTtPB7mFZ1L=KEY:5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
 
         'disable_subjective_billing': True,
         'max_transaction_time': 500,

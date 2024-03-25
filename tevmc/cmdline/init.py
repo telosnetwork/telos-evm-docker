@@ -47,7 +47,7 @@ def touch_node_dir(target_dir: Path, conf: dict, fname: str):
         str(target_dir / 'docker'))
 
     # create logs dir
-    (target_dir / 'logs').mkdir()
+    (target_dir / 'logs').mkdir(exist_ok=True)
 
 
 @cli.command()

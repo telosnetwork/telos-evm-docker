@@ -5,7 +5,7 @@ workdir /root
 run git clone \
     https://github.com/telosnetwork/telosevm-translator.git \
     indexer \
-    -b configurable_docs_per_index
+    -b index_config_fix
 
 workdir /root/indexer
 
