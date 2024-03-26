@@ -667,7 +667,8 @@ class TEVMController:
                         sys.exit(1)
 
             else:
-                if '--replay-blockchain' not in self.additional_nodeos_params:
+                if ('--replay-blockchain' not in self.additional_nodeos_params and
+                    len(config['ini']['peers']) > 0):
                     for msg in self.stream_logs('nodeos', timeout=60*10, from_latest=True):
                         if 'Received' in msg:
                             break

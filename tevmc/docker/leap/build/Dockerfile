@@ -19,16 +19,16 @@ run wget http://storage.telos.net/test-resources/telos-testnet-snapshot-evm-depl
 
 # install nodeos
 workdir /root
-run wget https://github.com/telosnetwork/leap/releases/download/v4.0.4-1.0.2-rc1/leap_4.0.4-1-0-2-ubuntu22.04_amd64.deb && \
+run wget https://github.com/telosnetwork/leap/releases/download/v4.0.4-1.0.2-rc2/leap_4.0.4-1-0-2-ubuntu22.04_amd64.deb && \
     apt-get install -y -f ./leap_4.0.4-1-0-2-ubuntu22.04_amd64.deb
 
 # # install vanilla nodeos
-# RUN wget https://github.com/AntelopeIO/leap/releases/download/v4.0.4/leap_4.0.4-ubuntu20.04_amd64.deb && \
+# run wget https://github.com/AntelopeIO/leap/releases/download/v4.0.4/leap_4.0.4-ubuntu20.04_amd64.deb && \
 #     ar x leap_4.0.4-ubuntu20.04_amd64.deb && \
 #     tar xvf data.tar.gz && \
 #     cp ./usr/bin/nodeos /usr/local/bin/nodeos-vanilla && \
 #     rm -rdf usr data.tar.gz control.tar.gz debian-binary *.deb
 
 # # install local deb
-# COPY ./leap_4.0.4-1-0-2-ubuntu22.04_amd64.deb .
-# RUN apt-get install -f -y ./leap_4.0.4-1-0-2-ubuntu22.04_amd64.deb
+# copy ./leap_4.0.4-1-0-2-ubuntu22.04_amd64.deb .
+# run apt-get install -f -y ./leap_4.0.4-1-0-2-ubuntu22.04_amd64.deb
