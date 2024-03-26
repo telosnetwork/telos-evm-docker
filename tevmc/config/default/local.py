@@ -48,7 +48,7 @@ nodeos = {
     'v2_api': 'disabled',
     'nodeos_bin': 'nodeos',
     'eosio.evm': 'eosio.evm/receiptless',
-    'chain_id': 'override',
+    'chain_id': 'c4c5fcc7b6e5e7484eb6b609e755050ebba977c4c291a63aab42d94c0fb8c2cf',
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,
@@ -58,18 +58,18 @@ nodeos = {
         'abi_serializer_max_time': 2000000,
         'account_queries': True,
 
-        'http_addr': '0.0.0.0:8888',
+        'http_addr': '0.0.0.0:8889',
         'allow_origin': '*',
         'http_verbose_error': True,
         'contracts_console': True,
         'http_validate_host': False,
-        'p2p_addr': '0.0.0.0:9876',
+        'p2p_addr': '0.0.0.0:9875',
         'p2p_max_nodes': 1,
 
         'agent_name': 'Telos Local Testnet',
 
 
-        'history_endpoint': '0.0.0.0:29999',
+        'history_endpoint': '0.0.0.0:29998',
         'trace_history': True,
         'chain_history': True,
         'history_debug_mode': True,
@@ -126,7 +126,8 @@ telosevm_translator = {
     'prev_hash': '',
     'worker_amount': 1,
     'elastic_dump_size': 1,
-    'elastic_timeout': 1000 * 20
+    'elastic_timeout': 1000 * 20,
+    'elastic_docs_per_index': 1000
 }
 
 telos_evm_rpc = {
@@ -137,8 +138,8 @@ telos_evm_rpc = {
     'chain_id': 41,
     'debug': True,
     'api_host': '0.0.0.0',
-    'api_port': 7000,
-    'remote_endpoint': 'http://127.0.0.1:7000/evm',
+    'api_port': 7001,
+    'remote_endpoint': 'http://127.0.0.1:7001/evm',
     'signer_account': 'rpc.evm',
     'signer_permission': 'active',
     'signer_key': '5Jr65kdYmn33C3UabzhmWDm2PuqbRfPuDStts3ZFNSBLM7TqaiL',
@@ -146,10 +147,10 @@ telos_evm_rpc = {
         'main': 'eosio.evm'
     },
     'indexer_websocket_host': '0.0.0.0',
-    'indexer_websocket_port': '7300',
-    'indexer_websocket_uri': 'ws://127.0.0.1:7300/evm',
+    'indexer_websocket_port': '7301',
+    'indexer_websocket_uri': 'ws://127.0.0.1:7301/evm',
     'rpc_websocket_host': '0.0.0.0',
-    'rpc_websocket_port': '7400',
+    'rpc_websocket_port': '7401',
     'elastic_prefix': 'telos-local-tevmc',
     'elasitc_index_version': 'v1.5'
 }

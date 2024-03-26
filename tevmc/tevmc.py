@@ -667,7 +667,8 @@ class TEVMController:
                         sys.exit(1)
 
             else:
-                if '--replay-blockchain' not in self.additional_nodeos_params:
+                if ('--replay-blockchain' not in self.additional_nodeos_params and
+                    len(config['ini']['peers']) > 0):
                     for msg in self.stream_logs('nodeos', timeout=60*10, from_latest=True):
                         if 'Received' in msg:
                             break
@@ -957,7 +958,8 @@ class TEVMController:
                         'EVM_VALIDATE_HASH': config['evm_validate_hash'],
                         'BROADCAST_HOST': bc_host,
                         'BROADCAST_PORT': bc_port,
-                        'WORKER_AMOUNT': config['worker_amount']
+                        'WORKER_AMOUNT': config['worker_amount'],
+                        'ELASTIC_DOCS_PER_INDEX': config['elastic_docs_per_index']
                     },
                     mounts=self.mounts['telosevm-translator'],
                     **more_params
