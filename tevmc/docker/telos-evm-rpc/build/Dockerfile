@@ -13,7 +13,7 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesourc
 
 RUN apt-get update && apt-get install -y yarn nodejs
 
-RUN git clone https://github.com/telosnetwork/telos-evm-rpc.git -b underground_updates_club
+RUN git clone https://github.com/telosnetwork/telos-evm-rpc.git
 
 WORKDIR /telos-evm-rpc
 
