@@ -75,6 +75,10 @@ def test_all(compile_evm, tevmc_local):
     receipt = local_w3.eth.wait_for_transaction_receipt(tx_hash)
     assert receipt
 
+    # verify block hash in receipt is valid (metamask does this after getting a receipt)
+    block = local_w3.eth.get_block(receipt['blockHash'])
+    assert block['hash'] == receipt['blockHash']
+
     # test erc20 contract deploy
     total_supply_wei = to_wei(69, 'ether')
     erc20_contract = tevmc_local.cleos.eth_deploy_contract_from_json(

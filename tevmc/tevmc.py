@@ -576,6 +576,10 @@ class TEVMController:
         if config['ini'].get('subst_admin_apis', False):
             nodeos_cmd += ['--subst-admin-apis']
 
+        override_tx_time = config.get('override_tx_time', 0)
+        if override_tx_time:
+            nodeos_cmd += [f'--override-max-tx-time={override_tx_time}']
+
         nodeos_cmd += self.additional_nodeos_params
 
         nodeos_cmd += ['>>', '/logs/nodeos.log', '2>&1']

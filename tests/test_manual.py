@@ -3,8 +3,8 @@ import pytest
 
 @pytest.mark.randomize(False)
 @pytest.mark.services('nodeos')
-def test_manual_nodeos(tevmc_local):
-    tevmc = tevmc_local
+def test_manual_nodeos(tevmc_mainnet):
+    tevmc = tevmc_mainnet
     breakpoint()
 
 @pytest.mark.randomize(False)
@@ -22,7 +22,7 @@ def test_manual_full(tevmc_local):
 
 
 @pytest.mark.randomize(False)
-@pytest.mark.services('elastic', 'nodeos')
+@pytest.mark.services('elastic', 'nodeos', 'kibana')
 def test_manual_translator_dev(tevmc_mainnet):
     tevmc = tevmc_mainnet
     breakpoint()

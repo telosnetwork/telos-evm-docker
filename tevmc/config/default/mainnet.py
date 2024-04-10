@@ -49,6 +49,7 @@ nodeos = {
     'v2_api': 'https://mainnet.telos.net',
     'nodeos_bin': 'nodeos',
     'chain_id': '4667b205c6838ef70ff7988f6e8257e8be0e1284a2f59699054a018f743b1d11',
+    'override_tx_time': 499,
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,

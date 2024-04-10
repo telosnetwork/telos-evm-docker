@@ -1,3 +1,6 @@
 [submodule "tests/evm-contracts/uniswap-v2-core"]
 	path = tests/evm-contracts/uniswap-v2-core
 	url = https://github.com/Uniswap/v2-core.git
+[submodule "tests/evm-contracts/evm-mechanics"]
+	path = tests/evm-contracts/evm-mechanics
+	url = https://github.com/guilledk/evm-mechanics.git
