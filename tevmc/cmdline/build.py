@@ -139,10 +139,11 @@ def perform_config_build(target_dir, config):
     nodeos_conf_dir = nodeos_dir + '/' + nodeos_conf['conf_dir']
     nodeos_build_dir = nodeos_dir + '/' + 'build'
     nodeos_http_port = int(ini_conf['http_addr'].split(':')[-1])
+    nodeos_ship_port = int(ini_conf['history_endpoint'].split(':')[-1])
 
     subst = {
         'nodeos_port': nodeos_http_port,
-        'nodeos_history_port': ini_conf['history_endpoint'].split(':')[-1]
+        'nodeos_history_port': nodeos_ship_port
     }
     write_docker_template(f'{nodeos_build_dir}/Dockerfile', subst)
 
@@ -185,6 +186,7 @@ def perform_config_build(target_dir, config):
         target_file.write(conf_str)
 
     # telosevm-translator
+    rpc_conf = config['telos-evm-rpc']
     tevmi_conf = config['telosevm-translator']
     tevmi_dir = tevmi_conf['docker_path']
     tevmi_build_dir = tevmi_dir + '/' + 'build'
@@ -195,8 +197,46 @@ def perform_config_build(target_dir, config):
     }
     write_docker_template(f'{tevmi_build_dir}/Dockerfile', subst)
 
+    if 'testnet' in chain_name:
+        remote_endpoint = 'https://testnet.telos.net'
+    elif 'mainnet' in chain_name:
+        remote_endpoint = 'https://mainnet.telos.net'
+    else:
+        remote_endpoint = f'http://127.0.0.1:{nodeos_http_port}'
+
+    subst = jsonize({
+        'translator_log_level': tevmi_conf['log_level'],
+        'translator_reader_log_level': tevmi_conf['reader_log_level'],
+
+        'translator_chain_name': rpc_conf['elastic_prefix'],
+        'translator_chain_id': rpc_conf['chain_id'],
+
+        'nodeos_http_endpoint': f'http://127.0.0.1:{nodeos_http_port}',
+        'nodeos_remote_endpoint': remote_endpoint,
+        'nodeos_ws_endpoint': f'ws://127.0.0.1:{nodeos_ship_port}',
+
+        'translator_block_delta': tevmi_conf['evm_block_delta'],
+        'translator_prev_hash': tevmi_conf['prev_hash'],
+        'translator_validate_hash': tevmi_conf['evm_validate_hash'],
+
+        'translator_start_block': tevmi_conf['start_block'],
+        'translator_end_block': tevmi_conf['stop_block'],
+        'translator_irreversible_only': tevmi_conf['irreversible_only'],
+        'translator_block_hist_size': tevmi_conf['block_history_size'],
+        'translator_perf_stall_counter': tevmi_conf['stall_counter'],
+        'translator_perf_reader_workers': tevmi_conf['worker_amount'],
+
+        'elastic_endpoint': f'http://{elastic_conf["host"]}',
+
+        'translator_ws_host': rpc_conf['indexer_websocket_host'],
+        'translator_ws_port': rpc_conf['indexer_websocket_port']
+    })
+
+    tevmi_conf_dir =  f'{tevmi_dir}/{tevmi_conf["conf_dir"]}'
+    (docker_dir / tevmi_conf_dir).mkdir(exist_ok=True, parents=True)
+    write_docker_template(f'{tevmi_conf_dir}/config.json', subst)
+
     # telos-evm-rpc
-    rpc_conf = config['telos-evm-rpc']
     rpc_dir = rpc_conf['docker_path']
 
     # rpc config.json gen

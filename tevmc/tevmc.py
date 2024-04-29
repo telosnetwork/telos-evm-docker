@@ -906,35 +906,12 @@ class TEVMController:
     def start_telosevm_translator(self):
         with self.must_keep_running('telosevm-translator'):
             config = self.config['telosevm-translator']
-            config_elastic = self.config['elasticsearch']
-            config_nodeos = self.config['nodeos']
-            config_rpc = self.config['telos-evm-rpc']
+            tevmi_conf_dir = self.docker_wd / config['docker_path'] / config['conf_dir']
 
             self.mounts['telosevm-translator'] = [
-                Mount('/logs', str(self.main_logs_dir.resolve()), 'bind')
+                Mount('/logs', str(self.main_logs_dir.resolve()), 'bind'),
+                Mount('/root/indexer/config', str(tevmi_conf_dir.resolve()), 'bind')
             ]
-
-            if sys.platform == 'darwin':
-                nodeos_host = self.config['nodeos']['virtual_ip']
-
-            else:
-                nodeos_host = '127.0.0.1'
-
-            nodeos_api_port = config_nodeos['ini']['http_addr'].split(':')[1]
-            nodeos_ship_port = config_nodeos['ini']['history_endpoint'].split(':')[1]
-            endpoint = f'http://{nodeos_host}:{nodeos_api_port}'
-
-            if 'testnet' in self.chain_name:
-                remote_endpoint = 'https://testnet.telos.net'
-            elif 'mainnet' in self.chain_name:
-                remote_endpoint = 'https://mainnet.telos.net'
-            else:
-                remote_endpoint = endpoint
-
-            ws_endpoint = f'ws://{nodeos_host}:{nodeos_ship_port}'
-
-            bc_host = config_rpc['indexer_websocket_host']
-            bc_port = config_rpc['indexer_websocket_port']
 
             more_params = {}
             if sys.platform == 'darwin':
@@ -944,27 +921,6 @@ class TEVMController:
                 self.open_container(
                     f'{config["name"]}-{self.pid}-{self.chain_name}',
                     f'{config["tag"]}-{self.chain_name}',
-                    environment={
-                        'CHAIN_NAME': self.chain_name,
-                        'CHAIN_ID': config_rpc['chain_id'],
-                        'ELASTIC_USERNAME': config_elastic['user'],
-                        'ELASTIC_PASSWORD': config_elastic['pass'],
-                        'ELASTIC_NODE': f'http://{config_elastic["host"]}',
-                        'ELASTIC_DUMP_SIZE': config['elastic_dump_size'],
-                        'ELASTIC_TIMEOUT': config['elastic_timeout'],
-                        'TELOS_ENDPOINT': endpoint,
-                        'TELOS_REMOTE_ENDPOINT': remote_endpoint,
-                        'TELOS_WS_ENDPOINT': ws_endpoint,
-                        'INDEXER_START_BLOCK': config['start_block'],
-                        'INDEXER_STOP_BLOCK': config['stop_block'],
-                        'EVM_PREV_HASH': config['prev_hash'],
-                        'EVM_BLOCK_DELTA': config['evm_block_delta'],
-                        'EVM_VALIDATE_HASH': config['evm_validate_hash'],
-                        'BROADCAST_HOST': bc_host,
-                        'BROADCAST_PORT': bc_port,
-                        'WORKER_AMOUNT': config['worker_amount'],
-                        'ELASTIC_DOCS_PER_INDEX': config['elastic_docs_per_index']
-                    },
                     mounts=self.mounts['telosevm-translator'],
                     **more_params
                 )

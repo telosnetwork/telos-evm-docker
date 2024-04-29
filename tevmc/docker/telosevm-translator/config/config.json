@@ -1,0 +1,51 @@
+{
+    "logLevel": $translator_log_level,
+    "readerLogLevel": $translator_reader_log_level,
+
+    "chainName": $translator_chain_name,
+    "chainId": $translator_chain_id,
+
+    "runtime": {},
+
+    "endpoint": $nodeos_http_endpoint,
+    "remoteEndpoint": $nodeos_remote_endpoint,
+    "wsEndpoint": $nodeos_ws_endpoint,
+
+    "evmBlockDelta": $translator_block_delta,
+    "evmPrevHash": $translator_prev_hash,
+    "evmValidateHash": $translator_validate_hash,
+
+    "startBlock": $translator_start_block,
+    "stopBlock": $translator_end_block,
+    "irreversibleOnly": $translator_irreversible_only,
+    "blockHistorySize": $translator_block_hist_size,
+    "perf": {
+        "stallCounter": $translator_perf_stall_counter,
+        "readerWorkerAmount": $translator_perf_reader_workers,
+        "evmWorkerAmount": 4,
+        "elasticDumpSize": 2048
+    },
+
+    "elastic": {
+        "node": $elastic_endpoint,
+        "requestTimeout": 480000,
+        "docsPerIndex": 10000000,
+        "scrollSize": 6000,
+        "scrollWindow": "8s",
+        "numberOfShards": 1,
+        "numberOfReplicas": 0,
+        "refreshInterval": -1,
+        "codec": "best_compression",
+        "subfix": {
+            "delta": "delta-v1.5",
+            "transaction": "action-v1.5",
+            "error": "error-v1.5",
+            "fork": "fork-v1.5"
+        }
+    },
+
+    "broadcast": {
+        "wsHost": $translator_ws_host,
+        "wsPort": $translator_ws_port
+    }
+}
