@@ -104,9 +104,13 @@ def mock_manifest_server():
 
                 file.write(data)
 
+        def stop_server():
+            httpd.shutdown()
+            thread.join()
+
         register_file('subst.json', _json={})
 
-        yield register_file
+        yield register_file, stop_server
 
         httpd.shutdown()
         thread.join()
@@ -123,7 +127,7 @@ def subst_testing_nodeos_manifest(request, tmp_path_factory):
     request.applymarker(pytest.mark.tevmc_params(testing=True, skip_init=True))
 
     with (
-        mock_manifest_server() as register_file,
+        mock_manifest_server() as (register_file, stop_server),
         bootstrap_test_stack(request, tmp_path_factory) as tevmc
     ):
         tevmc.cleos.deploy_contract_from_path(
@@ -131,8 +135,45 @@ def subst_testing_nodeos_manifest(request, tmp_path_factory):
             Path('tests/contracts/testcontract/base'),
             contract_name='testcontract'
         )
-        yield tevmc, register_file
+        yield tevmc, register_file, stop_server
 
+@pytest.fixture()
+def subst_testing_nodeos_manifest_quick_interval(request, tmp_path_factory):
+    config = deepcopy(local.default_config)
+
+    config['nodeos']['ini']['subst'] = 'http://127.0.0.1:5000/subst.json'
+
+    request.applymarker(pytest.mark.config(**config))
+    request.applymarker(pytest.mark.services('nodeos'))
+    request.applymarker(pytest.mark.randomize(False))
+    request.applymarker(pytest.mark.tevmc_params(testing=True, skip_init=True, additional_nodeos_params=['--subst-manifest-interval=5']))
+
+    with (
+        mock_manifest_server() as (register_file, stop_server),
+        bootstrap_test_stack(request, tmp_path_factory) as tevmc
+    ):
+        tevmc.cleos.deploy_contract_from_path(
+            'testcontract',
+            Path('tests/contracts/testcontract/base'),
+            contract_name='testcontract'
+        )
+        yield tevmc, register_file, stop_server
+
+@pytest.fixture()
+def subst_testing_nodeos_manifest_server_down(request, tmp_path_factory):
+    config = deepcopy(local.default_config)
+
+    config['nodeos']['ini']['subst'] = 'http://127.0.0.1:5000/subst.json'
+
+    request.applymarker(pytest.mark.config(**config))
+    request.applymarker(pytest.mark.services('nodeos'))
+    request.applymarker(pytest.mark.randomize(False))
+    request.applymarker(pytest.mark.tevmc_params(testing=True, skip_init=True))
+
+    with (
+        bootstrap_test_stack(request, tmp_path_factory) as tevmc
+    ):
+        yield tevmc
 
 @pytest.fixture()
 def compile_evm():

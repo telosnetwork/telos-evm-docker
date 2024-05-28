@@ -58,6 +58,7 @@ def testcontract_print_action(cleos, msg: str = 'hello world!', cancel: bool = F
 
     return header, console
 
+
 def assert_testcontract_has_header(cleos, header: str):
     # test cancelled runs subst version
     actual, _ = testcontract_print_action(cleos, cancel=True)
@@ -102,9 +103,6 @@ def test_subst_api(subst_testing_nodeos):
     with pytest.raises(ChainAPIError):
         tevmc.cleos.subst_activate(test_account_name)
 
-    with pytest.raises(ChainAPIError):
-        tevmc.cleos.subst_deactivate(test_account_name)
-
     # remove should work
     remove_result = tevmc.cleos.subst_remove(test_account_name)
     assert len(remove_result['rows']) == 0
@@ -130,6 +128,9 @@ def test_subst_api(subst_testing_nodeos):
     assert upsert_result['code_object']['actual_code_hash'] == base_hash
     assert upsert_result['account_metadata_object']['code_hash'] == base_hash
 
+    # activate subst
+    tevmc.cleos.subst_activate(test_account_name)
+
     # test subst is applied
     assert_testcontract_has_header(tevmc.cleos, 'VAR1')
 
@@ -141,8 +142,15 @@ def test_subst_api(subst_testing_nodeos):
     tevmc.cleos.subst_activate(test_account_name)
     assert_testcontract_has_header(tevmc.cleos, 'VAR1')
 
+    # deactivate in order to preserve base contract
+    tevmc.cleos.subst_deactivate(test_account_name)
+
     # update subst to var 2
     upsert_result = tevmc.cleos.subst_upsert(test_account_name, 0, var2_wasm)
+
+    # activate subst
+    tevmc.cleos.subst_activate(test_account_name)
+
     assert upsert_result['account'] == test_account_name
     assert upsert_result['from_block'] == 0
     assert upsert_result['original_hash'] == base_hash
@@ -150,8 +158,15 @@ def test_subst_api(subst_testing_nodeos):
 
     assert_testcontract_has_header(tevmc.cleos, 'VAR2')
 
+    # deactivate in order to preserve base contract
+    tevmc.cleos.subst_deactivate(test_account_name)
+
     # update subst to var 3
     upsert_result = tevmc.cleos.subst_upsert(test_account_name, 0, var3_wasm)
+
+    # activate subst
+    tevmc.cleos.subst_activate(test_account_name)
+
     assert upsert_result['account'] == test_account_name
     assert upsert_result['from_block'] == 0
     assert upsert_result['original_hash'] == base_hash
@@ -197,8 +212,18 @@ def test_subst_change(subst_testing_nodeos_testcontract):
     assert_testcontract_has_header(tevmc.cleos, 'VAR2')
 
 
+def test_subst_manifest_ensure_crash_server_down(subst_testing_nodeos_manifest_server_down):
+    tevmc = subst_testing_nodeos_manifest_server_down
+
+    nodeos_logs = ''
+    for msg in tevmc.stream_logs('nodeos', num=10, from_latest=True):
+        nodeos_logs += msg
+        if 'Failed to connect: Connection refused' in nodeos_logs:
+            break
+
+
 def test_subst_manifest(subst_testing_nodeos_manifest):
-    tevmc, register_file = subst_testing_nodeos_manifest
+    tevmc, register_file, _ = subst_testing_nodeos_manifest
 
     chain_id = tevmc.cleos.get_info()['chain_id']
 
@@ -229,6 +254,26 @@ def test_subst_manifest(subst_testing_nodeos_manifest):
 
     # confirm contract prints VAR2
     assert_testcontract_has_header(tevmc.cleos, 'VAR2')
+
+
+def test_subst_manifest_ignore_net_err(subst_testing_nodeos_manifest_quick_interval):
+    tevmc, _, stop_server = subst_testing_nodeos_manifest_quick_interval
+    stop_server()
+
+    found_fetch = False
+    found_error = False
+    found_reschedule = False
+
+    for msg in tevmc.stream_logs('nodeos', num=1, from_latest=True):
+        found_fetch = found_fetch or 'fetching manifest' in msg
+        found_error = found_error or (found_fetch and 'Failed to read response: Connection timed out' in msg)
+        found_reschedule = found_error and 'scheduling manifest update' in msg
+
+        if found_reschedule:
+            break
+
+    assert found_reschedule
+
 
 @pytest.mark.services('nodeos')
 def test_setcode_with_same_hash_subst(tevmc_local):
