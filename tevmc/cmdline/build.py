@@ -93,7 +93,6 @@ def perform_config_build(target_dir, config):
     redis_conf_dir = redis_dir + '/' +  redis_conf['conf_dir']
 
     subst = flatten('redis', config)
-    write_docker_template(f'{redis_build_dir}/Dockerfile', subst)
     write_docker_template(f'{redis_conf_dir}/redis.conf', subst)
 
     # elasticsearch
@@ -105,7 +104,6 @@ def perform_config_build(target_dir, config):
     subst = {
         'elasticsearch_port': config['elasticsearch']['host'].split(':')[-1]
     }
-    write_docker_template(f'{elastic_build_dir}/Dockerfile', subst)
     write_docker_template(f'{elastic_build_dir}/elasticsearch.yml', subst)
 
     host_dir = (docker_dir / elastic_data_dir)
@@ -127,7 +125,6 @@ def perform_config_build(target_dir, config):
     kibana_conf_dir  = kibana_dir + '/' + kibana_conf['conf_dir']
 
     subst = flatten('kibana', config)
-    write_docker_template(f'{kibana_build_dir}/Dockerfile', subst)
     write_docker_template(f'{kibana_conf_dir}/kibana.yml', subst)
 
     # nodeos
@@ -140,12 +137,6 @@ def perform_config_build(target_dir, config):
     nodeos_build_dir = nodeos_dir + '/' + 'build'
     nodeos_http_port = int(ini_conf['http_addr'].split(':')[-1])
     nodeos_ship_port = int(ini_conf['history_endpoint'].split(':')[-1])
-
-    subst = {
-        'nodeos_port': nodeos_http_port,
-        'nodeos_history_port': nodeos_ship_port
-    }
-    write_docker_template(f'{nodeos_build_dir}/Dockerfile', subst)
 
     # nodeos.config.ini
     subst = {}
@@ -167,7 +158,8 @@ def perform_config_build(target_dir, config):
 
     if 'subst' in subst:
         conf_str += f'plugin = eosio::subst_plugin\n'
-        conf_str += f'plugin = eosio::subst_api_plugin\n'
+        if ini_conf.get('subst_admin_apis', False):
+            conf_str += f'plugin = eosio::subst_api_plugin\n'
         conf_str += '\n'
         sinfo = subst['subst']
         if isinstance(sinfo, str):
@@ -190,12 +182,6 @@ def perform_config_build(target_dir, config):
     tevmi_conf = config['telosevm-translator']
     tevmi_dir = tevmi_conf['docker_path']
     tevmi_build_dir = tevmi_dir + '/' + 'build'
-
-    subst = {
-        'broadcast_port':
-            config['telos-evm-rpc']['indexer_websocket_port'],
-    }
-    write_docker_template(f'{tevmi_build_dir}/Dockerfile', subst)
 
     if 'testnet' in chain_name:
         remote_endpoint = 'https://testnet.telos.net'
@@ -271,17 +257,6 @@ def perform_config_build(target_dir, config):
     rpc_conf_dir =  f'{rpc_dir}/{rpc_conf["conf_dir"]}'
     (docker_dir / rpc_conf_dir).mkdir(exist_ok=True, parents=True)
     write_docker_template(f'{rpc_conf_dir}/config.json', subst)
-
-    # rpc docker template
-    rpc_build_dir = rpc_dir + '/' + 'build'
-
-    subst = {
-        'api_port':
-            config['telos-evm-rpc']['api_port'],
-        'ws_port':
-            config['telos-evm-rpc']['indexer_websocket_port']
-    }
-    write_docker_template(f'{rpc_build_dir}/Dockerfile', subst)
 
 
 def service_alias_to_fullname(alias: str):
