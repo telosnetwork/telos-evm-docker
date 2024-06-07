@@ -403,6 +403,69 @@ class CLEOSEVM(CLEOS):
             json=payload, headers=headers)
         return response.json() if response.status_code == 200 else None
 
+    def eth_deploy_contract(
+        self,
+        contract_cls,
+        contract_abi,
+        contract_name: str,
+        constructor_arguments: list[str] = [],
+        account: Account | None = None,
+        max_gas: int = int(1e8)
+    ):
+        # create deploy tx
+        tx_args = {
+            'from': account.address,
+            'gas': max_gas,
+            'gasPrice': self._w3.eth.gas_price,
+            'nonce': self._w3.eth.get_transaction_count(account.address)
+        }
+
+        tx = contract_cls.constructor(*constructor_arguments).build_transaction(tx_args)
+
+        signed_tx = account.sign_transaction(tx)
+
+        tx_hash = self._w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+        tx_receipt = self._w3.eth.wait_for_transaction_receipt(tx_hash)
+
+        _contract = self._w3.eth.contract(
+            address=tx_receipt['contractAddress'], abi=contract_abi)
+
+        self.evm_contracts[contract_name] = _contract
+
+        return _contract
+
+    def eth_deploy_contract_from_files(
+        self,
+        abi_path: str | Path,
+        bin_path: str | Path,
+        contract_name: str,
+        constructor_arguments: list[str] = [],
+        account: Account | None = None,
+        max_gas: int = int(1e8)
+    ):
+        if not isinstance(account, Account):
+            account = self.evm_default_account
+
+        with open(abi_path, 'r') as abi_fp:
+            contract_abi = json.load(abi_fp)
+
+        with open(bin_path, 'r') as bin_fp:
+            contract_bin = bin_fp.read().strip()
+
+        # instantiate
+        Contract = self._w3.eth.contract(
+            abi=contract_abi,
+            bytecode=contract_bin
+        )
+
+        return self.eth_deploy_contract(
+            Contract, contract_abi, contract_name,
+            constructor_arguments=constructor_arguments,
+            account=account,
+            max_gas=max_gas
+        )
+
     def eth_deploy_contract_from_json(
         self,
         contract_path: str | Path,
@@ -423,28 +486,12 @@ class CLEOSEVM(CLEOS):
             bytecode=contract_interface['bytecode']
         )
 
-        # create deploy tx
-        tx_args = {
-            'from': account.address,
-            'gas': max_gas,
-            'gasPrice': self._w3.eth.gas_price,
-            'nonce': self._w3.eth.get_transaction_count(account=account.address)
-        }
-
-        tx = Contract.constructor(*constructor_arguments).build_transaction(tx_args)
-
-        signed_tx = account.sign_transaction(tx)
-
-        tx_hash = self._w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-
-        tx_receipt = self._w3.eth.wait_for_transaction_receipt(tx_hash)
-
-        _contract = self._w3.eth.contract(
-            address=tx_receipt['contractAddress'], abi=contract_interface['abi'])
-
-        self.evm_contracts[contract_name] = _contract
-
-        return _contract
+        return self.eth_deploy_contract(
+            Contract, contract_interface['abi'], contract_name,
+            constructor_arguments=constructor_arguments,
+            account=account,
+            max_gas=max_gas
+        )
 
     # substitution helpers
 

@@ -175,34 +175,6 @@ def subst_testing_nodeos_manifest_server_down(request, tmp_path_factory):
     ):
         yield tevmc
 
-@pytest.fixture()
-def compile_evm():
-    # maybe compile uniswap v2 core
-    uswap_v2_dir = Path('tests/evm-contracts/uniswap-v2-core')
-    if not (uswap_v2_dir / 'build').exists():
-
-        # run yarn & compile separate cause their script dies
-        # installing optional deps and this is ok
-        process = subprocess.run(
-            'yarn',
-            shell=True, cwd=uswap_v2_dir,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-        )
-        if process.returncode != 0:
-            last_line = process.stdout.splitlines()[-1]
-            if 'you can safely ignore this error' not in last_line:
-                logging.error(process.stdout)
-                raise ChildProcessError(f'Failed to install uniswap v2 core deps')
-
-        process = subprocess.run(
-            'yarn compile',
-            shell=True, cwd=uswap_v2_dir,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-        )
-        if process.returncode != 0:
-            logging.error(process.stdout)
-            raise ChildProcessError(f'Failed to compile uniswap v2 core')
-
 
 @pytest.fixture()
 def tevmc_testnet(request, tmp_path_factory):
