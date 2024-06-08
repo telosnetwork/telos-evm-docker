@@ -7,7 +7,7 @@ readme = 'README.md'
 
 [tool.poetry.dependencies]
 python = '^3.9'
-web3 = '^6.8.0'
+web3 = '^6.19.0'
 tdqm = '^0.0.1'
 asks = '^3.0.0'
 flask = '^2.3.3'
@@ -27,6 +27,7 @@ rlp = '3.0.0'
 pydantic = "^2.6.1"
 requests-mock = "^1.11.0"
 # w3multicall = "^0.3.0"
+pdbpp = "^0.10.3"
 
 [build-system]
 requires = ['poetry-core']

@@ -23,8 +23,8 @@ def test_manual_full(tevmc_local):
 
 @pytest.mark.randomize(False)
 @pytest.mark.services('elastic', 'nodeos', 'kibana')
-def test_manual_translator_dev(tevmc_mainnet):
-    tevmc = tevmc_mainnet
+def test_manual_translator_dev(tevmc_local):
+    tevmc = tevmc_local
     breakpoint()
 
 

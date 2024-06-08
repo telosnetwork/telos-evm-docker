@@ -99,6 +99,25 @@ def test_all(tevmc_local):
     assert erc20_contract.functions.symbol().call() == symbol
     assert erc20_contract.functions.totalSupply().call() == supply
 
+    # send EIP1559 tx
+    tx_params = {
+        'from': first_addr.address,
+        'to': second_addr.address,
+        'value': to_wei(1, 'ether'),
+        'gas': DEFAULT_GAS,
+        'maxFeePerGas': 113378400388,
+        'maxPriorityFeePerGas': to_wei(2, 'gwei'),
+        'nonce': 1,
+        'chainId': tevmc.cleos.chain_id,
+        'type': 2
+    }
+
+    # test actuall tx send & fetch receipt
+    signed_tx = Account.sign_transaction(tx_params, first_addr.key)
+    tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+    receipt = local_w3.eth.wait_for_transaction_receipt(tx_hash)
+    assert receipt
+
 #    # deploy multicall
 #    multicall_contract = tevmc.cleos.eth_deploy_contract_from_files(
 #        'tests/evm-contracts/multicall/Multicall3.abi',
