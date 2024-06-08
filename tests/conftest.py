@@ -15,7 +15,6 @@ import http.server
 import socketserver
 import threading
 
-import pdbp
 import pytest
 import requests
 
