@@ -145,7 +145,9 @@ nodeos = {
             'p2p.telos.dutcheos.io:9876',
             'p2p.telos.zenblocks.io:9876'
         ],
-        'subst': 'http://evmwasms.s3.amazonaws.com/subst.json'
+        'subst': {
+            'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/regular/regular.wasm'
+        }
     }
 }
 
