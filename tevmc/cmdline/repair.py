@@ -33,7 +33,7 @@ def perform_data_repair(config_path, progress=True):
             'mainnet or testnet nodes'
         )
 
-    chain_type = 'mainnet' if 'mainnet' in chain_name else 'testnet'
+    chain_type = 'Telos Mainnet - v6' if 'mainnet' in chain_name else 'Telos Testnet - v6'
 
     logging.info('repairing elastic data...')
 

@@ -500,6 +500,8 @@ class TEVMController:
         contracts_dir = docker_dir / config['contracts_dir']
         contracts_dir = contracts_dir.resolve(strict=True)
 
+        contract_type = self.chain_type if self.chain_type != 'local' else 'testnet'
+
         data_dir_host.mkdir(parents=True, exist_ok=True)
 
         self.mounts['nodeos'] = [
@@ -621,20 +623,18 @@ class TEVMController:
             # maybe setup cleos wrapper, if its already setup indicates an inplace restart and cleos
             # data should be mantained
             if not isinstance(self.cleos, CLEOSEVM):
-                cleos = CLEOSEVM(
-                    cleos_url,
+                self.cleos = CLEOSEVM(
+                    endpoint=cleos_url,
                     logger=self.logger,
                     evm_url=cleos_evm_url,
                     chain_id=self.config['telos-evm-rpc']['chain_id'])
 
-                self.cleos = cleos
-
                 if 'sig_provider' in config['ini']:
                     key = config['ini']['sig_provider'].split('=KEY:')[-1]
-                    cleos.import_key('eosio', key)
+                    self.cleos.import_key('eosio', key)
 
                 self.cleos.load_abi_file('eosio', contracts_dir / 'eosio.system/eosio.system.abi')
-                self.cleos.load_abi_file('eosio.evm', contracts_dir / 'eosio.evm/regular/regular.abi')
+                self.cleos.load_abi_file('eosio.evm', contracts_dir / 'eosio.evm' / contract_type / 'regular/regular.abi')
                 self.cleos.load_abi_file('eosio.token', contracts_dir / 'eosio.token/eosio.token.abi')
 
             if self.is_local:
@@ -649,7 +649,7 @@ class TEVMController:
                         break
 
                 # await for nodeos to produce a block
-                cleos.wait_blocks(4)
+                self.cleos.wait_blocks(4)
 
                 self.is_fresh = (
                     'No existing chain state or fork database. '
@@ -657,13 +657,13 @@ class TEVMController:
                 )
 
                 if self.is_fresh:
-                    cleos.import_key('eosio', self.producer_key)
+                    self.cleos.import_key('eosio', self.producer_key)
 
                     try:
-                        cleos.boot_sequence(
+                        self.cleos.boot_sequence(
                             contracts=contracts_dir, remote_node=CLEOS('https://testnet.telos.net'))
 
-                        cleos.deploy_evm(contracts_dir / self.config['nodeos']['eosio.evm'])
+                        self.cleos.deploy_evm(contracts_dir / contract_type / self.config['nodeos']['eosio.evm'])
 
                     except AssertionError:
                         for msg in self.stream_logs('nodeos'):
@@ -681,7 +681,7 @@ class TEVMController:
                 # wait until nodeos apis are up
                 for i in range(60):
                     try:
-                        self.nodeos_init_info = cleos.get_info()
+                        self.nodeos_init_info = self.cleos.get_info()
                         current_chain_id = self.nodeos_init_info['chain_id']
                         config_chain_id = self.config['nodeos']['chain_id']
 
@@ -706,7 +706,7 @@ class TEVMController:
                     'nodeos has started, waiting until blocks.log '
                     f'contains block number {translator_start_block}'
                 )
-                cleos.wait_block(
+                self.cleos.wait_block(
                     translator_start_block, progress=True, interval=5)
 
     def restart_nodeos(self):

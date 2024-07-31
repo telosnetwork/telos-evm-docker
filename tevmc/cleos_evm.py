@@ -55,12 +55,11 @@ class CLEOSEVM(CLEOS):
 
     def __init__(
         self,
-        *args,
         chain_id: int = 41,
         evm_url: str = 'http://localhost:7000/evm',
         **kwargs
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
         self.evm_url = evm_url
         self.chain_id = chain_id

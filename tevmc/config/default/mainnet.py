@@ -146,7 +146,7 @@ nodeos = {
             'p2p.telos.zenblocks.io:9876'
         ],
         'subst': {
-            'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/regular/regular.wasm'
+            'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/mainnet/regular/regular.wasm'
         }
     }
 }

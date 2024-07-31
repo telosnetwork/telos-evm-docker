@@ -9,7 +9,8 @@ from tevmc.cmdline.repair import perform_data_repair
 from tevmc.config import load_config
 
 
-EVM_1_5_ENDPOINT = 'https://mainnet15a.telos.net/evm'
+EVM_1_5_ENDPOINT = 'https://mainnet15.telos.net/evm'
+
 
 @pytest.mark.randomize(False)
 @pytest.mark.tevmc_params(is_producer=False)
@@ -35,22 +36,22 @@ def test_repair_dirty_db(tevmc_mainnet):
     assert is_dirty
 
     # delete single elastic block creating gap
-    latest_block = tevmc.cleos.eth_get_block_by_number('latest')['result']
-    es_config = tevmc.config['elasticsearch']
-    es = Elasticsearch(f'{es_config["protocol"]}://{es_config["host"]}')
+    # latest_block = tevmc.cleos.eth_get_block_by_number('latest')['result']
+    # es_config = tevmc.config['elasticsearch']
+    # es = Elasticsearch(f'{es_config["protocol"]}://{es_config["host"]}')
 
-    delete_block_num = int(latest_block['number'], 16) - 10
+    # delete_block_num = int(latest_block['number'], 16) - 10
 
-    query = {
-        'query': {
-            'term': {
-                'block_num': delete_block_num
-            }
-        }
-    }
-    logging.info(f'deleting block num {delete_block_num}')
-    elastic_prefix = tevmc.config['telos-evm-rpc']['elastic_prefix']
-    es.delete_by_query(index=f'{elastic_prefix}-delta-*', body=query)
+    # query = {
+    #     'query': {
+    #         'term': {
+    #             'block_num': delete_block_num
+    #         }
+    #     }
+    # }
+    # logging.info(f'deleting block num {delete_block_num}')
+    # elastic_prefix = tevmc.config['telos-evm-rpc']['elastic_prefix']
+    # es.delete_by_query(index=f'{elastic_prefix}-delta-*', body=query)
 
     # tear down node
     tevmc.stop()
