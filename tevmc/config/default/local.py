@@ -55,7 +55,7 @@ nodeos = {
         'vm_oc_compile_threads': 4,
         'vm_oc_enable': True,
 
-        'chain_state_size': 65536,
+        'chain_state_size': 256,
         'abi_serializer_max_time': 2000000,
         'account_queries': True,
 
@@ -102,7 +102,7 @@ nodeos = {
         ],
         'peers': [],
         'subst': {
-            'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/testnet/regular/regular.wasm'
+            'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/local/regular/regular.wasm'
         },
         'subst_admin_apis': True
     }
