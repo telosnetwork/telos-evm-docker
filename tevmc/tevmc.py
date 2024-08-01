@@ -500,8 +500,6 @@ class TEVMController:
         contracts_dir = docker_dir / config['contracts_dir']
         contracts_dir = contracts_dir.resolve(strict=True)
 
-        contract_type = self.chain_type if self.chain_type != 'local' else 'testnet'
-
         data_dir_host.mkdir(parents=True, exist_ok=True)
 
         self.mounts['nodeos'] = [
@@ -634,7 +632,7 @@ class TEVMController:
                     self.cleos.import_key('eosio', key)
 
                 self.cleos.load_abi_file('eosio', contracts_dir / 'eosio.system/eosio.system.abi')
-                self.cleos.load_abi_file('eosio.evm', contracts_dir / 'eosio.evm' / contract_type / 'regular/regular.abi')
+                self.cleos.load_abi_file('eosio.evm', contracts_dir / 'eosio.evm' / self.chain_type / 'regular/regular.abi')
                 self.cleos.load_abi_file('eosio.token', contracts_dir / 'eosio.token/eosio.token.abi')
 
             if self.is_local:
@@ -663,7 +661,7 @@ class TEVMController:
                         self.cleos.boot_sequence(
                             contracts=contracts_dir, remote_node=CLEOS('https://testnet.telos.net'))
 
-                        self.cleos.deploy_evm(contracts_dir / contract_type / self.config['nodeos']['eosio.evm'])
+                        self.cleos.deploy_evm(contracts_dir / 'eosio.evm' / self.chain_type / self.config['nodeos']['eosio.evm'])
 
                     except AssertionError:
                         for msg in self.stream_logs('nodeos'):
