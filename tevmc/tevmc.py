@@ -661,7 +661,12 @@ class TEVMController:
                         self.cleos.boot_sequence(
                             contracts=contracts_dir, remote_node=CLEOS('https://testnet.telos.net'))
 
-                        self.cleos.deploy_evm(contracts_dir / 'eosio.evm' / self.chain_type / self.config['nodeos']['eosio.evm'])
+                        start_revision = config.get('start_revision', 1)
+
+                        self.cleos.deploy_evm(
+                            contracts_dir / 'eosio.evm' / self.chain_type / self.config['nodeos']['eosio.evm'],
+                            start_revision=start_revision
+                        )
 
                     except AssertionError:
                         for msg in self.stream_logs('nodeos'):
