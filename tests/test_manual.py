@@ -20,6 +20,13 @@ def test_manual_full(tevmc_local):
     tevmc = tevmc_local
     breakpoint()
 
+@pytest.mark.randomize(False)
+def test_revision_2(tevmc_local):
+    tevmc = tevmc_local
+    tevmc.cleos.push_action(
+        'eosio.evm', 'setrevision', [2], 'eosio.evm')
+    breakpoint()
+
 
 @pytest.mark.randomize(False)
 @pytest.mark.services('elastic', 'nodeos', 'kibana')
