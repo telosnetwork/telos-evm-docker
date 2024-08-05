@@ -10,7 +10,7 @@ from tevmc.utils import to_wei
 
 
 DEFAULT_GAS_PRICE = 524799638144
-DEFAULT_GAS = 21000
+DEFAULT_GAS = 21572
 
 
 def test_generate_fully_tested_chain(tevmc_local):
@@ -29,18 +29,18 @@ def test_generate_fully_tested_chain(tevmc_local):
     second_addr = Account.create()
 
     # Give tokens from system to test account
-    tevmc.cleos.transfer_token('eosio', account, Asset.from_str('100.0000 TLOS'), 'evm test')
+    tevmc.cleos.transfer_token('eosio', account, Asset.from_str('101000000.0000 TLOS'), 'evm test')
 
     # Deposit tokens into evm test account
-    tevmc.cleos.transfer_token(account, 'eosio.evm', Asset.from_str('100.0000 TLOS'), 'Deposit')
+    tevmc.cleos.transfer_token(account, 'eosio.evm', Asset.from_str('101000000.0000 TLOS'), 'Deposit')
 
     # Withdraw tokens from evm test account
     tevmc.cleos.eth_withdraw('1.0000 TLOS', account)
 
     # Perform nativly signed transfer
-    tevmc.cleos.eth_transfer(native_eth_addr, first_addr.address, Asset.from_str('90.0000 TLOS'), account=account)
+    tevmc.cleos.eth_transfer(native_eth_addr, first_addr.address, Asset.from_str('10000000.0000 TLOS'), account=account)
 
-    quantity = local_w3.eth.get_balance(first_addr.address) - to_wei(2, 'ether')
+    quantity = 80085
     tx_params = {
         'from': first_addr.address,
         'to': second_addr.address,
@@ -56,20 +56,53 @@ def test_generate_fully_tested_chain(tevmc_local):
     signed_tx = Account.sign_transaction(tx_params, first_addr.key)
     tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
-    def deploy_new_erc20(name: str, symbol: str, supply: int):
-        return tevmc.cleos.eth_deploy_contract_from_files(
-            'tests/evm-contracts/ERC20/TestERC20.abi',
-            'tests/evm-contracts/ERC20/TestERC20.bin',
-            name,
-            constructor_arguments=[name, symbol, supply]
-        )
-
     # test erc20 contract deploy
-    supply = to_wei(69, 'ether')
     name = 'TestToken'
     symbol = 'TT'
-    erc20_contract = deploy_new_erc20(name, symbol, supply)
+    erc20_contract = tevmc.cleos.eth_deploy_contract_from_files(
+        'tests/evm-contracts/ERC20/TestERC20.abi',
+        'tests/evm-contracts/ERC20/TestERC20.bin',
+        name,
+        constructor_arguments=[
+            first_addr.address,
+            name,
+            symbol
+        ]
+    )
 
+    # Do ERC20 eth signed mint & transfer
+
+    # Mint
+    tx_args = {
+        'from': first_addr.address,
+        'gas': to_wei(0.1, 'telos'),
+        'gasPrice': DEFAULT_GAS_PRICE,
+        'nonce': 1,
+        'chainId': tevmc.cleos.chain_id
+    }
+    erc20_tx = erc20_contract.functions.mint(
+        first_addr.address,
+        100
+    ).build_transaction(tx_args)
+    signed_tx = Account.sign_transaction(erc20_tx, first_addr.key)
+    tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    # Transfer
+    tx_args = {
+        'gas': to_wei(0.1, 'telos'),
+        'gasPrice': DEFAULT_GAS_PRICE,
+        'nonce': 2,
+        'chainId': tevmc.cleos.chain_id
+    }
+    erc20_tx = erc20_contract.functions.transfer(
+        second_addr.address,
+        100
+    ).build_transaction(tx_args)
+    signed_tx = Account.sign_transaction(erc20_tx, first_addr.key)
+    tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    tevmc.cleos.push_action(
+        'eosio.evm', 'setrevision', [2], 'eosio.evm')
 
     # send EIP1559 tx
     maxPriorityFeeGas = local_w3.eth.max_priority_fee
@@ -80,7 +113,7 @@ def test_generate_fully_tested_chain(tevmc_local):
         'gas': DEFAULT_GAS,
         'maxFeePerGas': 113378400388,
         'maxPriorityFeePerGas': maxPriorityFeeGas,
-        'nonce': 1,
+        'nonce': 3,
         'chainId': tevmc.cleos.chain_id,
         'type': 2
     }
@@ -88,3 +121,5 @@ def test_generate_fully_tested_chain(tevmc_local):
     # test actuall tx send & fetch receipt
     signed_tx = Account.sign_transaction(tx_params, first_addr.key)
     tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    tevmc.cleos.wait_blocks(1)

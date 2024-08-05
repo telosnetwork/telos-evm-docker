@@ -131,9 +131,8 @@ class CLEOSEVM(CLEOS):
             'eosio.evm'
         )
 
-        for i in range(1, start_revision + 1):
-            self.push_action(
-                'eosio.evm', 'setrevision', [i], 'eosio.evm')
+        self.push_action(
+            'eosio.evm', 'setrevision', [1], 'eosio.evm')
 
     def create_test_evm_account(
         self,

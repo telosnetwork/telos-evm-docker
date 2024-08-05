@@ -25,7 +25,7 @@ from tevmc.cmdline.init import touch_node_dir
 from tevmc.cmdline.cli import get_docker_client
 
 
-TEST_SERVICES = ['redis', 'elastic', 'kibana', 'nodeos', 'indexer', 'rpc']
+TEST_SERVICES = ['redis', 'elastic', 'nodeos', 'indexer', 'rpc']
 
 
 def maybe_get_marker(request, mark_name: str, field: str, default):
