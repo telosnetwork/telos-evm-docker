@@ -40,7 +40,7 @@ def test_all(tevmc_local):
     tevmc.cleos.create_evm_account(account, random_string())
     eth_addr = tevmc.cleos.eth_account_from_name(account)
     assert eth_addr
-    quantity = Asset.from_str('100.0000 TLOS')
+    quantity = Asset.from_str('10000.0000 TLOS')
     tevmc.cleos.transfer_token('eosio', account, quantity, 'evm test')
     tevmc.cleos.transfer_token(account, 'eosio.evm', quantity, 'Deposit')
     assert local_w3.eth.get_transaction_count(local_w3.to_checksum_address(eth_addr)) == 1
@@ -51,11 +51,11 @@ def test_all(tevmc_local):
     native_eth_addr = tevmc.cleos.eth_account_from_name(account)
     first_addr = Account.create()
     second_addr = Account.create()
-    tevmc.cleos.transfer_token('eosio', account, Asset.from_str('100.0000 TLOS'), 'evm test')
-    tevmc.cleos.transfer_token(account, 'eosio.evm', Asset.from_str('100.0000 TLOS'), 'Deposit')
-    tevmc.cleos.eth_transfer(native_eth_addr, first_addr.address, Asset.from_str('90.0000 TLOS'), account=account)
+    tevmc.cleos.transfer_token('eosio', account, Asset.from_str('101000000.0000 TLOS'), 'evm test')
+    tevmc.cleos.transfer_token(account, 'eosio.evm', Asset.from_str('101000000.0000 TLOS'), 'Deposit')
+    tevmc.cleos.eth_transfer(native_eth_addr, first_addr.address, Asset.from_str('10000000.0000 TLOS'), account=account)
 
-    quantity = local_w3.eth.get_balance(first_addr.address) - to_wei(2, 'ether')
+    quantity = 420
     tx_params = {
         'from': first_addr.address,
         'to': second_addr.address,
@@ -81,23 +81,42 @@ def test_all(tevmc_local):
     block = local_w3.eth.get_block(receipt['blockHash'])
     assert block['hash'] == receipt['blockHash']
 
-    def deploy_new_erc20(name: str, symbol: str, supply: int):
+    def deploy_new_erc20(owner: str, name: str, symbol: str):
         return tevmc.cleos.eth_deploy_contract_from_files(
             'tests/evm-contracts/ERC20/TestERC20.abi',
             'tests/evm-contracts/ERC20/TestERC20.bin',
             name,
-            constructor_arguments=[name, symbol, supply]
+            constructor_arguments=[owner, name, symbol]
         )
 
     # test erc20 contract deploy
     supply = to_wei(69, 'ether')
     name = 'TestToken'
     symbol = 'TT'
-    erc20_contract = deploy_new_erc20(name, symbol, supply)
+    erc20_contract = deploy_new_erc20(first_addr.address, name, symbol)
 
     assert erc20_contract.functions.name().call() == name
     assert erc20_contract.functions.symbol().call() == symbol
+
+    # Mint
+    tx_args = {
+        'from': first_addr.address,
+        'gas': to_wei(0.1, 'telos'),
+        'gasPrice': DEFAULT_GAS_PRICE,
+        'nonce': 1,
+        'chainId': tevmc.cleos.chain_id
+    }
+    erc20_tx = erc20_contract.functions.mint(
+        first_addr.address,
+        supply
+    ).build_transaction(tx_args)
+    signed_tx = Account.sign_transaction(erc20_tx, first_addr.key)
+    tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
     assert erc20_contract.functions.totalSupply().call() == supply
+
+    tevmc.cleos.push_action(
+        'eosio.evm', 'setrevision', [2], 'eosio.evm')
 
     # send EIP1559 tx
     tx_params = {
@@ -107,7 +126,7 @@ def test_all(tevmc_local):
         'gas': DEFAULT_GAS,
         'maxFeePerGas': 113378400388,
         'maxPriorityFeePerGas': to_wei(2, 'gwei'),
-        'nonce': 1,
+        'nonce': 2,
         'chainId': tevmc.cleos.chain_id,
         'type': 2
     }
