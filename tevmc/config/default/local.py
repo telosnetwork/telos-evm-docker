@@ -50,6 +50,7 @@ nodeos = {
     'eosio.evm': 'receiptless',
     'chain_id': 'c4c5fcc7b6e5e7484eb6b609e755050ebba977c4c291a63aab42d94c0fb8c2cf',
     'override_tx_time': 499,
+    'start_revision': 1,
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
         'vm_oc_compile_threads': 4,

@@ -80,7 +80,7 @@ class CLEOSEVM(CLEOS):
         min_buy: int = 20000,
         fee_transfer_pct: int = 100,
         gas_per_byte: int = 69,
-        start_revision: int = 2
+        start_revision: int = 1
     ):
         master_key = self.keys['eosio']
 
@@ -131,9 +131,8 @@ class CLEOSEVM(CLEOS):
             'eosio.evm'
         )
 
-        for i in range(1, start_revision + 1):
-            self.push_action(
-                'eosio.evm', 'setrevision', [i], 'eosio.evm')
+        self.push_action(
+            'eosio.evm', 'setrevision', [start_revision], 'eosio.evm')
 
     def create_test_evm_account(
         self,
