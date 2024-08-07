@@ -10,3 +10,4 @@ from .clean import clean
 from .stream import stream
 from .wait import wait_init, wait_tx
 from .repair import repair
+from .migrate import migrate

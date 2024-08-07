@@ -30,6 +30,7 @@ tdqm = '^0.0.1'
 bs4 = "^0.0.2"
 zstandard = "^0.23.0"
 pdbp = "^1.5.3"
+pylint = "^3.2.6"
 
 [build-system]
 requires = ['poetry-core']

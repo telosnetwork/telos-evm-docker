@@ -39,7 +39,6 @@ def perform_data_repair(config_path, progress=True):
 
     with TEVMController(
         config, root_pwd=root_pwd, services=['elastic']):
-        time.sleep(5)
         es = ElasticDriver(config)
         last_valid_nums = es.repair_data()
 
