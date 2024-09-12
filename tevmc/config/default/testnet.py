@@ -193,7 +193,7 @@ telos_evm_rpc = {
         'main': 'eosio.evm'
     },
     'indexer_websocket_host': '0.0.0.0',
-    'indexer_websocket_port': '7300',
+    'indexer_websocket_port': 7300,
     'indexer_websocket_uri': 'ws://127.0.0.1:7300/evm',
     'rpc_websocket_host': '0.0.0.0',
     'rpc_websocket_port': '7400',

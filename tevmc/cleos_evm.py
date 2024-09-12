@@ -25,7 +25,7 @@ from .utils import to_wei, to_int, decode_hex, remove_0x_prefix
 
 
 EVM_CONTRACT = 'eosio.evm'
-DEFAULT_GAS_PRICE = '0x01'
+DEFAULT_GAS_PRICE = hex(524799638144)
 DEFAULT_GAS_LIMIT = '0x1e8480'
 DEFAULT_VALUE = '0x00'
 DEFAULT_DATA = '0x00'
@@ -79,7 +79,8 @@ class CLEOSEVM(CLEOS):
         target_free: int = 2684354560,
         min_buy: int = 20000,
         fee_transfer_pct: int = 100,
-        gas_per_byte: int = 69
+        gas_per_byte: int = 69,
+        initial_revision: int = 0
     ):
         master_key = self.keys['eosio']
 
@@ -105,7 +106,8 @@ class CLEOSEVM(CLEOS):
             net='10000.0000 TLOS',
             ram=100000)
 
-        self.create_snapshot({})
+        # self.create_snapshot({})
+        self.wait_block(55)
 
         self.logger.info('deploying evm contract')
 
@@ -130,8 +132,13 @@ class CLEOSEVM(CLEOS):
             'eosio.evm'
         )
 
-        self.push_action(
-            'eosio.evm', 'setrevision', [1], 'eosio.evm')
+        self.wait_blocks(1)
+
+        if initial_revision > 0:
+            self.push_action(
+                'eosio.evm', 'setrevision', [1], 'eosio.evm')
+
+            self.wait_blocks(1)
 
     def create_test_evm_account(
         self,
@@ -491,6 +498,40 @@ class CLEOSEVM(CLEOS):
             account=account,
             max_gas=max_gas
         )
+
+    def eth_send_tx(
+        self,
+        _from: str,
+        key: str,
+        to: str | None = None,
+        gas: int | str = int('25000', 16),
+        value: int | str = 0,
+        data: bytes = b'',
+        contract_fn = None,
+        fn_args: list | None = None
+    ):
+        tx_args = {
+            'from': _from,
+            'gas': gas,
+            'gasPrice': self._w3.eth.gas_price,
+            'value': value,
+            'data': data,
+            'nonce': self.eth_get_transaction_count(_from),
+            'chainId': self.chain_id
+        }
+
+        if isinstance(to, str):
+            tx_args['to'] = to
+
+        if contract_fn is None:
+            tx = tx_args
+
+        else:
+            del tx_args['data']
+            tx = contract_fn(*fn_args).build_transaction(tx_args)
+
+        signed_tx = Account.sign_transaction(tx, key)
+        return self._w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
     # substitution helpers
 
