@@ -47,9 +47,9 @@ nodeos = {
     'genesis': 'local',
     'v2_api': 'disabled',
     'nodeos_bin': 'nodeos',
-    'eosio.evm': 'eosio.evm/testnet/receiptless',
+    'eosio.evm': 'eosio.evm/testnet/regular',
     'chain_id': '5ef798208828ef4385a9f605066204cc3fb83e33146d868440283d8687a4b0ee',
-    'override_tx_time': 499,
+    # 'override_tx_time': 499,
     'initial_revision': 0,
     'ini': {
         'wasm_runtime': 'eos-vm-jit',
@@ -102,10 +102,10 @@ nodeos = {
             'eosio::state_history_plugin'
         ],
         'peers': [],
-        'subst': {
-            'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/testnet/regular/regular.wasm'
-        },
-        'subst_admin_apis': True
+        # 'subst': {
+        #     'eosio.evm': '/opt/eosio/bin/contracts/eosio.evm/testnet/regular/regular.wasm'
+        # },
+        # 'subst_admin_apis': True
     }
 }
 
