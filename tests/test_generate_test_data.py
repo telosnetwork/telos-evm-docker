@@ -36,8 +36,6 @@ def test_generate_fully_tested_chain(tevmc_local):
     tevmc = tevmc_local
     local_w3 = open_web3(tevmc)
 
-    register_block_producers(tevmc, 2)
-
     # Set max_tx_time to 199ms
     params = {
         "max_block_net_usage": 1048576,
@@ -85,6 +83,8 @@ def test_generate_fully_tested_chain(tevmc_local):
     # Perform nativly signed transfer
     tevmc.cleos.eth_transfer(native_eth_addr, first_addr.address, Asset.from_str('10000000.0000 TLOS'), account=account)
 
+    tevmc.cleos.wait_blocks(1)
+
     quantity = 80085
     tx_params = {
         'from': first_addr.address,
@@ -97,9 +97,31 @@ def test_generate_fully_tested_chain(tevmc_local):
         'chainId': tevmc.cleos.chain_id
     }
 
-    # Send eth signed tx
+    # Send eth signed txs
+    for _ in range(500):
+        signed_tx = Account.sign_transaction(tx_params, first_addr.key)
+        tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tevmc.logger.info(tx_hash.hex())
+        tx_params['nonce'] += 1
+
+    # Do resources sandwich
+    tevmc.cleos.wait_blocks(1)
+
     signed_tx = Account.sign_transaction(tx_params, first_addr.key)
     tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    tevmc.cleos.eth_do_resources()
+
+    tx_params['nonce'] += 1
+
+    signed_tx = Account.sign_transaction(tx_params, first_addr.key)
+    tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    tevmc.cleos.wait_blocks(1)
+
+    register_block_producers(tevmc, 2)
+
+    tevmc.cleos.wait_blocks(1)
 
     # Update rev
     tevmc.cleos.push_action(
@@ -126,7 +148,7 @@ def test_generate_fully_tested_chain(tevmc_local):
         'from': first_addr.address,
         'gas': DEFAULT_GAS * 10,
         'gasPrice': DEFAULT_GAS_PRICE,
-        'nonce': 1,
+        'nonce': tx_params['nonce'] + 1,
         'chainId': tevmc.cleos.chain_id
     }
     erc20_tx = erc20_contract.functions.mint(
@@ -140,7 +162,7 @@ def test_generate_fully_tested_chain(tevmc_local):
     tx_args = {
         'gas': DEFAULT_GAS * 10,
         'gasPrice': DEFAULT_GAS_PRICE,
-        'nonce': 2,
+        'nonce': tx_args['nonce'] + 1,
         'chainId': tevmc.cleos.chain_id
     }
     erc20_tx = erc20_contract.functions.transfer(
