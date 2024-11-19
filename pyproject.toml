@@ -21,7 +21,8 @@ iterators = '^0.2.0'
 simplejson = '^3.19.1'
 elasticsearch = '^8.9.0'
 requests-unixsocket = '^0.3.0'
-py-leap = {git = 'https://github.com/guilledk/py-leap', tag = 'v0.1a23'}
+# py-leap = {git = 'https://github.com/guilledk/py-leap', tag = 'v0.1a25'}
+py-leap = {path = '../py-leap', develop = true}
 rlp = '3.0.0'
 pydantic = "^2.6.1"
 requests-mock = "^1.11.0"
@@ -30,6 +31,7 @@ tdqm = '^0.0.1'
 bs4 = "^0.0.2"
 zstandard = "^0.23.0"
 pdbp = "^1.5.3"
+eth-typing = "<5.0.0"
 
 [build-system]
 requires = ['poetry-core']

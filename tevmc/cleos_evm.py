@@ -77,7 +77,7 @@ class CLEOSEVM(CLEOS):
         start_bytes: int = 2684354560,
         start_cost: str = '21000.0000 TLOS',
         target_free: int = 2684354560,
-        min_buy: int = 20000,
+        min_buy: int = 0,
         fee_transfer_pct: int = 100,
         gas_per_byte: int = 69,
         initial_revision: int = 0
@@ -107,7 +107,8 @@ class CLEOSEVM(CLEOS):
             ram=100000)
 
         # self.create_snapshot({})
-        self.wait_block(55)
+        target_deploy_block = 58
+        self.wait_block(target_deploy_block - 3, interval=0.05)
 
         self.logger.info('deploying evm contract')
 
@@ -117,6 +118,9 @@ class CLEOSEVM(CLEOS):
             privileged=True,
             create_account=False
         )
+
+        if self.evm_deploy_info['processed']['block_num'] != target_deploy_block:
+            raise ValueError(f'Contract failed to deploy at block {target_deploy_block}')
 
         self.evm_init_info = self.push_action(
             'eosio.evm',
@@ -254,6 +258,14 @@ class CLEOSEVM(CLEOS):
 
         return int(rows[0]['balance'], 16)
 
+    def eth_do_resources(self):
+        return self.push_action(
+            EVM_CONTRACT,
+            'doresources',
+            [],
+            'rpc.evm',
+            key=self.get_private_key('rpc.evm')
+        )
 
     def eth_get_transaction_count(self, addr: str) -> int:
         addr = remove_0x_prefix(addr)

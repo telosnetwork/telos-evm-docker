@@ -12,10 +12,53 @@ from tevmc.utils import to_wei
 DEFAULT_GAS_PRICE = 524799638144
 DEFAULT_GAS = 21572
 
+def register_block_producers(tevmc, amount):
+    producers = ['eosio']
+    tevmc.cleos.register_producer('eosio')
+
+    for i in range(1,amount):
+        bp_account = tevmc.cleos.new_account(name=f'produceracc{i}', key=tevmc.cleos.keys['eosio'])
+        tevmc.cleos.transfer_token('eosio', bp_account, Asset.from_str('1000000.0000 TLOS'), '21 bp funds')
+        tevmc.cleos.register_producer(bp_account, key=tevmc.cleos.keys['eosio'])
+        producers.append(bp_account)
+
+    producers.sort()
+
+    for prod in producers:
+        if prod == 'eosio':
+            continue
+        tevmc.cleos.rex_deposit(prod, '1000000.0000 TLOS')
+        tevmc.cleos.vote_producers(prod, '', producers)
+
+    tevmc.cleos.wait_block(1000)
 
 def test_generate_fully_tested_chain(tevmc_local):
     tevmc = tevmc_local
     local_w3 = open_web3(tevmc)
+
+    # Set max_tx_time to 199ms
+    params = {
+        "max_block_net_usage": 1048576,
+        "target_block_net_usage_pct": 1000,
+        "max_transaction_net_usage": 600000,
+        "base_per_transaction_net_usage": 12,
+        "net_usage_leeway": 500,
+        "context_free_discount_net_usage_num": 20,
+        "context_free_discount_net_usage_den": 100,
+        "max_block_cpu_usage": 200000,
+        "target_block_cpu_usage_pct": 500,
+        "max_transaction_cpu_usage": 199000,
+        "min_transaction_cpu_usage": 100,
+        "max_transaction_lifetime": 3600,
+        "deferred_trx_expiration_window": 600,
+        "max_transaction_delay": 3888000,
+        "max_inline_action_size": 524287,
+        "max_inline_action_depth": 10,
+        "max_authority_depth": 6
+    }
+    tevmc.cleos.push_action(
+        'eosio', 'setparams', [params], 'eosio')
+    #breakpoint()
 
     # Generate one new random native address
     account = tevmc.cleos.new_account(name='evmuser')
@@ -40,6 +83,8 @@ def test_generate_fully_tested_chain(tevmc_local):
     # Perform nativly signed transfer
     tevmc.cleos.eth_transfer(native_eth_addr, first_addr.address, Asset.from_str('10000000.0000 TLOS'), account=account)
 
+    tevmc.cleos.wait_blocks(1)
+
     quantity = 80085
     tx_params = {
         'from': first_addr.address,
@@ -52,9 +97,31 @@ def test_generate_fully_tested_chain(tevmc_local):
         'chainId': tevmc.cleos.chain_id
     }
 
-    # Send eth signed tx
+    # Send eth signed txs
+    for _ in range(500):
+        signed_tx = Account.sign_transaction(tx_params, first_addr.key)
+        tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tevmc.logger.info(tx_hash.hex())
+        tx_params['nonce'] += 1
+
+    # Do resources sandwich
+    tevmc.cleos.wait_blocks(1)
+
     signed_tx = Account.sign_transaction(tx_params, first_addr.key)
     tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    tevmc.cleos.eth_do_resources()
+
+    tx_params['nonce'] += 1
+
+    signed_tx = Account.sign_transaction(tx_params, first_addr.key)
+    tx_hash = local_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    tevmc.cleos.wait_blocks(1)
+
+    register_block_producers(tevmc, 2)
+
+    tevmc.cleos.wait_blocks(1)
 
     # Update rev
     tevmc.cleos.push_action(
@@ -79,9 +146,9 @@ def test_generate_fully_tested_chain(tevmc_local):
     # Mint
     tx_args = {
         'from': first_addr.address,
-        'gas': to_wei(0.1, 'telos'),
+        'gas': DEFAULT_GAS * 10,
         'gasPrice': DEFAULT_GAS_PRICE,
-        'nonce': 1,
+        'nonce': tx_params['nonce'] + 1,
         'chainId': tevmc.cleos.chain_id
     }
     erc20_tx = erc20_contract.functions.mint(
@@ -93,9 +160,9 @@ def test_generate_fully_tested_chain(tevmc_local):
 
     # Transfer
     tx_args = {
-        'gas': to_wei(0.1, 'telos'),
+        'gas': DEFAULT_GAS * 10,
         'gasPrice': DEFAULT_GAS_PRICE,
-        'nonce': 2,
+        'nonce': tx_args['nonce'] + 1,
         'chainId': tevmc.cleos.chain_id
     }
     erc20_tx = erc20_contract.functions.transfer(
